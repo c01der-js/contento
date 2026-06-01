@@ -20,6 +20,8 @@ export { AbTestStatus, AbTestKind } from './generated/client/index.js'
 export type { AbTest, AbVariant } from './generated/client/index.js'
 export type { Asset, Goal, AntiExample, Integration, SocialAccountSnapshot } from './generated/client/index.js'
 export { AssetKind, GoalType, IdeaGoal } from './generated/client/index.js'
+export { AvatarPersonaStatus } from './generated/client/index.js'
+export type { AvatarPersona } from './generated/client/index.js'
 
 import { PrismaClient } from './generated/client/index.js'
 
