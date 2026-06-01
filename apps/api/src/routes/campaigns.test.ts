@@ -69,6 +69,21 @@ vi.mock('@contento/db', () => ({
       createMany: vi.fn().mockResolvedValue({ count: 2 }),
       findMany: vi.fn().mockResolvedValue([]),
     },
+    $transaction: vi.fn().mockImplementation((fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        contentPlan: {
+          findUnique: vi.fn().mockResolvedValue(null),
+          create: vi.fn().mockResolvedValue({
+            id: 'cp1', campaignId: 'camp1', status: 'DRAFT', createdAt: new Date(), updatedAt: new Date(),
+            items: [
+              { id: 'i1', index: 0, topic: 'Intro video', format: 'reel', scheduledDate: new Date('2026-07-01'), hook: 'Test hook', status: 'PENDING', rejectComment: null, scriptId: null, videoJobId: null, publicationId: null },
+            ],
+          }),
+          delete: vi.fn().mockResolvedValue({}),
+        },
+      }
+      return fn(tx)
+    }),
   },
 }))
 

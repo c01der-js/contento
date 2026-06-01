@@ -163,26 +163,28 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
       endsAt: campaign.endsAt.toISOString(),
     })
 
-    // Delete existing plan if regenerating
-    const existing = await prisma.contentPlan.findUnique({ where: { campaignId } })
-    if (existing) {
-      await prisma.contentPlan.delete({ where: { campaignId } })
-    }
+    const plan = await prisma.$transaction(async (tx) => {
+      // Delete existing plan if regenerating
+      const existing = await tx.contentPlan.findUnique({ where: { campaignId } })
+      if (existing) {
+        await tx.contentPlan.delete({ where: { campaignId } })
+      }
 
-    const plan = await prisma.contentPlan.create({
-      data: {
-        campaignId,
-        items: {
-          create: items.map(item => ({
-            index: item.index,
-            topic: item.topic,
-            format: item.format,
-            scheduledDate: new Date(item.scheduledDate),
-            hook: item.hook,
-          })),
+      return tx.contentPlan.create({
+        data: {
+          campaignId,
+          items: {
+            create: items.map(item => ({
+              index: item.index,
+              topic: item.topic,
+              format: item.format,
+              scheduledDate: new Date(item.scheduledDate),
+              hook: item.hook,
+            })),
+          },
         },
-      },
-      include: { items: { orderBy: { index: 'asc' } } },
+        include: { items: { orderBy: { index: 'asc' } } },
+      })
     })
 
     return reply.send({ ...plan, items: plan.items.map(serializeItem) })
@@ -230,29 +232,36 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
     if (!item) return reply.status(404).send({ error: 'Item not found' })
     if (item.status !== 'CLIENT_REVIEW') return reply.status(400).send({ error: `Item status is ${item.status}, expected CLIENT_REVIEW` })
 
-    const updated = await prisma.contentPlanItem.update({
+    const approved = await prisma.contentPlanItem.update({
       where: { id: itemId },
       data: { status: 'APPROVED' },
     })
 
     // Schedule publication if script + socialAccount available
-    if (updated.scriptId) {
-      const socialAccount = await prisma.socialAccount.findFirst({ where: { workspaceId } })
+    if (approved.scriptId) {
+      const socialAccount = await prisma.socialAccount.findFirst({
+        where: { workspaceId },
+        orderBy: { createdAt: 'asc' },
+      })
       if (socialAccount) {
         const pub = await prisma.publication.create({
           data: {
             workspaceId,
-            scriptId: updated.scriptId,
+            scriptId: approved.scriptId,
             socialAccountId: socialAccount.id,
-            scheduledAt: updated.scheduledDate,
+            scheduledAt: approved.scheduledDate,
             renderJobId: null,
           },
         })
-        await prisma.contentPlanItem.update({ where: { id: itemId }, data: { publicationId: pub.id, status: 'PUBLISHED' } })
+        const published = await prisma.contentPlanItem.update({
+          where: { id: itemId },
+          data: { publicationId: pub.id, status: 'PUBLISHED' },
+        })
+        return reply.send(serializeItem(published))
       }
     }
 
-    return reply.send(serializeItem(updated))
+    return reply.send(serializeItem(approved))
   })
 
   // PUT /campaigns/:campaignId/items/:itemId/reject
