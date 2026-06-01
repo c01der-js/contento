@@ -3,6 +3,7 @@ export {
   submitTalkingAvatarClip,
   submitImageToVideo,
   pollJobUntilDone,
+  generateCharacterPortrait,
 } from './client.js'
 export { isMockMode, MOCK_CLIP_URL, MOCK_IMAGE_URL, mockWavBuffer } from './mock.js'
 export { verifyWebhookSignature } from './verify.js'

@@ -132,3 +132,22 @@ export async function submitImageToVideo(
     input_images: [{ type: 'image_url', image_url: imageUrl }],
   })
 }
+
+/**
+ * Generate a character portrait image from a text description.
+ * Uses Higgsfield foundation text2image (no Soul required).
+ * Returns a jobSetId to poll with pollJobUntilDone().
+ */
+export async function generateCharacterPortrait(
+  description: string,
+  style: string,
+  gender: string,
+): Promise<string> {
+  const prompt = `Portrait photo of a ${gender} ${style} professional brand ambassador. ${description}. Clean background, high quality, photorealistic, suitable for video avatar.`
+  return hfGenerate('/v1/text2image/foundation', {
+    prompt,
+    width_and_height: '1024x1024',
+    quality: '1080p',
+    batch_size: 1,
+  })
+}
