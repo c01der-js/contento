@@ -36,6 +36,7 @@ import { trendFeedConfigRoutes } from './routes/trend-feed-configs.js'
 import { companyPortraitRoutes } from './routes/company-portrait.js'
 import { avatarPersonaRoutes } from './routes/avatar-persona.js'
 import { campaignRoutes } from './routes/campaigns.js'
+import { startCampaignProducer } from './jobs/campaign-producer.js'
 
 export async function createServer() {
   const app = Fastify({
@@ -105,6 +106,7 @@ export async function createServer() {
   app.addHook('onReady', () => {
     startMentionPoller()
     startAnalyticsIngester()
+    startCampaignProducer()
   })
 
   return app
