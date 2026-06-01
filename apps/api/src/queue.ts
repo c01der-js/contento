@@ -46,3 +46,14 @@ export function getVideoQueue(): Queue {
   }
   return _videoQueue
 }
+
+let _campaignProducerConnection: IORedis | null = null
+let _campaignProducerQueue: Queue | null = null
+
+export function getCampaignProducerQueue(): Queue {
+  if (!_campaignProducerQueue) {
+    _campaignProducerConnection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null })
+    _campaignProducerQueue = new Queue('campaign-producer', { connection: _campaignProducerConnection })
+  }
+  return _campaignProducerQueue
+}

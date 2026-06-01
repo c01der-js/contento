@@ -35,6 +35,7 @@ import { webhookRoutes } from './routes/webhooks.js'
 import { trendFeedConfigRoutes } from './routes/trend-feed-configs.js'
 import { companyPortraitRoutes } from './routes/company-portrait.js'
 import { avatarPersonaRoutes } from './routes/avatar-persona.js'
+import { campaignRoutes } from './routes/campaigns.js'
 
 export async function createServer() {
   const app = Fastify({
@@ -96,6 +97,7 @@ export async function createServer() {
   await app.register(trendFeedConfigRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(companyPortraitRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(avatarPersonaRoutes, { prefix: '/workspaces/:workspaceId' })
+  await app.register(campaignRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(webhookRoutes)
   await app.register(realtimeRoutes)
 
