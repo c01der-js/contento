@@ -46,6 +46,12 @@ vi.mock('@contento/db', () => ({
         updatedAt: new Date(),
       }),
     },
+    mentionSource: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    socialAccount: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
   },
 }))
 
