@@ -641,7 +641,7 @@ model Publication {
   renderJob       RenderJob?        @relation(fields: [renderJobId], references: [id], onDelete: SetNull)
   socialAccount   SocialAccount     @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
   abVariant        AbVariant?        @relation(fields: [abVariantId], references: [id], onDelete: SetNull)
-  contentPlanItems ContentPlanItem[]
+  contentPlanItem ContentPlanItem?
 
   @@index([workspaceId])
   @@index([scriptId])
@@ -1021,7 +1021,7 @@ model ContentPlanItem {
   rejectComment String?
   scriptId      String?
   videoJobId    String?
-  publicationId String?
+  publicationId String? @unique
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
   contentPlan   ContentPlan           @relation(fields: [contentPlanId], references: [id], onDelete: Cascade)
@@ -1031,4 +1031,5 @@ model ContentPlanItem {
 
   @@index([contentPlanId])
   @@index([contentPlanId, status])
+  @@index([contentPlanId, scheduledDate])
 }
