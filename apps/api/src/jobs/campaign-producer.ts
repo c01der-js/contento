@@ -13,12 +13,17 @@ interface ProducePayload {
   workspaceId: string
 }
 
-async function pollVideoJob(videoJobId: string, timeoutMs: number): Promise<'DONE' | 'FAILED'> {
+async function pollVideoJob(
+  videoJobId: string,
+  timeoutMs: number,
+  extendLock: () => Promise<unknown>,
+): Promise<'DONE' | 'FAILED'> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
-    const job = await prisma.videoJob.findUnique({ where: { id: videoJobId }, select: { status: true } })
-    if (job?.status === 'DONE') return 'DONE'
-    if (job?.status === 'FAILED') return 'FAILED'
+    const dbJob = await prisma.videoJob.findUnique({ where: { id: videoJobId }, select: { status: true } })
+    if (dbJob?.status === 'DONE') return 'DONE'
+    if (dbJob?.status === 'FAILED') return 'FAILED'
+    await extendLock().catch(() => {})
     await new Promise(r => setTimeout(r, VIDEO_POLL_INTERVAL_MS))
   }
   return 'FAILED'
@@ -48,7 +53,7 @@ export function startCampaignProducer(): Worker {
 
   const worker = new Worker<ProducePayload>(
     'campaign-producer',
-    async (job) => {
+    async (job, token) => {
       const { campaignId, workspaceId } = job.data
 
       const plan = await prisma.contentPlan.findUnique({
@@ -120,7 +125,11 @@ export function startCampaignProducer(): Worker {
         })
 
         // Step 3: Poll until done
-        const result = await pollVideoJob(videoJob.id, VIDEO_TIMEOUT_MS)
+        const result = await pollVideoJob(
+          videoJob.id,
+          VIDEO_TIMEOUT_MS,
+          () => job.extendLock(token ?? '', VIDEO_POLL_INTERVAL_MS * 3),
+        )
 
         if (result === 'DONE') {
           await prisma.contentPlanItem.update({ where: { id: item.id }, data: { status: 'CLIENT_REVIEW' } })
@@ -145,7 +154,7 @@ export function startCampaignProducer(): Worker {
         await prisma.contentPlan.update({ where: { campaignId }, data: { status: 'COMPLETED' } })
       }
     },
-    { connection, concurrency: 1, lockDuration: 50 * 60 * 1000 },
+    { connection, concurrency: 1, lockDuration: VIDEO_POLL_INTERVAL_MS * 5 },
   )
 
   worker.on('failed', (job, err) => {

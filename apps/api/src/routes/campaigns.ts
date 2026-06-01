@@ -194,7 +194,7 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post('/campaigns/:campaignId/approve-plan', {
     schema: {
       params: CampaignParams,
-      response: { 202: z.object({ message: z.string() }), 400: ErrorResponse, 404: ErrorResponse, 401: ErrorResponse, 403: ErrorResponse },
+      response: { 202: z.object({ message: z.string() }), 400: ErrorResponse, 404: ErrorResponse, 409: ErrorResponse, 401: ErrorResponse, 403: ErrorResponse },
     },
     preHandler: [requireWriteRole],
   }, async (request, reply) => {
@@ -207,7 +207,13 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
     if (!plan) return reply.status(400).send({ error: 'Generate a content plan first.' })
     if (plan.status !== 'DRAFT') return reply.status(400).send({ error: `Plan is already ${plan.status}` })
 
-    await prisma.contentPlan.update({ where: { campaignId }, data: { status: 'APPROVED' } })
+    // Atomic update — only succeeds if plan is still DRAFT (prevents race condition)
+    const updated = await prisma.contentPlan.updateMany({
+      where: { campaignId, status: 'DRAFT' },
+      data: { status: 'APPROVED' },
+    })
+    if (updated.count === 0) return reply.status(409).send({ error: 'Plan was already approved by a concurrent request.' })
+
     await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'ACTIVE' } })
 
     const queue = getCampaignProducerQueue()
