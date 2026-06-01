@@ -33,6 +33,7 @@ import { startAnalyticsIngester } from './workers/analytics-ingester.js'
 import { videoRoutes } from './routes/video.js'
 import { webhookRoutes } from './routes/webhooks.js'
 import { trendFeedConfigRoutes } from './routes/trend-feed-configs.js'
+import { companyPortraitRoutes } from './routes/company-portrait.js'
 
 export async function createServer() {
   const app = Fastify({
@@ -92,6 +93,7 @@ export async function createServer() {
   await app.register(quickActionRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(videoRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(trendFeedConfigRoutes, { prefix: '/workspaces/:workspaceId' })
+  await app.register(companyPortraitRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(webhookRoutes)
   await app.register(realtimeRoutes)
 

@@ -7,6 +7,7 @@ export default defineConfig({
       '@contento/ai': resolve(__dirname, '../../packages/ai/src/index.ts'),
       '@contento/db': resolve(__dirname, '../../packages/db/src/index.ts'),
       '@contento/shared': resolve(__dirname, '../../packages/shared/src/index.ts'),
+      '@contento/brand-kit': resolve(__dirname, '../../packages/brand-kit/src/index.ts'),
     },
   },
   test: {
