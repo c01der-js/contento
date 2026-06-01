@@ -59,7 +59,7 @@ export function startCampaignProducer(): Worker {
 
       await prisma.contentPlan.update({ where: { campaignId }, data: { status: 'IN_PRODUCTION' } })
 
-      const avatarPersona = await prisma.avatarPersona.findUnique({ where: { workspaceId } })
+      const avatarPersona = await prisma.avatarPersona.findFirst({ where: { workspaceId } })
       const soulId = avatarPersona?.higgsfieldSoulId ?? process.env['HIGGSFIELD_SOUL_ID'] ?? ''
 
       for (const item of plan.items) {
@@ -145,7 +145,7 @@ export function startCampaignProducer(): Worker {
         await prisma.contentPlan.update({ where: { campaignId }, data: { status: 'COMPLETED' } })
       }
     },
-    { connection, concurrency: 1 },
+    { connection, concurrency: 1, lockDuration: 50 * 60 * 1000 },
   )
 
   worker.on('failed', (job, err) => {
