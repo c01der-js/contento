@@ -62,15 +62,16 @@ export const companyPortraitRoutes: FastifyPluginAsyncZod = async (app) => {
     const { workspaceId } = request.params
     const input = request.body
 
-    const result = await analyzeCompany(workspaceId, {
+    const companyInput = {
       companyName: input.companyName,
       niche: input.niche,
-      website: input.website,
       description: input.description,
       usp: input.usp,
       targetAudience: input.targetAudience,
       competitors: input.competitors,
-    })
+      ...(input.website !== undefined ? { website: input.website } : {}),
+    }
+    const result = await analyzeCompany(workspaceId, companyInput)
 
     const portrait = await prisma.companyPortrait.upsert({
       where: { workspaceId },
