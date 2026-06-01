@@ -118,6 +118,40 @@ enum CommentEntityType {
   TREND
 }
 
+enum AvatarPersonaStatus {
+  PENDING
+  GENERATING
+  READY
+  FAILED
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  PAUSED
+}
+
+enum ContentPlanStatus {
+  DRAFT
+  APPROVED
+  IN_PRODUCTION
+  COMPLETED
+}
+
+enum ContentPlanItemStatus {
+  PENDING
+  SCRIPTING
+  SCRIPTED
+  VIDEO_QUEUED
+  VIDEO_GENERATING
+  VIDEO_DONE
+  CLIENT_REVIEW
+  APPROVED
+  PUBLISHED
+  REJECTED
+}
+
 enum RenderJobStatus {
   PENDING
   PROCESSING
@@ -215,6 +249,9 @@ model Workspace {
   goals           Goal[]
   antiExamples    AntiExample[]
   videoJobs       VideoJob[]
+  campaigns       Campaign[]
+  companyPortrait CompanyPortrait?
+  avatarPersona   AvatarPersona?
 }
 
 model User {
@@ -469,6 +506,7 @@ model Script {
   approvals          Approval[]
   abTests            AbTest[]
   videoJobs          VideoJob[]
+  contentPlanItems   ContentPlanItem[]
 
   versions       ScriptVersion[]
 
@@ -602,7 +640,8 @@ model Publication {
   script          Script            @relation(fields: [scriptId], references: [id], onDelete: Cascade)
   renderJob       RenderJob?        @relation(fields: [renderJobId], references: [id], onDelete: SetNull)
   socialAccount   SocialAccount     @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-  abVariant       AbVariant?        @relation(fields: [abVariantId], references: [id], onDelete: SetNull)
+  abVariant        AbVariant?        @relation(fields: [abVariantId], references: [id], onDelete: SetNull)
+  contentPlanItems ContentPlanItem[]
 
   @@index([workspaceId])
   @@index([scriptId])
@@ -886,9 +925,10 @@ model VideoJob {
   errorMessage String?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
-  workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  script       Script         @relation(fields: [scriptId], references: [id], onDelete: Cascade)
-  shots        VideoShot[]
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  script           Script            @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+  shots            VideoShot[]
+  contentPlanItems ContentPlanItem[]
 
   @@index([workspaceId])
   @@index([scriptId])
@@ -909,4 +949,86 @@ model VideoShot {
 
   @@index([videoJobId])
   @@index([higgsfieldJobId])
+}
+
+model CompanyPortrait {
+  id             String    @id @default(cuid())
+  workspaceId    String    @unique
+  niche          String
+  description    String
+  usp            String
+  targetAudience String
+  competitors    String[]
+  contentAngles  String[]
+  rawInput       Json      @default("{}")
+  generatedAt    DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model AvatarPersona {
+  id                String              @id @default(cuid())
+  workspaceId       String              @unique
+  description       String
+  style             String
+  gender            String
+  referenceImageUrl String?
+  higgsfieldSoulId  String?
+  status            AvatarPersonaStatus @default(PENDING)
+  errorMessage      String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  workspace         Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model Campaign {
+  id           String         @id @default(cuid())
+  workspaceId  String
+  name         String
+  goal         GoalType
+  targetAction String
+  startsAt     DateTime
+  endsAt       DateTime
+  status       CampaignStatus @default(DRAFT)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contentPlan  ContentPlan?
+
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+}
+
+model ContentPlan {
+  id         String            @id @default(cuid())
+  campaignId String            @unique
+  status     ContentPlanStatus @default(DRAFT)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  campaign   Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  items      ContentPlanItem[]
+}
+
+model ContentPlanItem {
+  id            String                @id @default(cuid())
+  contentPlanId String
+  index         Int
+  topic         String
+  format        String
+  scheduledDate DateTime
+  hook          String
+  status        ContentPlanItemStatus @default(PENDING)
+  rejectComment String?
+  scriptId      String?
+  videoJobId    String?
+  publicationId String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  contentPlan   ContentPlan           @relation(fields: [contentPlanId], references: [id], onDelete: Cascade)
+  script        Script?               @relation(fields: [scriptId], references: [id], onDelete: SetNull)
+  videoJob      VideoJob?             @relation(fields: [videoJobId], references: [id], onDelete: SetNull)
+  publication   Publication?          @relation(fields: [publicationId], references: [id], onDelete: SetNull)
+
+  @@index([contentPlanId])
+  @@index([contentPlanId, status])
 }
