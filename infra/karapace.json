@@ -1,0 +1,14 @@
+{
+  "advertised_hostname": "karapace",
+  "bootstrap_uri": "kafka:9092",
+  "host": "0.0.0.0",
+  "port": 8081,
+  "client_id": "karapace",
+  "group_id": "karapace-registry",
+  "master_eligibility": true,
+  "topic_name": "_schemas",
+  "log_level": "WARNING",
+  "compatibility": "FULL",
+  "karapace_registry": true,
+  "karapace_rest": false
+}

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "incremental": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "paths": {
+      "@contento/db": ["./packages/db/src/index.ts"],
+      "@contento/ai": ["./packages/ai/src/index.ts"],
+      "@contento/brand-kit": ["./packages/brand-kit/src/index.ts"],
+      "@contento/shared": ["./packages/shared/src/index.ts"],
+      "@contento/platforms": ["./packages/platforms/src/index.ts"],
+      "@contento/ui": ["./packages/ui/src/index.ts"],
+      "@contento/notifications": ["./packages/notifications/src/index.ts"],
+      "@contento/notifications/*": ["./packages/notifications/src/*"]
+    }
+  }
+}

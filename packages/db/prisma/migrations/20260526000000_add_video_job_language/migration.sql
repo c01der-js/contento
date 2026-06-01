@@ -1,0 +1,1 @@
+ALTER TABLE "VideoJob" ADD COLUMN "language" TEXT NOT NULL DEFAULT 'ru';

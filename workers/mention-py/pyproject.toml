@@ -1,0 +1,25 @@
+[project]
+name = "contento-mention"
+version = "0.1.0"
+description = "Contento mention-listening worker — monitors Reddit and RSS for brand mentions, analyzes with Claude Haiku"
+requires-python = ">=3.11"
+dependencies = [
+    "praw>=7.7.1",
+    "httpx>=0.27.0",
+    "feedparser>=6.0.11",
+    "aiokafka>=0.11.0",
+    "anthropic>=0.25.0",
+    "asyncpg>=0.29.0",
+    "pydantic>=2.7.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+contento-mention = "contento_mention.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/contento_mention"]

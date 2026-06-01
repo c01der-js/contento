@@ -1,0 +1,2 @@
+# whisper-py dependencies
+# Add packages here as the worker is implemented

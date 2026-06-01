@@ -1,0 +1,27 @@
+{
+  "name": "@contento/video-worker",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx --env-file=.env --watch src/index.ts",
+    "build": "tsc --build",
+    "start": "node --env-file=.env dist/index.js",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@contento/db": "workspace:*",
+    "@contento/ai": "workspace:*",
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.0.0",
+    "@aws-sdk/client-s3": "^3.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0"
+  }
+}

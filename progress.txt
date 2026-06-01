@@ -1,0 +1,25 @@
+CONTENTO FULL-FEATURE IMPLEMENTATION — PROGRESS LOG
+====================================================
+Started: 2026-05-18
+Plan: /Users/artemshloyda/.claude/plans/shiny-inventing-avalanche.md
+PRD: /Users/artemshloyda/Projects/TypeScript/Contento/.omc/prd.json
+
+PHASE 0 — SCHEMA FOUNDATION
+Status: IN PROGRESS
+----------------------------------------------------
+
+LEARNINGS (updated as we go):
+- Schema uses Prisma with pgvector extension (previewFeatures = ["postgresqlExtensions"])
+- All models have workspaceId FK with onDelete: Cascade
+- GoldenExample already has embedding Unsupported("vector(1536)")? — same pattern for Script.embedding
+- Script.ideaId is @unique — manual mode needs either nullable ideaId or sentinel ManualIdea approach
+- SocialAccount.credentials is Json (not typed) — OAuth refresh writes here
+- Publication has no metrics fields — analytics-fetcher will add Publication.metrics Json
+- MinIO assumed present in docker-compose — verify before Asset upload implementation
+- ClickHouse used for publication_events (analytics) — separate from Postgres
+- BullMQ queues: trend-fetcher, render-worker, scheduler (confirmed from workers)
+- Kafka topics: TOPIC_PUBLISH, TOPIC_PUBLISH_FAILED (confirmed from posting-service)
+- pnpm workspace with turbo — use `pnpm --filter <package> build` for targeted builds
+
+ITERATION LOG:
+2026-05-18 — PRD created with 52 user stories (US-000 to US-051). Phase 0 starting.

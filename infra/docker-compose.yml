@@ -1,0 +1,371 @@
+# Contento — full stack Docker Compose
+#
+# Usage:
+#   docker compose up -d              # start everything in background
+#   docker compose up -d --build      # rebuild images and start
+#   docker compose down               # stop (keeps volumes)
+#   docker compose down -v            # stop and wipe all volumes (full reset)
+#   docker compose logs -f <svc>      # tail logs
+#
+# Optional profile groups:
+#   --profile scrapers   Google Trends / YouTube / Reddit scrapers
+#   --profile mentions   Brand mention monitoring
+#   --profile analytics  ClickHouse + analytics consumer
+#   --profile ml         LoRA fine-tune worker
+#
+# Copy infra/.env.example to infra/.env and fill in secrets before first run.
+
+x-build-node: &build-node
+  context: ..
+  dockerfile: Dockerfile
+  target: runner
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql://${POSTGRES_USER:-contento}:${POSTGRES_PASSWORD:-contento}@postgres:5432/${POSTGRES_DB:-contento}
+  REDIS_URL: redis://redis:6379
+  KAFKA_BROKERS: kafka:9092
+  CLICKHOUSE_URL: http://clickhouse:8123
+
+x-depends-ready: &depends-ready
+  migrate:
+    condition: service_completed_successfully
+  redis:
+    condition: service_healthy
+  kafka:
+    condition: service_healthy
+
+services:
+
+  # ── infrastructure ───────────────────────────────────────────────────────────
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-contento}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-contento}
+      POSTGRES_DB: ${POSTGRES_DB:-contento}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  kafka:
+    image: apache/kafka:3.9.0
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  karapace:
+    image: ghcr.io/aiven-open/karapace:4.2.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: ["/venv/bin/karapace", "/config/karapace.json"]
+    volumes:
+      - ./karapace.json:/config/karapace.json:ro
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/subjects > /dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-contento}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-contento123}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24
+    restart: unless-stopped
+    ports:
+      - "8123:8123"
+      - "9900:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── one-shot initializers ────────────────────────────────────────────────────
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: migrate
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-contento}:${POSTGRES_PASSWORD:-contento}@postgres:5432/${POSTGRES_DB:-contento}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  minio-init:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+        mc mb --ignore-existing local/$$S3_BUCKET
+      "
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-contento}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-contento123}
+      S3_BUCKET: ${S3_BUCKET:-contento-media}
+    restart: "no"
+
+  # ── application services ─────────────────────────────────────────────────────
+
+  api:
+    build:
+      <<: *build-node
+      args:
+        APP: api
+    ports:
+      - "3001:3001"
+    environment:
+      <<: *app-env
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+    depends_on:
+      <<: *depends-ready
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: web-runner
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  posting-service:
+    build:
+      <<: *build-node
+      args:
+        APP: posting-service
+    environment:
+      <<: *app-env
+    depends_on:
+      <<: *depends-ready
+    restart: unless-stopped
+
+  render-worker:
+    build:
+      <<: *build-node
+      args:
+        APP: render-worker
+    environment:
+      <<: *app-env
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-contento}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-contento123}
+      S3_BUCKET: ${S3_BUCKET:-contento-media}
+    depends_on:
+      <<: *depends-ready
+      minio-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      <<: *build-node
+      args:
+        APP: scheduler
+    environment:
+      <<: *app-env
+    depends_on:
+      <<: *depends-ready
+    restart: unless-stopped
+
+  trend-analyzer:
+    build:
+      <<: *build-node
+      args:
+        APP: trend-analyzer
+    environment:
+      <<: *app-env
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      <<: *depends-ready
+    restart: unless-stopped
+
+  trend-fetcher:
+    build:
+      context: ..
+      dockerfile: apps/trend-fetcher/Dockerfile
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BROKERS=kafka:9092
+      - DATABASE_URL=${DATABASE_URL}
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+    depends_on:
+      - redis
+      - kafka
+      - postgres
+    restart: unless-stopped
+
+  # ── optional Python workers (activate with --profile) ────────────────────────
+
+  scrapers-py:
+    build:
+      context: ../workers/scrapers-py
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      WORKSPACE_IDS: ${WORKSPACE_IDS:-}
+      SCRAPE_INTERVAL_MIN: ${SCRAPE_INTERVAL_MIN:-30}
+      GOOGLE_TRENDS_GEO: ${GOOGLE_TRENDS_GEO:-US}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      YOUTUBE_REGION_CODE: ${YOUTUBE_REGION_CODE:-US}
+      REDDIT_CLIENT_ID: ${REDDIT_CLIENT_ID:-}
+      REDDIT_CLIENT_SECRET: ${REDDIT_CLIENT_SECRET:-}
+      REDDIT_USER_AGENT: ${REDDIT_USER_AGENT:-contento-scrapers/0.1}
+      REDDIT_SUBREDDIT: ${REDDIT_SUBREDDIT:-technology}
+      RSS_FEED_URLS: ${RSS_FEED_URLS:-}
+    profiles:
+      - scrapers
+
+  analytics-py:
+    build:
+      context: ../workers/analytics-py
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID_ANALYTICS:-contento-analytics}
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_HOST: clickhouse
+      DATABASE_URL: postgresql://${POSTGRES_USER:-contento}:${POSTGRES_PASSWORD:-contento}@postgres:5432/${POSTGRES_DB:-contento}
+    profiles:
+      - analytics
+
+  mention-py:
+    build:
+      context: ../workers/mention-py
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      DATABASE_URL: postgresql://${POSTGRES_USER:-contento}:${POSTGRES_PASSWORD:-contento}@postgres:5432/${POSTGRES_DB:-contento}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      BRAND_NAME: ${BRAND_NAME:-Contento}
+      WORKSPACE_IDS: ${WORKSPACE_IDS:-}
+      REDDIT_CLIENT_ID: ${REDDIT_CLIENT_ID:-}
+      REDDIT_CLIENT_SECRET: ${REDDIT_CLIENT_SECRET:-}
+      REDDIT_USER_AGENT: ${REDDIT_USER_AGENT:-contento-mention/0.1}
+      MENTION_RSS_URLS: ${MENTION_RSS_URLS:-}
+      MENTION_POLL_INTERVAL_MIN: ${MENTION_POLL_INTERVAL_MIN:-15}
+    profiles:
+      - mentions
+
+  ml-py:
+    build:
+      context: ../workers/ml-py
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID_ML:-contento-ml}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-contento}:${POSTGRES_PASSWORD:-contento}@postgres:5432/${POSTGRES_DB:-contento}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-contento}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-contento123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-contento}
+      LORA_MOCK_TRAINING: ${LORA_MOCK_TRAINING:-true}
+    profiles:
+      - ml
+
+volumes:
+  postgres_data:
+  redis_data:
+  kafka_data:
+  minio_data:
+  clickhouse_data:

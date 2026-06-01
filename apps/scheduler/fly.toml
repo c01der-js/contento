@@ -1,0 +1,9 @@
+app = "contento-scheduler"
+primary_region = "ams"
+
+[build]
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

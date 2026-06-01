@@ -1,0 +1,16 @@
+.git
+.gitignore
+node_modules
+**/node_modules
+**/.turbo
+**/dist
+**/*.tsbuildinfo
+**/.next
+**/coverage
+packages/db/src/generated
+**/*.log
+.DS_Store
+plan.md
+skills-lock.json
+workers
+infra

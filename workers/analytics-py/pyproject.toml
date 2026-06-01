@@ -1,0 +1,22 @@
+[project]
+name = "contento-analytics"
+version = "0.1.0"
+description = "Contento analytics worker — consumes publish.completed Kafka events and writes to ClickHouse"
+requires-python = ">=3.11"
+dependencies = [
+    "aiokafka>=0.11.0",
+    "clickhouse-driver>=0.2.7",
+    "asyncpg>=0.29.0",
+    "pydantic>=2.7.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+contento-analytics = "contento_analytics.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/contento_analytics"]
