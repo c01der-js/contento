@@ -107,7 +107,7 @@ export default function OnboardingPage() {
         headers: { authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error(await res.text())
-      router.push('/studio')
+      router.push('/studio/campaigns/new')
     } catch (e) { setError(e instanceof Error ? e.message : 'Error') }
     finally { setLoading(false) }
   }

@@ -97,15 +97,26 @@ export default function StudioPage() {
       {error && <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
       {campaigns.length === 0 ? (
-        <div className="text-center py-16 space-y-3">
-          <p className="text-gray-500">No campaigns yet.</p>
-          <p className="text-sm text-gray-400">Set up your company profile and create your first video campaign.</p>
-          <button
-            onClick={() => router.push('/studio/onboarding')}
-            className="mt-2 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-          >
-            Get started
-          </button>
+        <div className="text-center py-16 space-y-4">
+          <div className="text-5xl">🎬</div>
+          <div>
+            <p className="text-gray-700 font-medium">Company profile is set up!</p>
+            <p className="text-sm text-gray-400 mt-1">Now create your first campaign and let AI generate the content plan.</p>
+          </div>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => router.push('/studio/onboarding')}
+              className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Edit company setup
+            </button>
+            <button
+              onClick={() => router.push('/studio/campaigns/new')}
+              className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              Create first campaign →
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid gap-4">
