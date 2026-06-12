@@ -110,9 +110,13 @@ async function checkAndFinalizeJob(videoJobId: string) {
 
   const anyFailed = shots.some(s => s.status === 'FAILED')
   if (anyFailed) {
+    const details = shots
+      .filter(s => s.status === 'FAILED')
+      .map(s => `shot[${s.index}]: ${s.errorMessage ?? 'unknown'}`)
+      .join('; ')
     await prisma.videoJob.update({
       where: { id: videoJobId },
-      data: { status: 'FAILED', errorMessage: 'One or more shots failed' },
+      data: { status: 'FAILED', errorMessage: `One or more shots failed — ${details}` },
     })
   } else {
     const queue = getVideoQueue()

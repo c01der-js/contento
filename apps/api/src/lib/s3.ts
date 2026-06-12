@@ -1,4 +1,5 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import type { Readable } from 'node:stream'
 
 const s3 = new S3Client({
   endpoint: process.env['S3_ENDPOINT'] ?? 'http://localhost:9000',
@@ -22,4 +23,33 @@ export async function uploadBuffer(buf: Buffer, key: string, contentType: string
   )
   const endpoint = process.env['S3_ENDPOINT'] ?? 'http://localhost:9000'
   return `${endpoint}/${bucket}/${key}`
+}
+
+export interface S3ObjectStream {
+  body: Readable
+  contentType: string
+  contentLength?: number | undefined
+  contentRange?: string | undefined
+  /** 206 when a Range was satisfied, else 200. */
+  statusCode: number
+}
+
+/** Stream an object from S3/MinIO, optionally honoring an HTTP Range header (for video seeking). */
+export async function getObjectStream(key: string, range?: string): Promise<S3ObjectStream> {
+  const bucket = process.env['S3_BUCKET'] ?? 'renders'
+  const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key, Range: range }))
+  return {
+    body: res.Body as Readable,
+    contentType: res.ContentType ?? 'application/octet-stream',
+    contentLength: res.ContentLength,
+    contentRange: res.ContentRange,
+    statusCode: res.ContentRange ? 206 : 200,
+  }
+}
+
+/** Extract the S3 object key from a path-style URL produced by uploadBuffer/uploadVideo. */
+export function keyFromUrl(url: string): string {
+  const bucket = process.env['S3_BUCKET'] ?? 'renders'
+  const path = new URL(url).pathname.replace(/^\/+/, '')
+  return path.startsWith(`${bucket}/`) ? path.slice(bucket.length + 1) : path
 }

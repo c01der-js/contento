@@ -17,6 +17,51 @@ function authHeader(): string {
   return `Key ${keyId}:${keySecret}`
 }
 
+/**
+ * Upload raw bytes to the Higgsfield CDN and return a public, Higgsfield-hosted URL.
+ *
+ * Speak (talking-avatar) accepts audio only as a URL it can fetch itself, so campaign
+ * audio MUST live on Higgsfield's CDN — handing it a private/localhost storage URL
+ * makes Higgsfield's fetch fail and surfaces as `400 invalid_audio_format`.
+ *
+ * Two-step flow (per the official Higgsfield SDK): ask for a presigned upload URL,
+ * then PUT the bytes to it. The presigned PUT carries its own auth in the URL, so it
+ * must NOT include the Higgsfield auth headers.
+ */
+export async function uploadToHiggsfield(data: Buffer, contentType: string): Promise<string> {
+  const { keyId, keySecret } = credentials()
+  const linkRes = await fetch(`${BASE_URL}/files/generate-upload-url`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Key ${keyId}:${keySecret}`,
+      'hf-api-key': keyId,
+      'hf-secret': keySecret,
+    },
+    body: JSON.stringify({ content_type: contentType }),
+  })
+  if (!linkRes.ok) {
+    const text = await linkRes.text().catch(() => '')
+    throw new Error(`Higgsfield /files/generate-upload-url error ${linkRes.status}: ${text}`)
+  }
+  const { upload_url, public_url } = (await linkRes.json()) as { upload_url?: string; public_url?: string }
+  if (!upload_url || !public_url) {
+    throw new Error(`Higgsfield upload-url response missing fields: ${JSON.stringify({ upload_url, public_url })}`)
+  }
+
+  const putRes = await fetch(upload_url, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: data,
+  })
+  if (!putRes.ok) {
+    const text = await putRes.text().catch(() => '')
+    throw new Error(`Higgsfield CDN upload (PUT) error ${putRes.status}: ${text}`)
+  }
+
+  return public_url
+}
+
 // Generation endpoints use {params: {...}} wrapper; CRUD endpoints use flat body.
 async function hfGenerate(path: string, params: unknown): Promise<string> {
   const res = await fetch(`${BASE_URL}${path}`, {

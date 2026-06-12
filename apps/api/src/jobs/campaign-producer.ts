@@ -15,14 +15,18 @@ interface ProducePayload {
 
 async function pollVideoJob(
   videoJobId: string,
+  campaignId: string,
   timeoutMs: number,
   extendLock: () => Promise<unknown>,
-): Promise<'DONE' | 'FAILED'> {
+): Promise<'DONE' | 'FAILED' | 'CANCELLED'> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const dbJob = await prisma.videoJob.findUnique({ where: { id: videoJobId }, select: { status: true } })
     if (dbJob?.status === 'DONE') return 'DONE'
     if (dbJob?.status === 'FAILED') return 'FAILED'
+    // Stop signal: the user pressed Stop, which reverts the plan out of IN_PRODUCTION.
+    const plan = await prisma.contentPlan.findUnique({ where: { campaignId }, select: { status: true } })
+    if (plan?.status !== 'IN_PRODUCTION') return 'CANCELLED'
     await extendLock().catch(() => {})
     await new Promise(r => setTimeout(r, VIDEO_POLL_INTERVAL_MS))
   }
@@ -67,11 +71,22 @@ export function startCampaignProducer(): Worker {
       const avatarPersona = await prisma.avatarPersona.findFirst({ where: { workspaceId } })
       const soulId = avatarPersona?.higgsfieldSoulId ?? process.env['HIGGSFIELD_SOUL_ID'] ?? ''
 
+      // Every per-item status write below is a gated `updateMany` requiring the
+      // expected prior status. A Stop concurrently reverts the plan to DRAFT and
+      // resets in-flight items to PENDING (routes/campaigns.ts), so any gated write
+      // then matches 0 rows — that is our signal to abort the item without
+      // corrupting it (no spurious SCRIPTED/CLIENT_REVIEW/REJECTED on a reset item).
       for (const item of plan.items) {
-        if (item.status !== 'PENDING') continue
+        // Halt before starting any further item once the plan leaves IN_PRODUCTION.
+        const live = await prisma.contentPlan.findUnique({ where: { campaignId }, select: { status: true } })
+        if (live?.status !== 'IN_PRODUCTION') break
 
-        // Step 1: Generate script
-        await prisma.contentPlanItem.update({ where: { id: item.id }, data: { status: 'SCRIPTING' } })
+        // Step 1: claim the item (PENDING -> SCRIPTING). Skip if not ours.
+        const claimed = await prisma.contentPlanItem.updateMany({
+          where: { id: item.id, status: 'PENDING' },
+          data: { status: 'SCRIPTING' },
+        })
+        if (claimed.count === 0) continue
 
         let scriptId: string
         try {
@@ -94,22 +109,47 @@ export function startCampaignProducer(): Worker {
             },
           })
           scriptId = script.id
-          await prisma.contentPlanItem.update({ where: { id: item.id }, data: { scriptId, status: 'SCRIPTED' } })
+
+          // SCRIPTING -> SCRIPTED. If a Stop reset the item during writeScript, this
+          // matches 0 rows: discard the script and halt.
+          const scripted = await prisma.contentPlanItem.updateMany({
+            where: { id: item.id, status: 'SCRIPTING' },
+            data: { scriptId, status: 'SCRIPTED' },
+          })
+          if (scripted.count === 0) break
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err)
-          await prisma.contentPlanItem.update({
-            where: { id: item.id },
+          // Only mark REJECTED if the item is still ours (a Stop would have reset it).
+          await prisma.contentPlanItem.updateMany({
+            where: { id: item.id, status: 'SCRIPTING' },
             data: { status: 'REJECTED', rejectComment: `Script generation failed: ${msg}` },
           })
           continue
         }
 
-        // Step 2: Enqueue video job
-        await prisma.contentPlanItem.update({ where: { id: item.id }, data: { status: 'VIDEO_QUEUED' } })
+        // Step 2: SCRIPTED -> VIDEO_QUEUED.
+        const queued = await prisma.contentPlanItem.updateMany({
+          where: { id: item.id, status: 'SCRIPTED' },
+          data: { status: 'VIDEO_QUEUED' },
+        })
+        if (queued.count === 0) break
 
+        // The VideoJob row is cheap (no external credits). Create it, then only
+        // enqueue the (credit-consuming) generate job after we confirm ownership
+        // via the gated VIDEO_QUEUED -> VIDEO_GENERATING write.
         const videoJob = await prisma.videoJob.create({
           data: { workspaceId, scriptId, status: 'PENDING', language: 'ru', aspectRatio: '9:16' },
         })
+
+        const generating = await prisma.contentPlanItem.updateMany({
+          where: { id: item.id, status: 'VIDEO_QUEUED' },
+          data: { videoJobId: videoJob.id, status: 'VIDEO_GENERATING' },
+        })
+        if (generating.count === 0) {
+          // Stopped in the gap — clean up the unused VideoJob and never enqueue.
+          await prisma.videoJob.delete({ where: { id: videoJob.id } }).catch(() => {})
+          break
+        }
 
         await getVideoQueue().add('generate', {
           videoJobId: videoJob.id,
@@ -119,31 +159,39 @@ export function startCampaignProducer(): Worker {
           soulId,
         })
 
-        await prisma.contentPlanItem.update({
-          where: { id: item.id },
-          data: { videoJobId: videoJob.id, status: 'VIDEO_GENERATING' },
-        })
-
         // Step 3: Poll until done
         const result = await pollVideoJob(
           videoJob.id,
+          campaignId,
           VIDEO_TIMEOUT_MS,
           () => job.extendLock(token ?? '', VIDEO_POLL_INTERVAL_MS * 3),
         )
 
+        // Stop pressed mid-render: the stop endpoint already reset this item to
+        // PENDING, so don't mark it — just halt the loop.
+        if (result === 'CANCELLED') break
+
         if (result === 'DONE') {
-          await prisma.contentPlanItem.update({ where: { id: item.id }, data: { status: 'CLIENT_REVIEW' } })
+          // Gate VIDEO_GENERATING -> CLIENT_REVIEW so a Stop that raced the DONE
+          // return (resetting the item to PENDING) is not clobbered.
+          const reviewed = await prisma.contentPlanItem.updateMany({
+            where: { id: item.id, status: 'VIDEO_GENERATING' },
+            data: { status: 'CLIENT_REVIEW' },
+          })
+          if (reviewed.count === 0) break
           await notifyClients(workspaceId, item.id)
         } else {
           const failed = await prisma.videoJob.findUnique({ where: { id: videoJob.id }, select: { errorMessage: true } })
-          await prisma.contentPlanItem.update({
-            where: { id: item.id },
+          const rejected = await prisma.contentPlanItem.updateMany({
+            where: { id: item.id, status: 'VIDEO_GENERATING' },
             data: { status: 'REJECTED', rejectComment: `Video generation failed: ${failed?.errorMessage ?? 'timeout'}` },
           })
+          if (rejected.count === 0) break
         }
       }
 
-      // Check if all done — update plan status
+      // Finalize atomically: the gated updateMany only flips COMPLETED if the plan
+      // is still IN_PRODUCTION, so a concurrent Stop's DRAFT is never overwritten.
       const remaining = await prisma.contentPlanItem.count({
         where: {
           contentPlanId: plan.id,
@@ -151,7 +199,13 @@ export function startCampaignProducer(): Worker {
         },
       })
       if (remaining === 0) {
-        await prisma.contentPlan.update({ where: { campaignId }, data: { status: 'COMPLETED' } })
+        const finalized = await prisma.contentPlan.updateMany({
+          where: { campaignId, status: 'IN_PRODUCTION' },
+          data: { status: 'COMPLETED' },
+        })
+        if (finalized.count > 0) {
+          await prisma.campaign.update({ where: { id: campaignId }, data: { status: 'COMPLETED' } })
+        }
       }
     },
     { connection, concurrency: 1, lockDuration: VIDEO_POLL_INTERVAL_MS * 5 },

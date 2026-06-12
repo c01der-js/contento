@@ -56,6 +56,34 @@ const CreateBody = z.object({
 
 const RejectBody = z.object({ comment: z.string().min(1) })
 
+// Accepts both date-only (YYYY-MM-DD, from <input type="date">) and full ISO
+// strings, rejecting anything Date can't parse so bad input is a 400, not a 500.
+const DateString = z.string().refine((s) => !Number.isNaN(Date.parse(s)), { message: 'Invalid date' })
+
+const AddItemBody = z.object({
+  topic: z.string().min(1),
+  hook: z.string().min(1),
+  format: z.string().min(1),
+  scheduledDate: DateString,
+})
+
+const EditItemBody = z.object({
+  topic: z.string().min(1).optional(),
+  hook: z.string().min(1).optional(),
+  format: z.string().min(1).optional(),
+  scheduledDate: DateString.optional(),
+})
+
+const EditCampaignBody = z.object({
+  name: z.string().min(1).optional(),
+  goal: z.enum(['SUBSCRIBERS', 'SALES', 'ENGAGEMENT', 'REACH']).optional(),
+  targetAction: z.string().min(1).optional(),
+  startsAt: DateString.optional(),
+  endsAt: DateString.optional(),
+})
+
+const OkResponse = z.object({ ok: z.boolean() })
+
 function serializeItem(item: {
   id: string; index: number; topic: string; format: string; scheduledDate: Date
   hook: string; status: string; rejectComment: string | null
@@ -76,6 +104,15 @@ function serializeCampaign(c: {
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
   }
+}
+
+async function loadPlanResponse(campaignId: string) {
+  const plan = await prisma.contentPlan.findUnique({
+    where: { campaignId },
+    include: { items: { orderBy: { index: 'asc' } } },
+  })
+  if (!plan) return null
+  return { id: plan.id, status: plan.status, items: plan.items.map(serializeItem) }
 }
 
 export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
@@ -294,5 +331,205 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
     })
 
     return reply.send(serializeItem(updated))
+  })
+
+  // POST /campaigns/:campaignId/content-plan/stop — halt video generation
+  app.post('/campaigns/:campaignId/content-plan/stop', {
+    schema: {
+      params: CampaignParams,
+      response: { 200: ContentPlanResponse, 400: ErrorResponse, 404: ErrorResponse, 401: ErrorResponse, 403: ErrorResponse },
+    },
+    preHandler: [requireWriteRole],
+  }, async (request, reply) => {
+    const { workspaceId, campaignId } = request.params
+
+    const campaign = await prisma.campaign.findFirst({ where: { id: campaignId, workspaceId } })
+    if (!campaign) return reply.status(404).send({ error: 'Campaign not found' })
+
+    const plan = await prisma.contentPlan.findUnique({ where: { campaignId } })
+    if (!plan) return reply.status(400).send({ error: 'No content plan to stop.' })
+
+    // Revert the plan to DRAFT only if it is actively producing. The producer
+    // checks the plan status each step and halts; reverting also re-enables editing.
+    // Atomically: revert the plan to DRAFT (only if actively producing), reset
+    // in-flight items to PENDING, and revert the campaign. videoJobId is kept so the
+    // video-worker can detect and abort an already-enqueued render job for a reset item.
+    const stopped = await prisma.$transaction(async (tx) => {
+      const reverted = await tx.contentPlan.updateMany({
+        where: { campaignId, status: { in: ['APPROVED', 'IN_PRODUCTION'] } },
+        data: { status: 'DRAFT' },
+      })
+      if (reverted.count === 0) return false
+      // Completed items (CLIENT_REVIEW/APPROVED/PUBLISHED) are left untouched.
+      await tx.contentPlanItem.updateMany({
+        where: {
+          contentPlanId: plan.id,
+          status: { in: ['PENDING', 'SCRIPTING', 'SCRIPTED', 'VIDEO_QUEUED', 'VIDEO_GENERATING'] },
+        },
+        data: { status: 'PENDING', rejectComment: null },
+      })
+      await tx.campaign.update({ where: { id: campaignId }, data: { status: 'DRAFT' } })
+      return true
+    })
+    if (!stopped) return reply.status(400).send({ error: 'Generation is not running.' })
+
+    const response = await loadPlanResponse(campaignId)
+    return reply.send(response!)
+  })
+
+  // PATCH /campaigns/:campaignId — edit campaign criteria
+  app.patch('/campaigns/:campaignId', {
+    schema: {
+      params: CampaignParams,
+      body: EditCampaignBody,
+      response: { 200: CampaignResponse, 400: ErrorResponse, 404: ErrorResponse, 401: ErrorResponse, 403: ErrorResponse },
+    },
+    preHandler: [requireWriteRole],
+  }, async (request, reply) => {
+    const { workspaceId, campaignId } = request.params
+    const body = request.body
+
+    const campaign = await prisma.campaign.findFirst({
+      where: { id: campaignId, workspaceId },
+      include: { contentPlan: true },
+    })
+    if (!campaign) return reply.status(404).send({ error: 'Campaign not found' })
+    if (campaign.contentPlan && ['APPROVED', 'IN_PRODUCTION'].includes(campaign.contentPlan.status)) {
+      return reply.status(400).send({ error: 'Stop generation before editing the campaign.' })
+    }
+
+    const data: {
+      name?: string
+      goal?: 'SUBSCRIBERS' | 'SALES' | 'ENGAGEMENT' | 'REACH'
+      targetAction?: string
+      startsAt?: Date
+      endsAt?: Date
+    } = {}
+    if (body.name !== undefined) data.name = body.name
+    if (body.goal !== undefined) data.goal = body.goal
+    if (body.targetAction !== undefined) data.targetAction = body.targetAction
+    if (body.startsAt !== undefined) data.startsAt = new Date(body.startsAt)
+    if (body.endsAt !== undefined) data.endsAt = new Date(body.endsAt)
+
+    await prisma.campaign.update({ where: { id: campaignId }, data })
+
+    const updated = await prisma.campaign.findFirst({
+      where: { id: campaignId, workspaceId },
+      include: { contentPlan: { include: { items: { orderBy: { index: 'asc' } } } } },
+    })
+    return reply.send(serializeCampaign({
+      ...updated!,
+      contentPlan: updated!.contentPlan
+        ? { ...updated!.contentPlan, items: updated!.contentPlan.items.map(serializeItem) }
+        : null,
+    }))
+  })
+
+  // POST /campaigns/:campaignId/content-plan/items — add a plan item
+  app.post('/campaigns/:campaignId/content-plan/items', {
+    schema: {
+      params: CampaignParams,
+      body: AddItemBody,
+      response: { 201: ContentPlanItemResponse, 400: ErrorResponse, 404: ErrorResponse, 401: ErrorResponse, 403: ErrorResponse },
+    },
+    preHandler: [requireWriteRole],
+  }, async (request, reply) => {
+    const { workspaceId, campaignId } = request.params
+    const { topic, hook, format, scheduledDate } = request.body
+
+    const campaign = await prisma.campaign.findFirst({ where: { id: campaignId, workspaceId } })
+    if (!campaign) return reply.status(404).send({ error: 'Campaign not found' })
+
+    let plan = await prisma.contentPlan.findUnique({ where: { campaignId } })
+    if (plan && plan.status !== 'DRAFT') {
+      return reply.status(400).send({ error: 'Plan can only be edited in DRAFT. Stop generation first.' })
+    }
+    // upsert (not create) guards against a P2002 race on the unique campaignId when
+    // two "add first video" requests arrive concurrently.
+    if (!plan) plan = await prisma.contentPlan.upsert({ where: { campaignId }, update: {}, create: { campaignId } })
+
+    const max = await prisma.contentPlanItem.aggregate({
+      where: { contentPlanId: plan.id },
+      _max: { index: true },
+    })
+    const index = (max._max.index ?? -1) + 1
+
+    const item = await prisma.contentPlanItem.create({
+      data: { contentPlanId: plan.id, index, topic, hook, format, scheduledDate: new Date(scheduledDate) },
+    })
+
+    return reply.status(201).send(serializeItem(item))
+  })
+
+  // PATCH /campaigns/:campaignId/items/:itemId — edit a plan item
+  app.patch('/campaigns/:campaignId/items/:itemId', {
+    schema: {
+      params: ItemParams,
+      body: EditItemBody,
+      response: { 200: ContentPlanItemResponse, 400: ErrorResponse, 404: ErrorResponse, 401: ErrorResponse, 403: ErrorResponse },
+    },
+    preHandler: [requireWriteRole],
+  }, async (request, reply) => {
+    const { workspaceId, campaignId, itemId } = request.params
+    const body = request.body
+
+    const item = await prisma.contentPlanItem.findFirst({
+      where: { id: itemId, contentPlan: { campaignId, campaign: { workspaceId } } },
+      include: { contentPlan: { select: { status: true } } },
+    })
+    if (!item) return reply.status(404).send({ error: 'Item not found' })
+    if (item.contentPlan.status !== 'DRAFT') {
+      return reply.status(400).send({ error: 'Plan can only be edited in DRAFT. Stop generation first.' })
+    }
+    // Only pending items are content-editable. An already-produced item (kept after a
+    // Stop) would not regenerate on re-approval, so editing it would silently no-op.
+    if (item.status !== 'PENDING') {
+      return reply.status(400).send({ error: 'This video is already produced — delete and re-add it to change it.' })
+    }
+
+    const data: { topic?: string; hook?: string; format?: string; scheduledDate?: Date } = {}
+    if (body.topic !== undefined) data.topic = body.topic
+    if (body.hook !== undefined) data.hook = body.hook
+    if (body.format !== undefined) data.format = body.format
+    if (body.scheduledDate !== undefined) data.scheduledDate = new Date(body.scheduledDate)
+
+    const updated = await prisma.contentPlanItem.update({ where: { id: itemId }, data })
+    return reply.send(serializeItem(updated))
+  })
+
+  // DELETE /campaigns/:campaignId/items/:itemId — remove a plan item
+  app.delete('/campaigns/:campaignId/items/:itemId', {
+    schema: {
+      params: ItemParams,
+      response: { 200: OkResponse, 400: ErrorResponse, 404: ErrorResponse, 401: ErrorResponse, 403: ErrorResponse },
+    },
+    preHandler: [requireWriteRole],
+  }, async (request, reply) => {
+    const { workspaceId, campaignId, itemId } = request.params
+
+    const item = await prisma.contentPlanItem.findFirst({
+      where: { id: itemId, contentPlan: { campaignId, campaign: { workspaceId } } },
+      include: { contentPlan: { select: { id: true, status: true } } },
+    })
+    if (!item) return reply.status(404).send({ error: 'Item not found' })
+    if (item.contentPlan.status !== 'DRAFT') {
+      return reply.status(400).send({ error: 'Plan can only be edited in DRAFT. Stop generation first.' })
+    }
+
+    const planId = item.contentPlan.id
+    await prisma.$transaction(async (tx) => {
+      await tx.contentPlanItem.delete({ where: { id: itemId } })
+      // Re-index remaining items to keep numbering contiguous
+      const rest = await tx.contentPlanItem.findMany({
+        where: { contentPlanId: planId },
+        orderBy: { index: 'asc' },
+        select: { id: true },
+      })
+      await Promise.all(rest.map((r, i) =>
+        tx.contentPlanItem.update({ where: { id: r.id }, data: { index: i } }),
+      ))
+    })
+
+    return reply.send({ ok: true })
   })
 }

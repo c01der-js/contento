@@ -1,5 +1,5 @@
 import { spawn } from 'child_process'
-import { writeFile, unlink } from 'fs/promises'
+import { writeFile, readFile, unlink } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -37,6 +37,27 @@ export async function stitchClips({ clipPaths, outputPath }: StitchInput): Promi
     ])
   } finally {
     await unlink(listPath).catch(() => {})
+  }
+}
+
+/**
+ * Transcode an MP3 buffer to WAV (PCM s16le, mono, 44.1 kHz) using ffmpeg.
+ * Higgsfield's Speak endpoint requires WAV/PCM audio (it rejects MP3 with
+ * `invalid_audio_format`), but ElevenLabs only emits MP3 on lower subscription
+ * tiers — so we transcode locally before uploading. The target format matches
+ * the spec asserted by the repo's mock WAV builder (PCM16 / mono / 44.1 kHz).
+ */
+export async function transcodeMp3ToWav(mp3: Buffer): Promise<Buffer> {
+  const stamp = `${Date.now()}-${Math.round(Math.random() * 1e9)}`
+  const inputPath = join(tmpdir(), `tts-${stamp}.mp3`)
+  const outputPath = join(tmpdir(), `tts-${stamp}.wav`)
+  await writeFile(inputPath, mp3)
+  try {
+    await runFfmpeg(['-i', inputPath, '-ac', '1', '-ar', '44100', '-c:a', 'pcm_s16le', '-f', 'wav', '-y', outputPath])
+    return await readFile(outputPath)
+  } finally {
+    await unlink(inputPath).catch(() => {})
+    await unlink(outputPath).catch(() => {})
   }
 }
 

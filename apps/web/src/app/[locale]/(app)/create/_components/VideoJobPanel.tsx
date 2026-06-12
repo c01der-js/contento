@@ -1,6 +1,9 @@
 'use client'
 
+import { useAuth } from '@clerk/nextjs'
 import { useEffect, useRef, useState } from 'react'
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 interface VideoShot {
   id: string
@@ -46,10 +49,12 @@ const VOICE_LANGUAGES = [
 ]
 
 export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
+  const { getToken } = useAuth()
   const [videoJob, setVideoJob] = useState<VideoJob | null>(null)
   const [isStarting, setIsStarting] = useState(false)
   const [language, setLanguage] = useState('ru')
   const [error, setError] = useState('')
+  const [videoSrc, setVideoSrc] = useState<string | null>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   function stopPolling() {
@@ -83,6 +88,17 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
       }
     }, POLL_INTERVAL_MS)
   }, [videoJob?.id, videoJob?.status])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The MP4 lives in private storage — play it through the authenticated API proxy,
+  // passing the Clerk token as a query param since <video> can't send headers.
+  useEffect(() => {
+    if (videoJob?.status !== 'DONE' || !videoJob.outputUrl) { setVideoSrc(null); return }
+    let active = true
+    void getToken().then(t => {
+      if (active) setVideoSrc(`${API}/workspaces/${workspaceId}/video-jobs/${videoJob.id}/output?token=${encodeURIComponent(t ?? '')}`)
+    })
+    return () => { active = false }
+  }, [videoJob?.status, videoJob?.id, videoJob?.outputUrl, workspaceId, getToken])
 
   async function handleGenerate() {
     setIsStarting(true)
@@ -172,17 +188,17 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
             <p className="text-red-500 text-sm">{videoJob.errorMessage}</p>
           )}
 
-          {/* Video output */}
-          {isDone && videoJob.outputUrl && (
+          {/* Video output (streamed via the authenticated API proxy) */}
+          {isDone && videoSrc && (
             <div className="flex flex-col gap-2">
               <video
-                src={videoJob.outputUrl}
+                src={videoSrc}
                 controls
                 className="rounded max-w-xs"
                 style={{ aspectRatio: '9/16', maxHeight: 360 }}
               />
               <a
-                href={videoJob.outputUrl}
+                href={videoSrc}
                 download
                 target="_blank"
                 rel="noopener noreferrer"

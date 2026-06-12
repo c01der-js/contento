@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@contento/db'
 import { requireWriteRole, requireReadRole } from '../middleware/rbac.js'
 import { getVideoQueue } from '../queue.js'
+import { getObjectStream, keyFromUrl } from '../lib/s3.js'
 
 const WorkspaceParams = z.object({ workspaceId: z.string() })
 const ScriptParams = z.object({ workspaceId: z.string(), scriptId: z.string() })
@@ -135,6 +136,50 @@ export const videoRoutes: FastifyPluginAsyncZod = async (app) => {
     if (!job) return reply.status(404).send({ error: 'Video job not found' })
 
     return reply.status(200).send(serializeJob(job, job.shots.map(serializeShot)))
+  })
+
+  // GET /video-jobs/:jobId/output — stream the rendered MP4 from private storage.
+  // Auth accepts a ?token= query param (see plugins/auth.ts) so a browser <video src>
+  // can play it. Honors HTTP Range for seeking.
+  app.get('/video-jobs/:jobId/output', {
+    schema: {
+      params: JobParams,
+      querystring: z.object({ token: z.string().optional() }),
+      response: { 401: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse, 409: ErrorResponse },
+    },
+    preHandler: [requireReadRole],
+  }, async (request, reply) => {
+    const { workspaceId, jobId } = request.params
+
+    const job = await prisma.videoJob.findFirst({
+      where: { id: jobId, workspaceId },
+      select: { outputUrl: true, status: true },
+    })
+    if (!job) return reply.status(404).send({ error: 'Video job not found' })
+    if (!job.outputUrl) return reply.status(409).send({ error: `Video not ready (status ${job.status})` })
+
+    let obj
+    try {
+      obj = await getObjectStream(keyFromUrl(job.outputUrl), request.headers.range)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return reply.status(404).send({ error: `Failed to read video: ${msg}` })
+    }
+
+    // Stream raw (bypassing the JSON serializer) with proper status (200/206) + headers.
+    const headers: Record<string, string> = {
+      'Content-Type': obj.contentType,
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': 'private, max-age=300',
+      'Access-Control-Allow-Origin': '*',
+    }
+    if (obj.contentLength != null) headers['Content-Length'] = String(obj.contentLength)
+    if (obj.contentRange) headers['Content-Range'] = obj.contentRange
+
+    reply.hijack()
+    reply.raw.writeHead(obj.statusCode, headers)
+    obj.body.on('error', () => reply.raw.destroy())
+    obj.body.pipe(reply.raw)
   })
 
   // GET /video-jobs — library list with cursor pagination

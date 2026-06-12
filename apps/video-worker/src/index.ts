@@ -10,7 +10,9 @@ worker.on('completed', (job, result) => {
 
 worker.on('failed', async (job, err) => {
   console.error(`Job ${job?.id} (${job?.name}) failed:`, err.message)
-  if (job?.name === 'generate' && job.data && 'videoJobId' in job.data) {
+  // Both 'generate' and 'stitch' carry videoJobId — mark the job FAILED so the
+  // producer's poll fails fast instead of waiting out the 45-min timeout.
+  if ((job?.name === 'generate' || job?.name === 'stitch') && job.data && 'videoJobId' in job.data) {
     const { prisma } = await import('@contento/db')
     await prisma.videoJob
       .update({

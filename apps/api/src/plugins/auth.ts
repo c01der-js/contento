@@ -17,39 +17,57 @@ export const registerAuth = fp(async (app: FastifyInstance) => {
   app.decorateRequest('authUser', null)
 
   app.addHook('onRequest', async (request: FastifyRequest) => {
-    const authHeader = request.headers.authorization
-    if (!authHeader?.startsWith('Bearer ')) {
-      request.authUser = null
-      return
-    }
-
-    const token = authHeader.slice(7)
-    const secretKey = process.env.CLERK_SECRET_KEY
-
-    if (!secretKey) {
-      // CLERK_SECRET_KEY not set — development fallback (decode without verify)
-      try {
-        const [, payloadB64] = token.split('.')
-        if (!payloadB64) { request.authUser = null; return }
-        const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString()) as { sub?: string }
-        if (!payload.sub) { request.authUser = null; return }
-        await ensureUser(payload.sub)
-        request.authUser = { userId: payload.sub }
-      } catch {
-        request.authUser = null
-      }
-      return
-    }
-
-    try {
-      const payload = await verifyToken(token, { secretKey })
-      await ensureUser(payload.sub)
-      request.authUser = { userId: payload.sub }
-    } catch {
-      request.authUser = null
-    }
+    const token = extractToken(request)
+    request.authUser = token ? await resolveAuthUser(token) : null
   })
 })
+
+/**
+ * Read the bearer token from the Authorization header, or — as a fallback — from a
+ * `?token=` query param. The query fallback exists for browser media tags (`<video src>`,
+ * `<a download>`) which cannot send custom headers; the token is parsed from the raw URL
+ * because `request.query` is not yet populated in the onRequest hook.
+ */
+function extractToken(request: FastifyRequest): string | null {
+  const authHeader = request.headers.authorization
+  if (authHeader?.startsWith('Bearer ')) return authHeader.slice(7)
+
+  const url = request.raw.url
+  if (url) {
+    const q = url.indexOf('?')
+    if (q !== -1) {
+      const token = new URLSearchParams(url.slice(q + 1)).get('token')
+      if (token) return token
+    }
+  }
+  return null
+}
+
+async function resolveAuthUser(token: string): Promise<AuthUser | null> {
+  const secretKey = process.env.CLERK_SECRET_KEY
+
+  if (!secretKey) {
+    // CLERK_SECRET_KEY not set — development fallback (decode without verify)
+    try {
+      const [, payloadB64] = token.split('.')
+      if (!payloadB64) return null
+      const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString()) as { sub?: string }
+      if (!payload.sub) return null
+      await ensureUser(payload.sub)
+      return { userId: payload.sub }
+    } catch {
+      return null
+    }
+  }
+
+  try {
+    const payload = await verifyToken(token, { secretKey })
+    await ensureUser(payload.sub)
+    return { userId: payload.sub }
+  } catch {
+    return null
+  }
+}
 
 async function ensureUser(clerkId: string): Promise<void> {
   // Fast path — user already has a workspace, nothing to provision.

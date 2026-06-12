@@ -43,11 +43,13 @@ export default function ReviewCampaignPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [rejectComment, setRejectComment] = useState<Record<string, string>>({})
   const [rejectOpen, setRejectOpen] = useState<string | null>(null)
+  const [videoToken, setVideoToken] = useState<string | null>(null)
 
   const fetchCampaign = useCallback(async () => {
     if (!workspaceId) return
     try {
       const token = await getToken()
+      setVideoToken(token)
       const res = await fetch(`${API}/workspaces/${workspaceId}/campaigns/${campaignId}`, {
         headers: { authorization: `Bearer ${token}` },
       })
@@ -144,9 +146,9 @@ export default function ReviewCampaignPage() {
                   <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded-full">Needs review</span>
                 </div>
 
-                {videoJob?.outputUrl ? (
+                {videoJob?.outputUrl && videoToken ? (
                   <video
-                    src={videoJob.outputUrl}
+                    src={`${API}/workspaces/${workspaceId}/video-jobs/${videoJob.id}/output?token=${encodeURIComponent(videoToken)}`}
                     controls
                     className="w-full rounded-lg bg-black object-contain max-h-96"
                     style={{ aspectRatio: '9/16' }}
