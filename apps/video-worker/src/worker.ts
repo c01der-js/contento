@@ -231,30 +231,32 @@ export async function handleStitch({ videoJobId }: StitchJobPayload) {
   // Atomic claim: both the worker's inline path and the webhook path can enqueue
   // a stitch for the same job. Only the run that flips RENDERING_SHOTS → STITCHING
   // proceeds; the loser sees count 0 and exits without double-stitching.
+  // STITCHING itself is also claimable so a BullMQ stall-retry can resume a stitch
+  // that crashed mid-run instead of orphaning the job in STITCHING forever.
   const claimed = await prisma.videoJob.updateMany({
-    where: { id: videoJobId, status: 'RENDERING_SHOTS' },
+    where: { id: videoJobId, status: { in: ['RENDERING_SHOTS', 'STITCHING'] } },
     data: { status: 'STITCHING' },
   })
   if (claimed.count === 0) return
 
-  const shots = await prisma.videoShot.findMany({
-    where: { videoJobId, status: 'DONE' },
-    orderBy: { index: 'asc' },
-  })
-
-  if (shots.length === 0) {
-    await prisma.videoJob.update({
-      where: { id: videoJobId },
-      data: { status: 'FAILED', errorMessage: 'No completed shots to stitch' },
-    })
-    return
-  }
-
-  const videoJob = await prisma.videoJob.findUnique({ where: { id: videoJobId } })
-  if (!videoJob) throw new Error(`VideoJob ${videoJobId} not found`)
-
   const clipPaths: string[] = []
   try {
+    const shots = await prisma.videoShot.findMany({
+      where: { videoJobId, status: 'DONE' },
+      orderBy: { index: 'asc' },
+    })
+
+    if (shots.length === 0) {
+      await prisma.videoJob.update({
+        where: { id: videoJobId },
+        data: { status: 'FAILED', errorMessage: 'No completed shots to stitch' },
+      })
+      return
+    }
+
+    const videoJob = await prisma.videoJob.findUnique({ where: { id: videoJobId } })
+    if (!videoJob) throw new Error(`VideoJob ${videoJobId} not found`)
+
     for (const shot of shots) {
       if (!shot.clipUrl) throw new Error(`Shot ${shot.id} has no clipUrl`)
       // Read clips with authenticated S3 (the bucket is private — an anonymous

@@ -72,6 +72,9 @@ export async function uploadToHiggsfield(data: Buffer, contentType: string): Pro
 
 // Generation endpoints use {params: {...}} wrapper; CRUD endpoints use flat body.
 async function hfGenerate(path: string, params: unknown): Promise<string> {
+  // NOTE: if the response body read fails after Higgsfield accepted the POST, the
+  // retry re-submits and may orphan the first job (wasted credits, not corruption).
+  // Accepted trade-off — the generation API has no idempotency keys.
   const data = await withRetry(async () => {
     const res = await fetch(`${BASE_URL}${path}`, {
       method: 'POST',
@@ -168,7 +171,7 @@ export function buildSpeakParams(imageUrl: string, audioUrl: string, prompt: str
     input_image: { type: 'image_url', image_url: imageUrl },
     input_audio: { type: 'audio_url', audio_url: audioUrl },
     prompt,
-    quality: process.env['HIGGSFIELD_SPEAK_QUALITY'] ?? 'high',
+    quality: (process.env['HIGGSFIELD_SPEAK_QUALITY'] ?? 'high') as 'mid' | 'high',
     // Speak accepts only 5 | 10 | 15. The previous hardcoded 5 truncated any
     // longer voiceover and froze the tail of shorter ones.
     duration: speakDurationFor(audioDurationSec),
@@ -178,7 +181,7 @@ export function buildSpeakParams(imageUrl: string, audioUrl: string, prompt: str
 /** Request params for POST /v1/image2video/dop. Exported for tests. */
 export function buildDopParams(imageUrl: string, prompt: string, options?: { seed?: number }) {
   return {
-    model: process.env['HIGGSFIELD_DOP_MODEL'] ?? 'dop-standard',
+    model: (process.env['HIGGSFIELD_DOP_MODEL'] ?? 'dop-standard') as 'dop-lite' | 'dop-turbo' | 'dop-standard',
     prompt,
     input_images: [{ type: 'image_url', image_url: imageUrl }],
     ...(options?.seed != null ? { seed: options.seed } : {}),

@@ -206,10 +206,22 @@ describe('handleStitch idempotency', () => {
     mockJobUpdateMany.mockResolvedValue({ count: 0 })
     await handleStitch({ videoJobId: 'vj-claimed' })
     expect(mockJobUpdateMany).toHaveBeenCalledWith({
-      where: { id: 'vj-claimed', status: 'RENDERING_SHOTS' },
+      where: { id: 'vj-claimed', status: { in: ['RENDERING_SHOTS', 'STITCHING'] } },
       data: { status: 'STITCHING' },
     })
     // claim failed -> no shot lookup, no S3, no ffmpeg
     expect(mockFindMany).not.toHaveBeenCalled()
+  })
+
+  it('marks the job FAILED when the claim succeeds but no shots are DONE', async () => {
+    mockJobUpdateMany.mockResolvedValue({ count: 1 })
+    mockFindMany.mockResolvedValue([])
+    await handleStitch({ videoJobId: 'vj-empty' })
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'vj-empty' },
+        data: expect.objectContaining({ status: 'FAILED', errorMessage: 'No completed shots to stitch' }),
+      }),
+    )
   })
 })
