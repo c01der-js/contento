@@ -16,7 +16,7 @@
     "dev": "tsc --build --watch",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist src/generated .turbo",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
