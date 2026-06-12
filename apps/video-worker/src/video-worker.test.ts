@@ -21,9 +21,16 @@ describe('buildConcatArgs', () => {
 
 // ─── webhook handler: state transitions ──────────────────────────────────────
 
-const mockFindFirst = vi.fn()
-const mockUpdate = vi.fn()
-const mockFindMany = vi.fn()
+const { mockFindFirst, mockUpdate, mockFindMany, mockJobUpdateMany, mockUploadBuffer, mockFetch } =
+  vi.hoisted(() => {
+    const mockFindFirst = vi.fn()
+    const mockUpdate = vi.fn()
+    const mockFindMany = vi.fn()
+    const mockJobUpdateMany = vi.fn()
+    const mockUploadBuffer = vi.fn()
+    const mockFetch = vi.fn()
+    return { mockFindFirst, mockUpdate, mockFindMany, mockJobUpdateMany, mockUploadBuffer, mockFetch }
+  })
 
 vi.mock('@contento/db', () => ({
   prisma: {
@@ -34,17 +41,42 @@ vi.mock('@contento/db', () => ({
     },
     videoJob: {
       update: mockUpdate,
+      updateMany: mockJobUpdateMany,
+      findUnique: vi.fn(),
     },
+    avatarPersona: { findUnique: vi.fn() },
+    contentPlanItem: { findFirst: vi.fn() },
+    script: { findUnique: vi.fn(), update: vi.fn() },
   },
 }))
 
-// Mock fetch for clip download
-const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
-const mockUploadBuffer = vi.fn()
 vi.mock('./s3-client.js', () => ({
   uploadBuffer: mockUploadBuffer,
+  uploadVideo: vi.fn(),
+  downloadBuffer: vi.fn(),
+  keyFromUrl: vi.fn((u: string) => u),
+}))
+
+vi.mock('bullmq', () => ({
+  Worker: class {},
+  Queue: class {
+    add = vi.fn()
+  },
+}))
+
+vi.mock('@contento/ai', () => ({
+  generateVideoStoryboard: vi.fn(),
+  submitSoulCharacterFrame: vi.fn(),
+  submitTalkingAvatarClip: vi.fn(),
+  submitImageToVideo: vi.fn(),
+  pollJobUntilDone: vi.fn(),
+  synthesizeSpeech: vi.fn(),
+  uploadToHiggsfield: vi.fn(),
+  wavDurationSec: vi.fn(() => 3),
+  isMockMode: () => true,
+  MOCK_CLIP_URL: 'https://example.com/mock.mp4',
 }))
 
 import { handleHiggsfieldWebhook } from './webhook-handler.js'
@@ -146,5 +178,38 @@ describe('handleHiggsfieldWebhook', () => {
         data: expect.objectContaining({ status: 'FAILED' }),
       }),
     )
+  })
+})
+
+// ─── worker: jobSeed + idempotent stitch ─────────────────────────────────────
+
+import { jobSeed, handleStitch } from './worker.js'
+
+describe('jobSeed', () => {
+  it('is deterministic for the same videoJobId', () => {
+    expect(jobSeed('cmb1234abcd')).toBe(jobSeed('cmb1234abcd'))
+  })
+
+  it('differs across jobs and stays within Higgsfield seed range', () => {
+    const a = jobSeed('job-a')
+    const b = jobSeed('job-b')
+    expect(a).not.toBe(b)
+    for (const s of [a, b]) {
+      expect(s).toBeGreaterThanOrEqual(1)
+      expect(s).toBeLessThanOrEqual(1_000_000)
+    }
+  })
+})
+
+describe('handleStitch idempotency', () => {
+  it('returns without stitching when another run already claimed the job', async () => {
+    mockJobUpdateMany.mockResolvedValue({ count: 0 })
+    await handleStitch({ videoJobId: 'vj-claimed' })
+    expect(mockJobUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'vj-claimed', status: 'RENDERING_SHOTS' },
+      data: { status: 'STITCHING' },
+    })
+    // claim failed -> no shot lookup, no S3, no ffmpeg
+    expect(mockFindMany).not.toHaveBeenCalled()
   })
 })

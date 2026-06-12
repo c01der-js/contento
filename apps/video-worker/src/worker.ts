@@ -11,6 +11,7 @@ import {
   pollJobUntilDone,
   synthesizeSpeech,
   uploadToHiggsfield,
+  wavDurationSec,
   isMockMode,
   MOCK_CLIP_URL,
 } from '@contento/ai'
@@ -22,6 +23,8 @@ export interface VideoJobPayload {
   scriptId: string
   workspaceId: string
   language: string
+  /** Optional override; otherwise resolved from AvatarPersona, then env. */
+  soulId?: string
 }
 
 export interface StitchJobPayload {
@@ -33,7 +36,7 @@ export function createWorker(redisUrl: string) {
   const queue = new Queue<VideoJobPayload | StitchJobPayload>('video', { connection: { url: redisUrl } })
 
   const enqueueStitch = async (videoJobId: string) => {
-    await queue.add('stitch', { videoJobId } satisfies StitchJobPayload)
+    await queue.add('stitch', { videoJobId } satisfies StitchJobPayload, { jobId: `stitch-${videoJobId}` })
   }
 
   const worker = new Worker<VideoJobPayload | StitchJobPayload>(
@@ -63,8 +66,19 @@ async function isCampaignJobCancelled(videoJobId: string): Promise<boolean> {
   return item != null && item.contentPlan.status !== 'IN_PRODUCTION'
 }
 
+/**
+ * Deterministic Higgsfield seed (1–1,000,000) derived from the videoJobId.
+ * One stable seed per video keeps lighting/style coherent across its shots
+ * without needing a DB column.
+ */
+export function jobSeed(videoJobId: string): number {
+  let h = 0
+  for (let i = 0; i < videoJobId.length; i++) h = (h * 31 + videoJobId.charCodeAt(i)) >>> 0
+  return (h % 1_000_000) + 1
+}
+
 async function handleGenerate(
-  { videoJobId, scriptId, workspaceId, language }: VideoJobPayload,
+  { videoJobId, scriptId, workspaceId, language, soulId: payloadSoulId }: VideoJobPayload,
   enqueueStitch: (id: string) => Promise<void>,
 ) {
   await prisma.videoJob.update({ where: { id: videoJobId }, data: { status: 'STORYBOARDING' } })
@@ -81,11 +95,19 @@ async function handleGenerate(
     return
   }
 
+  // Resolve the workspace avatar: Soul ID for Higgsfield + a concrete character
+  // description for the storyboard (so every shot prompt describes the SAME person).
+  const persona = await prisma.avatarPersona.findUnique({ where: { workspaceId } })
+  const soulId = payloadSoulId ?? persona?.higgsfieldSoulId ?? process.env['HIGGSFIELD_SOUL_ID'] ?? ''
+  const characterDescription = persona
+    ? `${persona.description} (style: ${persona.style}, gender: ${persona.gender})`
+    : undefined
+
   const shots = await generateVideoStoryboard(workspaceId, {
     hook: script.hook,
     body: script.body,
     cta: script.cta,
-  }, { language })
+  }, { language, ...(characterDescription ? { characterDescription } : {}) })
 
   await prisma.script.update({ where: { id: scriptId }, data: { storyboard: shots } })
 
@@ -107,9 +129,9 @@ async function handleGenerate(
     orderBy: { index: 'asc' },
   })
 
-  const soulId = process.env['HIGGSFIELD_SOUL_ID'] ?? ''
   const voiceId = process.env['ELEVENLABS_VOICE_ID'] ?? ''
   const mock = isMockMode()
+  const seed = jobSeed(videoJobId)
 
   let cancelled = false
   for (const shot of shotRows) {
@@ -123,12 +145,19 @@ async function handleGenerate(
         // Skip all external calls — use stable placeholder clip
         clipUrl = MOCK_CLIP_URL
       } else {
+        if (!soulId) {
+          throw new Error(
+            'No Higgsfield Soul ID: create an AvatarPersona for this workspace or set HIGGSFIELD_SOUL_ID',
+          )
+        }
         // Step 1: ElevenLabs TTS (only if the shot has spoken dialogue)
         let audioUrl: string | undefined
+        let audioSec = 0
         if (shot.dialogue) {
           // ElevenLabs returns MP3 (tier-safe); Higgsfield Speak requires WAV.
           const mp3Buffer = await synthesizeSpeech(shot.dialogue, voiceId)
           const wavBuffer = await transcodeMp3ToWav(mp3Buffer)
+          audioSec = wavDurationSec(wavBuffer)
           // Speak fetches the audio itself, so it must live on Higgsfield's CDN —
           // our private/local S3 URL would be unreachable (-> invalid_audio_format).
           // Higgsfield's upload endpoint requires the MIME 'audio/x-wav' for WAV.
@@ -136,16 +165,16 @@ async function handleGenerate(
         }
 
         // Step 2: Higgsfield Soul Character → character image
-        const charRequestId = await submitSoulCharacterFrame(shot.prompt, soulId)
+        const charRequestId = await submitSoulCharacterFrame(shot.prompt, soulId, { seed })
         const imageUrl = await pollJobUntilDone(charRequestId)
 
         // Step 3a: talking avatar with lip-sync (has dialogue + audio)
-        // Step 3b: silent motion video via DoP Lite (no dialogue)
+        // Step 3b: silent motion video via DoP (no dialogue)
         let videoRequestId: string
         if (audioUrl) {
-          videoRequestId = await submitTalkingAvatarClip(imageUrl, audioUrl, shot.prompt)
+          videoRequestId = await submitTalkingAvatarClip(imageUrl, audioUrl, shot.prompt, audioSec)
         } else {
-          videoRequestId = await submitImageToVideo(imageUrl, shot.prompt)
+          videoRequestId = await submitImageToVideo(imageUrl, shot.prompt, { seed })
         }
 
         // Step 4: poll until clip is ready
@@ -198,8 +227,15 @@ async function handleGenerate(
   }
 }
 
-async function handleStitch({ videoJobId }: StitchJobPayload) {
-  await prisma.videoJob.update({ where: { id: videoJobId }, data: { status: 'STITCHING' } })
+export async function handleStitch({ videoJobId }: StitchJobPayload) {
+  // Atomic claim: both the worker's inline path and the webhook path can enqueue
+  // a stitch for the same job. Only the run that flips RENDERING_SHOTS → STITCHING
+  // proceeds; the loser sees count 0 and exits without double-stitching.
+  const claimed = await prisma.videoJob.updateMany({
+    where: { id: videoJobId, status: 'RENDERING_SHOTS' },
+    data: { status: 'STITCHING' },
+  })
+  if (claimed.count === 0) return
 
   const shots = await prisma.videoShot.findMany({
     where: { videoJobId, status: 'DONE' },

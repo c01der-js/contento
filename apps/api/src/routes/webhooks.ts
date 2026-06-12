@@ -120,6 +120,8 @@ async function checkAndFinalizeJob(videoJobId: string) {
     })
   } else {
     const queue = getVideoQueue()
-    await queue.add('stitch', { videoJobId })
+    // Same jobId as the worker's enqueueStitch — BullMQ drops the duplicate add
+    // when both completion paths (inline polling + webhook) race.
+    await queue.add('stitch', { videoJobId }, { jobId: `stitch-${videoJobId}` })
   }
 }
