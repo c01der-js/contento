@@ -1,3 +1,5 @@
+import { withRetry, HttpStatusError } from '../retry.js'
+
 const BASE_URL = 'https://api.elevenlabs.io/v1'
 
 function apiKey(): string {
@@ -14,26 +16,28 @@ export async function synthesizeSpeech(text: string, voiceId: string): Promise<B
   const voiceToUse = voiceId || process.env['ELEVENLABS_VOICE_ID'] || ''
   if (!voiceToUse) throw new Error('ELEVENLABS_VOICE_ID is not set')
 
-  const response = await fetch(
-    `${BASE_URL}/text-to-speech/${voiceToUse}?output_format=mp3_44100_128`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'xi-api-key': apiKey(),
+  return withRetry(async () => {
+    const response = await fetch(
+      `${BASE_URL}/text-to-speech/${voiceToUse}?output_format=mp3_44100_128`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'xi-api-key': apiKey(),
+        },
+        body: JSON.stringify({
+          text,
+          model_id: 'eleven_turbo_v2_5',
+          voice_settings: { stability: 0.5, similarity_boost: 0.8 },
+        }),
       },
-      body: JSON.stringify({
-        text,
-        model_id: 'eleven_turbo_v2_5',
-        voice_settings: { stability: 0.5, similarity_boost: 0.8 },
-      }),
-    },
-  )
+    )
 
-  if (!response.ok) {
-    const err = await response.text().catch(() => '')
-    throw new Error(`ElevenLabs TTS error ${response.status}: ${err}`)
-  }
+    if (!response.ok) {
+      const err = await response.text().catch(() => '')
+      throw new HttpStatusError(response.status, `ElevenLabs TTS error ${response.status}: ${err}`)
+    }
 
-  return Buffer.from(await response.arrayBuffer())
+    return Buffer.from(await response.arrayBuffer())
+  })
 }
