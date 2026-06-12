@@ -73,6 +73,7 @@ vi.mock('@contento/ai', () => ({
   submitImageToVideo: vi.fn(),
   pollJobUntilDone: vi.fn(),
   synthesizeSpeech: vi.fn(),
+  synthesizeSpeechWithTimestamps: vi.fn(async () => ({ audio: Buffer.alloc(8), words: [] })),
   uploadToHiggsfield: vi.fn(),
   wavDurationSec: vi.fn(() => 3),
   isMockMode: () => true,

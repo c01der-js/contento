@@ -9,12 +9,13 @@ import {
   submitTalkingAvatarClip,
   submitImageToVideo,
   pollJobUntilDone,
-  synthesizeSpeech,
+  synthesizeSpeechWithTimestamps,
   uploadToHiggsfield,
   wavDurationSec,
   isMockMode,
   MOCK_CLIP_URL,
 } from '@contento/ai'
+import type { WordTiming } from '@contento/ai'
 import { stitchClips, transcodeMp3ToWav } from './stitch.js'
 import { uploadVideo, uploadBuffer, downloadBuffer, keyFromUrl } from './s3-client.js'
 
@@ -133,6 +134,10 @@ async function handleGenerate(
   const mock = isMockMode()
   const seed = jobSeed(videoJobId)
 
+  // Word timings per shot, persisted to Script.subtitles for the Remotion
+  // stitch to burn in subtitles. Shape: { version: 1, shots: ShotTimingJson[] }
+  const shotTimings: Array<{ index: number; audioSec: number; words: WordTiming[] }> = []
+
   let cancelled = false
   for (const shot of shotRows) {
     // Abort between shots if the campaign was stopped, to stop burning render credits.
@@ -155,13 +160,15 @@ async function handleGenerate(
         let audioSec = 0
         if (shot.dialogue) {
           // ElevenLabs returns MP3 (tier-safe); Higgsfield Speak requires WAV.
-          const mp3Buffer = await synthesizeSpeech(shot.dialogue, voiceId)
+          const tts = await synthesizeSpeechWithTimestamps(shot.dialogue, voiceId)
+          const mp3Buffer = tts.audio
           const wavBuffer = await transcodeMp3ToWav(mp3Buffer)
           audioSec = wavDurationSec(wavBuffer)
           // Speak fetches the audio itself, so it must live on Higgsfield's CDN —
           // our private/local S3 URL would be unreachable (-> invalid_audio_format).
           // Higgsfield's upload endpoint requires the MIME 'audio/x-wav' for WAV.
           audioUrl = await uploadToHiggsfield(wavBuffer, 'audio/x-wav')
+          shotTimings.push({ index: shot.index, audioSec, words: tts.words })
         }
 
         // Step 2: Higgsfield Soul Character → character image
@@ -207,6 +214,16 @@ async function handleGenerate(
       data: { status: 'FAILED', errorMessage: 'Cancelled: campaign generation stopped' },
     })
     return
+  }
+
+  if (shotTimings.length > 0) {
+    await prisma.script.update({
+      where: { id: scriptId },
+      data: { subtitles: { version: 1, shots: shotTimings } as object },
+    }).catch(err => {
+      // Subtitles are an enhancement — never fail the whole job over them.
+      console.error(`[video-worker] failed to persist subtitles for script ${scriptId}:`, err)
+    })
   }
 
   // After all shots: check results and either stitch or fail the job
