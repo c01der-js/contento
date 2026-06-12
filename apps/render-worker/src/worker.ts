@@ -17,7 +17,7 @@ export interface RenderJobPayload {
 
 const RENDER_TIMEOUT_MS = Number(process.env['RENDER_TIMEOUT_MS'] ?? 15 * 60 * 1000)
 const REMOTION_ENTRY = fileURLToPath(
-  new URL('../../../packages/brand-kit/src/remotion-root.tsx', import.meta.url),
+  new URL('../../../packages/brand-kit/src/remotion-entry.ts', import.meta.url),
 )
 
 let bundlePromise: Promise<string> | null = null

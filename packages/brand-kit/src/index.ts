@@ -12,3 +12,16 @@ export { RemotionRoot } from './remotion-root.js'
 export type { BrandCardProps } from './types.js'
 export { TEMPLATE_CONFIG, getTemplateConfig } from './templates/config.js'
 export type { TemplateConfig } from './templates/config.js'
+export { VideoStitch } from './compositions/VideoStitch.js'
+export {
+  DEFAULT_VIDEO_STITCH_PROPS,
+  VIDEO_STITCH_FPS,
+  VIDEO_STITCH_ID,
+  calcStitchDurationInFrames,
+} from './compositions/video-stitch-shared.js'
+export type {
+  StitchWord,
+  StitchChunk,
+  StitchShotProps,
+  VideoStitchProps,
+} from './compositions/video-stitch-shared.js'

@@ -1,4 +1,12 @@
 import { Composition } from 'remotion'
+import { VideoStitch } from './compositions/VideoStitch.js'
+import {
+  DEFAULT_VIDEO_STITCH_PROPS,
+  VIDEO_STITCH_FPS,
+  VIDEO_STITCH_ID,
+  calcStitchDurationInFrames,
+  type VideoStitchProps,
+} from './compositions/video-stitch-shared.js'
 import { SingleImagePost } from './compositions/SingleImagePost.js'
 import { QuotePost } from './compositions/QuotePost.js'
 import { NewsCard } from './compositions/NewsCard.js'
@@ -47,6 +55,18 @@ export function RemotionRoot() {
           defaultProps={DEFAULT_PROPS}
         />
       ))}
+      <Composition
+        id={VIDEO_STITCH_ID}
+        component={VideoStitch as unknown as AnyFC}
+        durationInFrames={300}
+        fps={VIDEO_STITCH_FPS}
+        width={1080}
+        height={1920}
+        defaultProps={DEFAULT_VIDEO_STITCH_PROPS as unknown as Record<string, unknown>}
+        calculateMetadata={({ props }) => ({
+          durationInFrames: calcStitchDurationInFrames(props as unknown as VideoStitchProps),
+        })}
+      />
     </>
   )
 }

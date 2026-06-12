@@ -20,8 +20,9 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "remotion": "^4.0.0",
-    "@remotion/player": "^4.0.0",
+    "remotion": "4.0.468",
+    "@remotion/player": "4.0.468",
+    "@remotion/fonts": "4.0.468",
     "react": "^19.0.0"
   },
   "devDependencies": {
