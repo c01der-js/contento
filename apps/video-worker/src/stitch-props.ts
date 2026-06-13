@@ -64,16 +64,36 @@ const TRIM_PADDING_SEC = 0.4
  * Build one shot's props: trim the frozen tail of Speak clips (clip length is
  * bucketed 5/10/15s while speech may end earlier) and convert word timings to
  * frames relative to the shot start, clamped into the trimmed duration.
+ *
+ * Word timings are sanitized defensively: words with non-finite startSec/endSec
+ * (corrupt/legacy persisted JSON) are dropped so they cannot poison the frame
+ * math into a NaN Sequence duration; words that start beyond the (possibly
+ * trimmed) shot are dropped rather than clamped onto the final frame (which would
+ * bunch overflow subtitles); and every kept word holds at least one frame so the
+ * karaoke highlight always fires.
  */
 export function buildShotProps(src: string, probedSec: number, timing?: ShotTimingJson): StitchShotProps {
-  const lastWordEnd = timing && timing.words.length > 0 ? timing.words[timing.words.length - 1]!.endSec : 0
+  const validWords = (timing?.words ?? []).filter(
+    w => typeof w.text === 'string' && Number.isFinite(w.startSec) && Number.isFinite(w.endSec),
+  )
+  const lastWordEnd = validWords.length > 0 ? validWords[validWords.length - 1]!.endSec : 0
   const trimmedSec = lastWordEnd > 0 ? Math.min(probedSec, lastWordEnd + TRIM_PADDING_SEC) : probedSec
   const durationInFrames = Math.max(1, Math.round(trimmedSec * STITCH_FPS))
-  const words: StitchWord[] = (timing?.words ?? []).map(w => ({
-    text: w.text,
-    startFrame: Math.min(Math.round(w.startSec * STITCH_FPS), durationInFrames - 1),
-    endFrame: Math.min(Math.round(w.endSec * STITCH_FPS), durationInFrames),
-  }))
+  const words: StitchWord[] = validWords
+    .map(w => ({
+      text: w.text,
+      startFrame: Math.round(w.startSec * STITCH_FPS),
+      endFrame: Math.round(w.endSec * STITCH_FPS),
+    }))
+    .filter(w => w.startFrame < durationInFrames)
+    .map(w => {
+      const startFrame = Math.max(0, Math.min(w.startFrame, durationInFrames - 1))
+      return {
+        text: w.text,
+        startFrame,
+        endFrame: Math.min(Math.max(w.endFrame, startFrame + 1), durationInFrames),
+      }
+    })
   const chunks = chunkWords(words)
   for (const chunk of chunks) chunk.endFrame = Math.min(chunk.endFrame, durationInFrames)
   return { src, durationInFrames, chunks }

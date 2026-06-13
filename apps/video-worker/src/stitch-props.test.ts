@@ -61,6 +61,52 @@ describe('buildShotProps', () => {
     const lastWord = shot.chunks.at(-1)!.words.at(-1)!
     expect(lastWord.endFrame).toBeLessThanOrEqual(shot.durationInFrames)
   })
+
+  it('drops words with non-finite times instead of producing a NaN duration', () => {
+    const timing = {
+      index: 0,
+      audioSec: 5,
+      // last word has a missing endSec (corrupt/legacy JSON) -> would NaN the duration
+      words: [
+        { text: 'ок', startSec: 0.2, endSec: 0.6 },
+        { text: 'битый', startSec: 1.0, endSec: NaN as unknown as number },
+      ],
+    }
+    const shot = buildShotProps('http://clip', 5, timing)
+    expect(Number.isFinite(shot.durationInFrames)).toBe(true)
+    // duration derives from the last VALID word (0.6s) + 0.4s padding
+    expect(shot.durationInFrames).toBe(Math.round(1.0 * STITCH_FPS))
+    const allWords = shot.chunks.flatMap(c => c.words)
+    expect(allWords.every(w => Number.isFinite(w.startFrame) && Number.isFinite(w.endFrame))).toBe(true)
+    expect(allWords.map(w => w.text)).toEqual(['ок'])
+  })
+
+  it('drops words that start beyond the trimmed shot rather than bunching them on the last frame', () => {
+    // 1s clip, but words timed against a longer audio track
+    const timing = {
+      index: 0,
+      audioSec: 8,
+      words: [
+        { text: 'видно', startSec: 0.2, endSec: 0.6 },
+        { text: 'поздно', startSec: 6.0, endSec: 7.5 }, // way past the 1s clip
+      ],
+    }
+    const shot = buildShotProps('http://clip', 1, timing)
+    const allWords = shot.chunks.flatMap(c => c.words)
+    expect(allWords.map(w => w.text)).toEqual(['видно'])
+    expect(allWords.every(w => w.startFrame < shot.durationInFrames)).toBe(true)
+  })
+
+  it('gives every kept word at least a one-frame highlight window', () => {
+    const timing = {
+      index: 0,
+      audioSec: 2,
+      words: [{ text: 'миг', startSec: 1.0, endSec: 1.0 }], // rounds to a zero-width interval
+    }
+    const shot = buildShotProps('http://clip', 2, timing)
+    const w = shot.chunks.flatMap(c => c.words)[0]!
+    expect(w.endFrame).toBeGreaterThan(w.startFrame)
+  })
 })
 
 describe('parseSubtitlesJson', () => {

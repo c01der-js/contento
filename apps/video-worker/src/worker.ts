@@ -17,7 +17,7 @@ import {
 } from '@contento/ai'
 import type { WordTiming } from '@contento/ai'
 import { stitchClips, transcodeMp3ToWav, probeDurationSec } from './stitch.js'
-import { uploadVideo, uploadBuffer, downloadBuffer, keyFromUrl, presignGetUrl, isOwnS3Url } from './s3-client.js'
+import { uploadVideo, uploadBuffer, downloadBuffer, keyFromUrl, presignGetUrl, isOwnS3Url, redactSignedUrls } from './s3-client.js'
 import { renderStitchVideo } from './remotion-stitch.js'
 import { buildStitchProps, parseSubtitlesJson, type StitchShotInput } from './stitch-props.js'
 
@@ -259,6 +259,7 @@ export async function handleStitch({ videoJobId }: StitchJobPayload) {
   if (claimed.count === 0) return
 
   const clipPaths: string[] = []
+  let outputPath: string | undefined
   try {
     const shots = await prisma.videoShot.findMany({
       where: { videoJobId, status: 'DONE' },
@@ -279,7 +280,7 @@ export async function handleStitch({ videoJobId }: StitchJobPayload) {
     })
     if (!videoJob) throw new Error(`VideoJob ${videoJobId} not found`)
 
-    const outputPath = join(tmpdir(), `video-${videoJobId}.mp4`)
+    outputPath = join(tmpdir(), `video-${videoJobId}.mp4`)
     const stitcher = process.env['VIDEO_STITCHER'] ?? 'remotion'
 
     if (stitcher === 'remotion') {
@@ -325,14 +326,14 @@ export async function handleStitch({ videoJobId }: StitchJobPayload) {
     const key = `videos/${videoJob.workspaceId}/${videoJob.scriptId}/${videoJobId}.mp4`
     const outputUrl = await uploadVideo(outputPath, key)
 
-    await unlink(outputPath).catch(() => {})
     await prisma.videoJob.update({ where: { id: videoJobId }, data: { status: 'DONE', outputUrl } })
 
     return { outputUrl }
   } catch (err) {
     // Fail fast so the producer's poll sees FAILED instead of waiting out the
-    // 45-min timeout while the job sits in STITCHING.
-    const msg = err instanceof Error ? err.message : String(err)
+    // 45-min timeout while the job sits in STITCHING. Redact presigned-URL
+    // signatures so they never persist into VideoJob.errorMessage.
+    const msg = redactSignedUrls(err instanceof Error ? err.message : String(err))
     await prisma.videoJob.update({
       where: { id: videoJobId },
       data: { status: 'FAILED', errorMessage: `Stitch failed: ${msg}` },
@@ -340,5 +341,6 @@ export async function handleStitch({ videoJobId }: StitchJobPayload) {
     throw err
   } finally {
     for (const p of clipPaths) await unlink(p).catch(() => {})
+    if (outputPath) await unlink(outputPath).catch(() => {})
   }
 }

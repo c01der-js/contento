@@ -59,6 +59,14 @@ export function isOwnS3Url(url: string): boolean {
   return url.startsWith(`${endpoint}/`)
 }
 
+/**
+ * Strip the query string from presigned S3 URLs in free text (e.g. ffprobe/render
+ * error messages) so the X-Amz-Signature never lands in logs or VideoJob.errorMessage.
+ */
+export function redactSignedUrls(text: string): string {
+  return text.replace(/(https?:\/\/[^\s?'"]+)\?[^\s'"]*/gi, '$1?<redacted>')
+}
+
 export async function uploadBuffer(buf: Buffer, key: string, contentType: string): Promise<string> {
   const bucket = process.env['S3_BUCKET'] ?? 'renders'
   await s3.send(

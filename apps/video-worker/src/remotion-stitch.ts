@@ -1,26 +1,36 @@
-import { fileURLToPath } from 'url'
+import { createRequire } from 'module'
+import { dirname, join } from 'path'
+import { existsSync } from 'fs'
 import { bundle } from '@remotion/bundler'
 import { renderMedia, selectComposition } from '@remotion/renderer'
 import { VIDEO_STITCH_ID, type VideoStitchProps } from '@contento/brand-kit'
 
-// Same relative depth as render-worker: dist/remotion-stitch.js (or src/ in tsx dev)
-// -> ../../../ = repo root.
-const REMOTION_ENTRY = fileURLToPath(
-  new URL('../../../packages/brand-kit/src/remotion-entry.ts', import.meta.url),
-)
-const REMOTION_PUBLIC_DIR = fileURLToPath(
-  new URL('../../../packages/brand-kit/public', import.meta.url),
-)
-
 let bundlePromise: Promise<string> | null = null
+
+/**
+ * Resolve the brand-kit package directory via Node module resolution rather than a
+ * hand-counted relative depth. The worker's compiled output is NESTED
+ * (dist/apps/video-worker/src/), so a literal '../../../packages/brand-kit' would
+ * point at a non-existent path under dist and only happen to work under tsx dev.
+ * Resolving '@contento/brand-kit/package.json' yields the real package location in
+ * both modes; the bundler then reads the TypeScript source directly.
+ */
+function resolveBrandKit(): { entry: string; publicDir: string } {
+  const require_ = createRequire(import.meta.url)
+  const pkgDir = dirname(require_.resolve('@contento/brand-kit/package.json'))
+  const entry = join(pkgDir, 'src/remotion-entry.ts')
+  const publicDir = join(pkgDir, 'public')
+  for (const [label, p] of [['entry', entry], ['public dir', publicDir]] as const) {
+    if (!existsSync(p)) throw new Error(`remotion-stitch: brand-kit ${label} not found at ${p}`)
+  }
+  return { entry, publicDir }
+}
 
 /** Webpack-bundle the Remotion project once per process; reset on failure. */
 function getBundle(): Promise<string> {
   if (!bundlePromise) {
-    bundlePromise = bundle({
-      entryPoint: REMOTION_ENTRY,
-      publicDir: REMOTION_PUBLIC_DIR,
-    }).catch(err => {
+    const { entry, publicDir } = resolveBrandKit()
+    bundlePromise = bundle({ entryPoint: entry, publicDir }).catch(err => {
       bundlePromise = null
       throw err
     })

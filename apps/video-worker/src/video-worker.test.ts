@@ -21,16 +21,31 @@ describe('buildConcatArgs', () => {
 
 // ─── webhook handler: state transitions ──────────────────────────────────────
 
-const { mockFindFirst, mockUpdate, mockFindMany, mockJobUpdateMany, mockUploadBuffer, mockFetch } =
-  vi.hoisted(() => {
-    const mockFindFirst = vi.fn()
-    const mockUpdate = vi.fn()
-    const mockFindMany = vi.fn()
-    const mockJobUpdateMany = vi.fn()
-    const mockUploadBuffer = vi.fn()
-    const mockFetch = vi.fn()
-    return { mockFindFirst, mockUpdate, mockFindMany, mockJobUpdateMany, mockUploadBuffer, mockFetch }
-  })
+const {
+  mockFindFirst,
+  mockUpdate,
+  mockFindMany,
+  mockJobUpdateMany,
+  mockJobFindUnique,
+  mockVisualFindUnique,
+  mockUploadBuffer,
+  mockUploadVideo,
+  mockRenderStitch,
+  mockProbeDuration,
+  mockFetch,
+} = vi.hoisted(() => ({
+  mockFindFirst: vi.fn(),
+  mockUpdate: vi.fn(),
+  mockFindMany: vi.fn(),
+  mockJobUpdateMany: vi.fn(),
+  mockJobFindUnique: vi.fn(),
+  mockVisualFindUnique: vi.fn(),
+  mockUploadBuffer: vi.fn(),
+  mockUploadVideo: vi.fn(),
+  mockRenderStitch: vi.fn(),
+  mockProbeDuration: vi.fn(),
+  mockFetch: vi.fn(),
+}))
 
 vi.mock('@contento/db', () => ({
   prisma: {
@@ -42,12 +57,12 @@ vi.mock('@contento/db', () => ({
     videoJob: {
       update: mockUpdate,
       updateMany: mockJobUpdateMany,
-      findUnique: vi.fn(),
+      findUnique: mockJobFindUnique,
     },
     avatarPersona: { findUnique: vi.fn() },
     contentPlanItem: { findFirst: vi.fn() },
     script: { findUnique: vi.fn(), update: vi.fn() },
-    visualIdentity: { findUnique: vi.fn() },
+    visualIdentity: { findUnique: mockVisualFindUnique },
   },
 }))
 
@@ -55,14 +70,22 @@ vi.stubGlobal('fetch', mockFetch)
 
 vi.mock('./s3-client.js', () => ({
   uploadBuffer: mockUploadBuffer,
-  uploadVideo: vi.fn(),
+  uploadVideo: mockUploadVideo,
   downloadBuffer: vi.fn(),
   keyFromUrl: vi.fn((u: string) => u),
   presignGetUrl: vi.fn(async (key: string) => `http://presigned/${key}`),
   isOwnS3Url: vi.fn(() => true),
+  redactSignedUrls: vi.fn((s: string) => s),
 }))
 
-vi.mock('./remotion-stitch.js', () => ({ renderStitchVideo: vi.fn() }))
+vi.mock('./remotion-stitch.js', () => ({ renderStitchVideo: mockRenderStitch }))
+
+// Partial mock: keep buildConcatArgs/stitchClips real (used elsewhere), stub the
+// ffprobe-spawning probeDurationSec so the Remotion happy path doesn't shell out.
+vi.mock('./stitch.js', async (importActual) => {
+  const actual = await importActual<typeof import('./stitch.js')>()
+  return { ...actual, probeDurationSec: mockProbeDuration }
+})
 
 vi.mock('bullmq', () => ({
   Worker: class {},
@@ -229,5 +252,59 @@ describe('handleStitch idempotency', () => {
         data: expect.objectContaining({ status: 'FAILED', errorMessage: 'No completed shots to stitch' }),
       }),
     )
+  })
+
+  it('renders via Remotion (default stitcher) and marks the job DONE with the uploaded outputUrl', async () => {
+    const prev = process.env['VIDEO_STITCHER']
+    delete process.env['VIDEO_STITCHER'] // default -> 'remotion'
+    try {
+      mockJobUpdateMany.mockResolvedValue({ count: 1 })
+      mockFindMany.mockResolvedValue([
+        { id: 'shot-0', index: 0, clipUrl: 'http://minio/renders/videos/shots/vj-ok/shot-0.mp4' },
+      ])
+      mockJobFindUnique.mockResolvedValue({
+        id: 'vj-ok',
+        workspaceId: 'ws1',
+        scriptId: 'sc1',
+        script: {
+          cta: 'Подпишись',
+          subtitles: {
+            version: 1,
+            shots: [{ index: 0, audioSec: 2, words: [{ text: 'привет', startSec: 0, endSec: 1 }] }],
+          },
+        },
+      })
+      mockVisualFindUnique.mockResolvedValue({
+        primaryColor: '#111111',
+        secondaryColor: null,
+        accentColor: '#ff0000',
+        logoUrl: null,
+      })
+      mockProbeDuration.mockResolvedValue(5)
+      mockUploadVideo.mockResolvedValue('http://minio/renders/videos/ws1/sc1/vj-ok.mp4')
+
+      await handleStitch({ videoJobId: 'vj-ok' })
+
+      expect(mockProbeDuration).toHaveBeenCalledTimes(1)
+      expect(mockRenderStitch).toHaveBeenCalledTimes(1)
+      const [props] = mockRenderStitch.mock.calls[0]!
+      expect(props.cta).toBe('Подпишись')
+      expect(props.primaryColor).toBe('#111111')
+      // own-S3 clip -> presigned src passed to the renderer
+      expect(props.shots[0].src).toBe('http://presigned/http://minio/renders/videos/shots/vj-ok/shot-0.mp4')
+      expect(props.shots[0].chunks.length).toBeGreaterThan(0) // subtitles joined by index
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'vj-ok' },
+          data: expect.objectContaining({
+            status: 'DONE',
+            outputUrl: 'http://minio/renders/videos/ws1/sc1/vj-ok.mp4',
+          }),
+        }),
+      )
+    } finally {
+      if (prev === undefined) delete process.env['VIDEO_STITCHER']
+      else process.env['VIDEO_STITCHER'] = prev
+    }
   })
 })
