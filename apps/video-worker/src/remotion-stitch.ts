@@ -30,7 +30,24 @@ function resolveBrandKit(): { entry: string; publicDir: string } {
 function getBundle(): Promise<string> {
   if (!bundlePromise) {
     const { entry, publicDir } = resolveBrandKit()
-    bundlePromise = bundle({ entryPoint: entry, publicDir }).catch(err => {
+    bundlePromise = bundle({
+      entryPoint: entry,
+      publicDir,
+      // brand-kit sources use NodeNext './x.js' imports. Resolve those to the
+      // .tsx/.ts source FIRST so a stray compiled .js can never shadow it (a
+      // stale src/remotion-root.js once silently dropped the VideoStitch
+      // composition from the bundle).
+      webpackOverride: config => ({
+        ...config,
+        resolve: {
+          ...config.resolve,
+          extensionAlias: {
+            ...(config.resolve?.extensionAlias ?? {}),
+            '.js': ['.tsx', '.ts', '.jsx', '.js'],
+          },
+        },
+      }),
+    }).catch(err => {
       bundlePromise = null
       throw err
     })

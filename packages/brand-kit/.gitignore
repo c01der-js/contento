@@ -1,0 +1,10 @@
+# Build output belongs in dist/, never in src/. Compiled .js/.d.ts committed into
+# src/ silently shadow their .tsx sources when Remotion's webpack resolves the
+# NodeNext './x.js' imports — which once dropped the VideoStitch composition from
+# the bundle. Keep src/ pure TypeScript.
+dist/
+src/**/*.js
+src/**/*.jsx
+src/**/*.d.ts
+src/**/*.d.ts.map
+src/**/*.js.map

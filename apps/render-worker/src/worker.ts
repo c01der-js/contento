@@ -29,6 +29,18 @@ function getBundleUrl(): Promise<string> {
       onProgress: (p) => {
         if (p === 100) console.log('[render-worker] Remotion bundle ready')
       },
+      // brand-kit sources use NodeNext './x.js' imports — resolve them to the
+      // .tsx/.ts source first so a stray compiled .js can never shadow it.
+      webpackOverride: (config) => ({
+        ...config,
+        resolve: {
+          ...config.resolve,
+          extensionAlias: {
+            ...(config.resolve?.extensionAlias ?? {}),
+            '.js': ['.tsx', '.ts', '.jsx', '.js'],
+          },
+        },
+      }),
     }).catch((err) => {
       // Reset so the next job retries the bundle; do not poison the cache.
       bundlePromise = null
