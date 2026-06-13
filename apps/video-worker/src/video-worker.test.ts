@@ -47,6 +47,7 @@ vi.mock('@contento/db', () => ({
     avatarPersona: { findUnique: vi.fn() },
     contentPlanItem: { findFirst: vi.fn() },
     script: { findUnique: vi.fn(), update: vi.fn() },
+    visualIdentity: { findUnique: vi.fn() },
   },
 }))
 
@@ -57,7 +58,11 @@ vi.mock('./s3-client.js', () => ({
   uploadVideo: vi.fn(),
   downloadBuffer: vi.fn(),
   keyFromUrl: vi.fn((u: string) => u),
+  presignGetUrl: vi.fn(async (key: string) => `http://presigned/${key}`),
+  isOwnS3Url: vi.fn(() => true),
 }))
+
+vi.mock('./remotion-stitch.js', () => ({ renderStitchVideo: vi.fn() }))
 
 vi.mock('bullmq', () => ({
   Worker: class {},

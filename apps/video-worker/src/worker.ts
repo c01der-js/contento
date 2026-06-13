@@ -16,8 +16,10 @@ import {
   MOCK_CLIP_URL,
 } from '@contento/ai'
 import type { WordTiming } from '@contento/ai'
-import { stitchClips, transcodeMp3ToWav } from './stitch.js'
-import { uploadVideo, uploadBuffer, downloadBuffer, keyFromUrl } from './s3-client.js'
+import { stitchClips, transcodeMp3ToWav, probeDurationSec } from './stitch.js'
+import { uploadVideo, uploadBuffer, downloadBuffer, keyFromUrl, presignGetUrl, isOwnS3Url } from './s3-client.js'
+import { renderStitchVideo } from './remotion-stitch.js'
+import { buildStitchProps, parseSubtitlesJson, type StitchShotInput } from './stitch-props.js'
 
 export interface VideoJobPayload {
   videoJobId: string
@@ -271,21 +273,54 @@ export async function handleStitch({ videoJobId }: StitchJobPayload) {
       return
     }
 
-    const videoJob = await prisma.videoJob.findUnique({ where: { id: videoJobId } })
+    const videoJob = await prisma.videoJob.findUnique({
+      where: { id: videoJobId },
+      include: { script: true },
+    })
     if (!videoJob) throw new Error(`VideoJob ${videoJobId} not found`)
 
-    for (const shot of shots) {
-      if (!shot.clipUrl) throw new Error(`Shot ${shot.id} has no clipUrl`)
-      // Read clips with authenticated S3 (the bucket is private — an anonymous
-      // HTTP GET returns 403, which previously stalled the job at STITCHING).
-      const buf = await downloadBuffer(keyFromUrl(shot.clipUrl))
-      const localPath = join(tmpdir(), `shot-${shot.id}.mp4`)
-      await writeFile(localPath, buf)
-      clipPaths.push(localPath)
-    }
-
     const outputPath = join(tmpdir(), `video-${videoJobId}.mp4`)
-    await stitchClips({ clipPaths, outputPath })
+    const stitcher = process.env['VIDEO_STITCHER'] ?? 'remotion'
+
+    if (stitcher === 'remotion') {
+      // Remotion path: clips stay in S3 and are fetched by the renderer via
+      // presigned URLs; durations come from ffprobe; subtitles from the
+      // timings persisted by handleGenerate.
+      const subtitles = parseSubtitlesJson(videoJob.script.subtitles)
+      const visual = await prisma.visualIdentity.findUnique({
+        where: { workspaceId: videoJob.workspaceId },
+      })
+      const shotInputs: StitchShotInput[] = []
+      for (const shot of shots) {
+        if (!shot.clipUrl) throw new Error(`Shot ${shot.id} has no clipUrl`)
+        // Mock clips are public external URLs — pass through unsigned.
+        const src = isOwnS3Url(shot.clipUrl) ? await presignGetUrl(keyFromUrl(shot.clipUrl)) : shot.clipUrl
+        const probedSec = await probeDurationSec(src)
+        const timing = subtitles?.shots.find(s => s.index === shot.index)
+        shotInputs.push({ src, probedSec, ...(timing ? { timing } : {}) })
+      }
+      const logoUrl = visual?.logoUrl
+        ? (isOwnS3Url(visual.logoUrl) ? await presignGetUrl(keyFromUrl(visual.logoUrl)) : visual.logoUrl)
+        : null
+      const props = buildStitchProps({
+        shots: shotInputs,
+        cta: videoJob.script.cta,
+        visual: visual ? { ...visual, logoUrl } : null,
+      })
+      await renderStitchVideo(props, outputPath)
+    } else {
+      // Legacy ffmpeg concat fallback (VIDEO_STITCHER=ffmpeg).
+      for (const shot of shots) {
+        if (!shot.clipUrl) throw new Error(`Shot ${shot.id} has no clipUrl`)
+        // Read clips with authenticated S3 (the bucket is private — an anonymous
+        // HTTP GET returns 403, which previously stalled the job at STITCHING).
+        const buf = await downloadBuffer(keyFromUrl(shot.clipUrl))
+        const localPath = join(tmpdir(), `shot-${shot.id}.mp4`)
+        await writeFile(localPath, buf)
+        clipPaths.push(localPath)
+      }
+      await stitchClips({ clipPaths, outputPath })
+    }
 
     const key = `videos/${videoJob.workspaceId}/${videoJob.scriptId}/${videoJobId}.mp4`
     const outputUrl = await uploadVideo(outputPath, key)

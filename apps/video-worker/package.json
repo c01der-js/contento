@@ -15,6 +15,10 @@
   "dependencies": {
     "@contento/db": "workspace:*",
     "@contento/ai": "workspace:*",
+    "@contento/brand-kit": "workspace:*",
+    "@remotion/bundler": "4.0.468",
+    "@remotion/renderer": "4.0.468",
+    "@aws-sdk/s3-request-presigner": "^3.0.0",
     "bullmq": "^5.0.0",
     "ioredis": "^5.0.0",
     "@aws-sdk/client-s3": "^3.0.0"

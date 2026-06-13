@@ -77,6 +77,28 @@ export function buildConcatArgs(clipPaths: string[], listPath: string, outputPat
   ]
 }
 
+export function buildFfprobeArgs(input: string): string[] {
+  return ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', input]
+}
+
+/** Duration in seconds of a local file or http(s) URL, via ffprobe (ships with ffmpeg). */
+export function probeDurationSec(input: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('ffprobe', buildFfprobeArgs(input), { stdio: ['ignore', 'pipe', 'pipe'] })
+    const out: string[] = []
+    const err: string[] = []
+    proc.stdout?.on('data', (d: Buffer) => out.push(d.toString()))
+    proc.stderr?.on('data', (d: Buffer) => err.push(d.toString()))
+    proc.on('close', code => {
+      if (code !== 0) return reject(new Error(`ffprobe exited ${code}: ${err.join('')}`))
+      const sec = parseFloat(out.join('').trim())
+      if (!Number.isFinite(sec) || sec <= 0) return reject(new Error(`ffprobe returned invalid duration: ${out.join('')}`))
+      resolve(sec)
+    })
+    proc.on('error', reject)
+  })
+}
+
 function runFfmpeg(args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] })

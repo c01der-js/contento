@@ -5,7 +5,13 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "composite": false,
     "declaration": false,
-    "declarationMap": false
+    "declarationMap": false,
+    "paths": {
+      "@contento/db": ["../../packages/db/src/index.ts"],
+      "@contento/ai": ["../../packages/ai/src/index.ts"],
+      "@contento/brand-kit": ["../../packages/brand-kit/dist/index.d.ts"],
+      "@contento/shared": ["../../packages/shared/src/index.ts"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

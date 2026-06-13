@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { readFile } from 'fs/promises'
 
 const s3 = new S3Client({
@@ -40,6 +41,22 @@ export function keyFromUrl(url: string): string {
   const bucket = process.env['S3_BUCKET'] ?? 'renders'
   const path = new URL(url).pathname.replace(/^\/+/, '') // "bucket/key/..."
   return path.startsWith(`${bucket}/`) ? path.slice(bucket.length + 1) : path
+}
+
+/**
+ * Presigned GET URL for a private object — lets the Remotion renderer's
+ * Chromium fetch shot clips directly without bucket credentials.
+ */
+export async function presignGetUrl(key: string, expiresInSec = 3600): Promise<string> {
+  const bucket = process.env['S3_BUCKET'] ?? 'renders'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return getSignedUrl(s3 as any, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: expiresInSec })
+}
+
+/** True when the URL points at our S3/MinIO endpoint (as produced by uploadBuffer). */
+export function isOwnS3Url(url: string): boolean {
+  const endpoint = process.env['S3_ENDPOINT'] ?? 'http://localhost:9000'
+  return url.startsWith(`${endpoint}/`)
 }
 
 export async function uploadBuffer(buf: Buffer, key: string, contentType: string): Promise<string> {
