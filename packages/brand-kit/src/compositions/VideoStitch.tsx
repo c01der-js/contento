@@ -12,9 +12,13 @@ import type { StitchChunk, StitchShotProps, VideoStitchProps } from './video-sti
 const SUBTITLE_FONT = 'ContentoInter'
 
 // loadFont uses the browser FontFace API. This module is also imported in plain
-// Node (worker imports @contento/brand-kit for types/consts; vitest), where
-// FontFace doesn't exist — so the call must be guarded, not just .catch()'ed.
-if (typeof window !== 'undefined') {
+// Node (worker imports @contento/brand-kit for types/consts; vitest) and is
+// typechecked by consumers whose tsconfig lib has no DOM (e.g. @contento/api,
+// which imports TEMPLATE_CONFIG). Probe globalThis instead of the bare `window`
+// identifier so the guard needs neither the FontFace API at runtime nor the DOM
+// lib at compile time.
+const isBrowser = typeof (globalThis as { window?: unknown }).window !== 'undefined'
+if (isBrowser) {
   loadFont({
     family: SUBTITLE_FONT,
     url: staticFile('fonts/Inter-Variable.ttf'),
