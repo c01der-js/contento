@@ -18,29 +18,48 @@ export class TelegramPublisher implements PlatformPublisher {
       ? `${payload.text}\n\n${payload.hashtags.map(h => `#${h}`).join(' ')}`
       : payload.text
 
-    const endpoint = payload.imageUrl
-      ? `${TG_API}/bot${botToken}/sendPhoto`
-      : `${TG_API}/bot${botToken}/sendMessage`
+    // Prefer video, then image, then plain text.
+    // sendVideo accepts a remote HTTPS URL as `video` (same as sendPhoto's `photo`);
+    // Telegram fetches it server-side. URL-based sends cap non-photo files at ~20MB.
+    let endpoint: string
+    let label: string
+    let body: Record<string, unknown>
 
-    const body = payload.imageUrl
-      ? {
-          chat_id: channelId,
-          photo: payload.imageUrl,
-          caption: text.slice(0, 1024),
-          parse_mode: 'HTML',
-        }
-      : {
-          chat_id: channelId,
-          text: text.slice(0, 4096),
-          parse_mode: 'HTML',
-        }
+    if (payload.videoUrl) {
+      endpoint = `${TG_API}/bot${botToken}/sendVideo`
+      label = 'sendVideo'
+      body = {
+        chat_id: channelId,
+        video: payload.videoUrl,
+        caption: text.slice(0, 1024),
+        parse_mode: 'HTML',
+        supports_streaming: true,
+      }
+    } else if (payload.imageUrl) {
+      endpoint = `${TG_API}/bot${botToken}/sendPhoto`
+      label = 'sendPhoto'
+      body = {
+        chat_id: channelId,
+        photo: payload.imageUrl,
+        caption: text.slice(0, 1024),
+        parse_mode: 'HTML',
+      }
+    } else {
+      endpoint = `${TG_API}/bot${botToken}/sendMessage`
+      label = 'sendMessage'
+      body = {
+        chat_id: channelId,
+        text: text.slice(0, 4096),
+        parse_mode: 'HTML',
+      }
+    }
 
     const res = await requestWithRetry(PLATFORM, endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (!res.ok) await throwForResponse(PLATFORM, res, payload.imageUrl ? 'sendPhoto' : 'sendMessage')
+    if (!res.ok) await throwForResponse(PLATFORM, res, label)
 
     const data = (await res.json()) as {
       ok: boolean
@@ -48,7 +67,7 @@ export class TelegramPublisher implements PlatformPublisher {
       description?: string
     }
     if (!data.ok || !data.result) {
-      throw new Error(`Telegram ${payload.imageUrl ? 'sendPhoto' : 'sendMessage'} failed: ${data.description ?? 'unknown'}`)
+      throw new Error(`Telegram ${label} failed: ${data.description ?? 'unknown'}`)
     }
 
     return { platformPostId: String(data.result.message_id) }

@@ -76,6 +76,21 @@ describe('TelegramPublisher', () => {
     const body = JSON.parse((fetchMock.mock.calls[0] as [string, { body: string }])[1].body)
     expect(body.text).toBe('Post text\n\n#foo #bar')
   })
+
+  it('with video: calls sendVideo with the video URL and supports_streaming', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({ ok: true, result: { message_id: 123 } })
+    )
+    const publisher = new TelegramPublisher({ botToken: 'tok', channelId: '@chan' })
+    const result = await publisher.publish({ text: 'Cap', videoUrl: 'https://x/v.mp4', imageUrl: 'https://x/i.png' })
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, { body: string }]
+    expect(url).toContain('/sendVideo')
+    const body = JSON.parse(init.body)
+    expect(body.video).toBe('https://x/v.mp4')
+    expect(body.supports_streaming).toBe(true)
+    expect(result.platformPostId).toBe('123')
+  })
 })
 
 describe('InstagramPublisher', () => {
