@@ -19,7 +19,8 @@ export class YouTubePublisher implements PlatformPublisher {
   constructor(private creds: YouTubeCreds) {}
 
   async publish(payload: PublishPayload): Promise<PublishResult> {
-    if (!payload.imageUrl) throw new Error('YouTube requires a video URL')
+    const videoUrl = payload.videoUrl ?? payload.imageUrl
+    if (!videoUrl) throw new Error('YouTube requires a video URL')
 
     const title = payload.text.slice(0, 100)
     const description = payload.hashtags?.length
@@ -32,7 +33,7 @@ export class YouTubePublisher implements PlatformPublisher {
     }
 
     return this.withAuthRetry(async () => {
-      const { body, contentLength, contentType } = await fetchVideoBody(payload.imageUrl!)
+      const { body, contentLength, contentType } = await fetchVideoBody(videoUrl)
       const uploadUrl = await this.initResumableUpload(videoMeta, contentLength, contentType)
       const video = await this.uploadVideoBody(uploadUrl, body, contentLength, contentType)
       return {

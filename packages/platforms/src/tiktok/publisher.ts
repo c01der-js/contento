@@ -8,7 +8,8 @@ export class TikTokPublisher implements PlatformPublisher {
   constructor(private readonly creds: { accessToken: string; openId: string }) {}
 
   async publish(payload: PublishPayload): Promise<PublishResult> {
-    if (!payload.imageUrl) throw new Error('TikTok requires a video/image URL')
+    const videoUrl = payload.videoUrl ?? payload.imageUrl
+    if (!videoUrl) throw new Error('TikTok requires a video URL')
 
     const text = payload.hashtags?.length
       ? `${payload.text}\n\n${payload.hashtags.map(h => `#${h}`).join(' ')}`
@@ -30,7 +31,7 @@ export class TikTokPublisher implements PlatformPublisher {
         },
         source_info: {
           source: 'PULL_FROM_URL',
-          video_url: payload.imageUrl,
+          video_url: videoUrl,
         },
       }),
     })
