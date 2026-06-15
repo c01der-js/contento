@@ -15,7 +15,7 @@ Strategy/plan docs live in `docs/superpowers/specs/` and `docs/superpowers/plans
 Load-bearing facts:
 - **The wedge is the feedback loop** — content that gets *smarter* from performance data (golden examples weighted into idea/script generation). It is the differentiator; sequence work so it lands early. It needs ~20 published videos for meaningful signal.
 - **First build items:** (1) QA gate (auto pre-approval check; new `QaCheck` model), (2) confirm publishing end-to-end (≈ the P0 plan). Then PostAnalytics (`PublicationMetric` model) → feedback loop → per-platform/multi-format.
-- **OPEN decision (blocks platform set):** market = mainland-RU (keep VK; VK `wall.getStats` is the only app-audit-free metrics source) **vs** diaspora+CIS (VK removed; TikTok/IG metrics are app-audit-gated). Don't assume; confirm.
+- **Market (decided 2026-06-15): RU-speaking diaspora + CIS.** Platforms = TikTok, Instagram Reels, YouTube Shorts, Telegram. **VK is removed.** Consequence: feedback-loop metrics are app-audit-gated (IG/TikTok) and TG hides views → the feedback loop is deferred behind the per-platform/multi-format work. Build order: P0 (publishing) → Plan A (PlatformProfile/per-platform) → Plan B (multi-format) → then QA gate / PostAnalytics / feedback loop / Lambda.
 - Already done (don't redo): pgvector is installed and `Script.embedding vector(1536)` exists; Higgsfield calls already have retry/backoff (Phase 0); Remotion stitch with subtitles ships (Phase 2). Telegram Bot API does NOT expose post views (feedback-loop metric-source caveat).
 
 ## Commands

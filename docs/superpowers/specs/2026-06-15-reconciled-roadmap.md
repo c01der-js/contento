@@ -50,5 +50,7 @@ The session P0 plan ≈ the report's "distribution confirmation," and our P0 Tas
 
 This makes the **feedback loop the spine** (per office-hours) while keeping the approved multi-format work as the differentiation layer on top.
 
-## Open question
-**Which market — mainland-RU (keep VK, VK-first metrics) or diaspora+CIS (no VK, metrics gated)?** Everything downstream (platform set, the feedback loop's data source, VK removal) hangs on this.
+## RESOLVED (2026-06-15)
+- **Market = RU-speaking diaspora + CIS.** Platforms: TikTok, Instagram Reels, YouTube Shorts, Telegram. **VK removed** (P0 Task 5). The office-hours mainland-RU/VK-first framing is overridden on market; its feedback-loop-as-wedge insight and QA-gate sequencing remain valid.
+- **Consequence:** early feedback-loop metrics are app-audit-gated (IG/TikTok) and TG hides views → the feedback loop is **deferred** behind the per-platform/multi-format work (the user's chosen order), not month-1 as office-hours proposed. Revisit the metric source when an IG/TikTok app audit is pursued.
+- **Build order (chosen): P0 (publishing) → Plan A (PlatformProfile + per-platform fan-out + caption) → Plan B (multi-format) → then QA gate / PostAnalytics / feedback loop / Lambda.**
