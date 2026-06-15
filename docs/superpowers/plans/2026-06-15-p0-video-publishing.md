@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the AI-generated 9:16 video actually reach the social platforms: link `VideoJob.outputUrl` to `Publication`, carry it through the publish payload (presigned so platforms can fetch it), teach the RU-priority publishers (VK, Telegram, Instagram Reels) + TikTok/YouTube to post video, and fix the silently-broken scheduled-publish path. Plus introduce a `VideoProvider` abstraction so the lipsync engine can be swapped later.
+**Goal:** Make the AI-generated 9:16 video actually reach the social platforms: link `VideoJob.outputUrl` to `Publication`, carry it through the publish payload (presigned so platforms can fetch it), teach the priority publishers (Telegram, Instagram Reels) + TikTok/YouTube to post video, **remove VK entirely** (product decision — VK is dropped as a supported platform), and fix the silently-broken scheduled-publish path. Plus introduce a `VideoProvider` abstraction so the lipsync engine can be swapped later.
 
 **Architecture:** Today the publish payload only carries `imageUrl` sourced from a PNG `RenderJob`; the generated MP4 (`VideoJob.outputUrl`) is never linked to a `Publication`, and the scheduler drops `platform` from its BullMQ job so the Kafka event fails validation and is silently discarded. This plan adds an explicit `Publication.videoJobId` FK, a `PublishPayload.videoUrl` field, presigning of the private S3 URL in the posting-service, per-platform video publish flows, and routes the video worker through a `VideoProvider` interface (HiggsfieldProvider the only impl for now).
 
@@ -12,7 +12,7 @@
 - Scheduler bug: `apps/scheduler/src/worker.ts` `syncScheduledJobs` enqueues `{publicationId, workspaceId, socialAccountId}` (no `platform`); the worker reads `platform` → `undefined` → `PublishRequestedSchema.parse` throws in posting-service → caught + acked → event lost.
 - `Publication` (schema.prisma:619) has `renderJobId String?` but NO `videoJobId`. `ContentPlanItem.videoJobId` exists (schema.prisma:1023) and is set by the campaign producer.
 - `PublishPayload` (`packages/platforms/src/types.ts`) = `{ text; imageUrl?; hashtags? }`. Posting-service builds it from `publication.renderJob?.outputUrl` (a PNG).
-- Telegram `sendVideo`, VK `video.save`+upload+`wall.post`, Instagram `media_type=REELS` (async, poll `status_code`) all accept/produce video. TikTok/YouTube already accept a video URL but read `payload.imageUrl`.
+- Telegram `sendVideo`, Instagram `media_type=REELS` (async, poll `status_code`) accept/produce video. TikTok/YouTube already accept a video URL but read `payload.imageUrl`. VK is being removed (Task 5).
 - Private MinIO/S3 URL must be presigned for platforms to fetch (same pattern as `apps/video-worker/src/s3-client.ts:presignGetUrl`).
 - `'x'` is in `SocialPlatformSchema` but has no publisher → `createPublisher('x')` throws.
 - Tests: `packages/platforms` has vitest + `src/publishers.test.ts` (stubs global `fetch`). `apps/scheduler` and `apps/posting-service` have `vitest.config.ts` but no `test` npm script yet.
@@ -30,7 +30,7 @@
 | `packages/shared/src/types.ts` | modify | drop `'x'` from `SocialPlatformSchema` |
 | `packages/db/prisma/schema.prisma` | modify | `Publication.videoJobId` FK + `VideoJob.publications` |
 | `packages/platforms/src/telegram/publisher.ts` | modify | `sendVideo` when `videoUrl` |
-| `packages/platforms/src/vk/publisher.ts` | modify | `video.save`→upload→`wall.post` when `videoUrl` |
+| `packages/platforms/src/vk/` + `factory.ts` + `index.ts` | delete | remove VK as a supported platform (Task 5) |
 | `packages/platforms/src/instagram/publisher.ts` | modify | REELS async flow when `videoUrl` |
 | `packages/platforms/src/tiktok/publisher.ts` | modify | prefer `videoUrl` |
 | `packages/platforms/src/youtube/publisher.ts` | modify | prefer `videoUrl` |
@@ -171,24 +171,24 @@ export interface PublishPayload {
 }
 ```
 
-- [ ] **Step 2: Remove `'x'`** (no publisher exists; `createPublisher('x')` throws). In `packages/shared/src/types.ts`:
+- [ ] **Step 2: Remove `'x'` and `'vk'`** from the platform enum (`'x'` has no publisher and `createPublisher('x')` throws; `'vk'` is being dropped as a product decision — Task 5 removes its code). In `packages/shared/src/types.ts`:
 
 ```ts
 export const SocialPlatformSchema = z.enum([
-  'telegram', 'instagram', 'tiktok', 'youtube', 'linkedin', 'vk',
+  'telegram', 'instagram', 'tiktok', 'youtube', 'linkedin',
 ])
 ```
 
 - [ ] **Step 3: Typecheck both packages.**
 
 Run: `pnpm --filter @contento/platforms run typecheck && pnpm --filter @contento/shared run typecheck`
-Expected: PASS.
+Expected: this may surface that `factory.ts` still references `'vk'` — that is fine, Task 5 removes it. If `@contento/shared` typecheck is clean and `@contento/platforms` only errors on the soon-removed VK case, proceed; otherwise do Task 5 before re-running. (To keep each task green in isolation, you may run Task 5 immediately after this step.)
 
 - [ ] **Step 4: Commit.**
 
 ```bash
 git add packages/platforms/src/types.ts packages/shared/src/types.ts
-git commit -m "feat(platforms): add PublishPayload.videoUrl; drop publisher-less 'x' platform
+git commit -m "feat(platforms): add PublishPayload.videoUrl; drop publisher-less 'x' and (product decision) 'vk'
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
@@ -355,149 +355,49 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 5: VK — upload the MP4 (`video.save` → upload → `wall.post`)
+### Task 5: Remove the VK platform entirely (product decision)
+
+VK is dropped as a supported platform. Remove its publisher, factory case, exports, and any VK test, so the codebase no longer offers VK.
 
 **Files:**
-- Modify: `packages/platforms/src/vk/publisher.ts`
-- Modify: `packages/platforms/src/publishers.test.ts`
+- Delete: `packages/platforms/src/vk/publisher.ts` (+ the `vk/` dir)
+- Modify: `packages/platforms/src/factory.ts` (remove the `'vk'` case)
+- Modify: `packages/platforms/src/index.ts` (remove the `VKPublisher` export)
+- Modify: `packages/platforms/src/publishers.test.ts` (remove the `VKPublisher` import + any VK describe block)
+- (Enum already handled in Task 2: `'vk'` removed from `SocialPlatformSchema`.)
 
-- [ ] **Step 1: Add the failing test.** In `packages/platforms/src/publishers.test.ts`, inside `describe('VKPublisher', ...)` (create the describe block if absent), add:
-
-```ts
-  it('with video: video.save -> upload -> wall.post with video attachment', async () => {
-    // 1) video.save
-    fetchMock.mockResolvedValueOnce(
-      mockResponse({ response: { upload_url: 'https://upl.vk/u', owner_id: -123, video_id: 456 } })
-    )
-    // download the mp4
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      arrayBuffer: async () => new ArrayBuffer(8),
-    } as unknown as Response)
-    // 2) upload POST
-    fetchMock.mockResolvedValueOnce(mockResponse({ size: 8, video_id: 456 }))
-    // 3) wall.post
-    fetchMock.mockResolvedValueOnce(mockResponse({ response: { post_id: 789 } }))
-
-    const publisher = new VKPublisher({ accessToken: 'tok', ownerId: '-123' })
-    const result = await publisher.publish({ text: 'Hi', videoUrl: 'https://x/v.mp4' })
-
-    const saveUrl = (fetchMock.mock.calls[0] as [string])[0]
-    expect(saveUrl).toContain('/video.save')
-    const wallCall = fetchMock.mock.calls[3] as [string, { body: URLSearchParams }]
-    expect(wallCall[0]).toContain('/wall.post')
-    expect(wallCall[1].body.toString()).toContain('attachments=video-123_456')
-    expect(result.platformPostId).toBe('789')
-  })
-```
-
-- [ ] **Step 2: Run it, verify it fails.**
-
-Run: `pnpm --filter @contento/platforms exec vitest run src/publishers.test.ts -t "VK"`
-Expected: FAIL — current code never calls `/video.save`.
-
-- [ ] **Step 3: Implement.** Replace the `publish` method body in `packages/platforms/src/vk/publisher.ts` with:
-
-```ts
-  async publish(payload: PublishPayload): Promise<PublishResult> {
-    const message = payload.hashtags?.length
-      ? `${payload.text}\n\n${payload.hashtags.map(h => `#${h}`).join(' ')}`
-      : payload.text
-
-    // ownerId is negative for communities (e.g. "-123") and positive for users.
-    const ownerIdNum = Number(this.creds.ownerId)
-    const isGroup = ownerIdNum < 0
-
-    // Default to the legacy image/text behavior (imageUrl is already a VK attachment string).
-    let attachment: string | undefined = payload.imageUrl
-
-    // When a 9:16 MP4 is present, prefer it: video.save -> upload bytes -> attach.
-    if (payload.videoUrl) {
-      const saveParams = new URLSearchParams({
-        name: (payload.text || 'video').slice(0, 128),
-        wallpost: '1',
-        v: VK_VERSION,
-        access_token: this.creds.accessToken,
-        // Posting to a community wall: video.save wants the POSITIVE group id.
-        ...(isGroup ? { group_id: String(Math.abs(ownerIdNum)) } : {}),
-      })
-
-      const saveRes = await requestWithRetry(PLATFORM, `${VK_API}/video.save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: saveParams,
-      })
-      if (!saveRes.ok) await throwForResponse(PLATFORM, saveRes, 'video.save')
-
-      const saveData = (await saveRes.json()) as {
-        response?: { upload_url: string; owner_id: number; video_id: number }
-        error?: { error_msg: string }
-      }
-      if (saveData.error) throw new Error(`VK video.save failed: ${saveData.error.error_msg}`)
-      if (!saveData.response?.upload_url) throw new Error('VK video.save did not return an upload_url')
-      const { upload_url, owner_id, video_id } = saveData.response
-
-      // Buffer the whole file so the multipart body is replayable across retries.
-      const dl = await fetch(payload.videoUrl)
-      if (!dl.ok) throw new Error(`VK video download failed: HTTP ${dl.status} for ${payload.videoUrl}`)
-      const bytes = await dl.arrayBuffer()
-      const form = new FormData()
-      // Field name MUST be exactly "video_file".
-      form.append('video_file', new Blob([bytes], { type: 'video/mp4' }), 'video.mp4')
-
-      // Do NOT set Content-Type — fetch derives the multipart boundary itself.
-      const uploadRes = await requestWithRetry(PLATFORM, upload_url, { method: 'POST', body: form })
-      if (!uploadRes.ok) await throwForResponse(PLATFORM, uploadRes, 'video upload')
-
-      // VK transcodes asynchronously; the attachment is valid immediately.
-      attachment = `video${owner_id}_${video_id}`
-    }
-
-    const params = new URLSearchParams({
-      owner_id: this.creds.ownerId,
-      message: message.slice(0, 16383),
-      v: VK_VERSION,
-      access_token: this.creds.accessToken,
-      ...(isGroup ? { from_group: '1' } : {}),
-      ...(attachment ? { attachments: attachment } : {}),
-    })
-
-    const res = await requestWithRetry(PLATFORM, `${VK_API}/wall.post`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params,
-    })
-    if (!res.ok) await throwForResponse(PLATFORM, res, 'wall.post')
-
-    const data = (await res.json()) as {
-      response?: { post_id: number }
-      error?: { error_msg: string }
-    }
-    if (data.error) throw new Error(`VK wall.post failed: ${data.error.error_msg}`)
-    if (!data.response?.post_id) throw new Error('VK did not return post_id')
-
-    return {
-      platformPostId: String(data.response.post_id),
-      url: `https://vk.com/wall${this.creds.ownerId}_${data.response.post_id}`,
-    }
-  }
-```
-
-- [ ] **Step 4: Run the VK tests, verify they pass.**
-
-Run: `pnpm --filter @contento/platforms exec vitest run src/publishers.test.ts -t "VK"`
-Expected: PASS (the new video test + any existing VK tests).
-
-- [ ] **Step 5: Commit.**
+- [ ] **Step 1: Delete the VK publisher.**
 
 ```bash
-git add packages/platforms/src/vk/publisher.ts packages/platforms/src/publishers.test.ts
-git commit -m "feat(platforms): VK uploads MP4 via video.save and attaches it to wall.post
+cd /Users/ilyaegorov/Downloads/Contento-main
+git rm packages/platforms/src/vk/publisher.ts
+rmdir packages/platforms/src/vk 2>/dev/null || true
+```
+
+- [ ] **Step 2: Remove the factory case.** In `packages/platforms/src/factory.ts`, delete the import line `import { VKPublisher } from './vk/publisher.js'` and the entire `case 'vk': { ... }` block. `createPublisher('vk', ...)` will then hit the `default` and throw `Unsupported platform: vk` (acceptable — no code path should request it once the enum drops `'vk'`).
+
+- [ ] **Step 3: Remove the export.** In `packages/platforms/src/index.ts`, delete the line `export { VKPublisher } from './vk/publisher.js'`.
+
+- [ ] **Step 4: Remove VK from the tests.** In `packages/platforms/src/publishers.test.ts`, delete the `import { VKPublisher } from './vk/publisher.js'` line and any `describe('VKPublisher', ...)` block.
+
+- [ ] **Step 5: Typecheck + tests + grep.**
+
+Run: `pnpm --filter @contento/platforms run typecheck && pnpm --filter @contento/platforms exec vitest run`
+Expected: PASS.
+
+Run: `git grep -ni "vk\|vkontakte" -- 'packages/**' 'apps/**' '*.ts' '*.tsx' | grep -iv "node_modules\|dist/" || echo "no VK references"`
+Expected: only incidental matches (none in active platform/factory/schema code). Report any remaining VK reference (e.g. web UI platform pickers, SocialAccount seed data) as a follow-up cleanup — do not chase them in this task unless they break typecheck.
+
+- [ ] **Step 6: Commit.**
+
+```bash
+git add packages/platforms/src/factory.ts packages/platforms/src/index.ts packages/platforms/src/publishers.test.ts
+git commit -m "feat(platforms): remove VK platform (publisher, factory case, export, tests)
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
 
-> **Credential note (report, do not implement):** VK access tokens must now carry the `video` scope in addition to `wall`. Surface this to whoever provisions VK tokens; no code field changes (`ownerId` sign already encodes user vs community).
+> **Follow-up (report, do not implement here):** VK may still appear in the web UI's platform picker, `SocialAccount` rows, or OAuth routes (`/oauth/vk/...`). Grep surfaces these; sweep them in a dedicated cleanup once the core removal lands.
 
 ---
 
@@ -1124,19 +1024,19 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 Run: `pnpm --filter @contento/db run db:generate-and-build && pnpm typecheck && pnpm test`
 Expected: typecheck 21/21; tests green except the known pre-existing `@contento/api` background-worker Prisma error (documented; out of scope).
 
-- [ ] **Step 2: Confirm the data path by reading, not asserting.** Trace once in code that: campaign approve → `Publication.videoJobId` set (Task 9) → posting-service includes `videoJob`, presigns `outputUrl` → `payload.videoUrl` (Task 8) → each video publisher consumes `videoUrl` (Tasks 4–7) → scheduled path carries `platform` (Task 1). Note any gap found as a follow-up rather than forcing a fix here.
+- [ ] **Step 2: Confirm the data path by reading, not asserting.** Trace once in code that: campaign approve → `Publication.videoJobId` set (Task 9) → posting-service includes `videoJob`, presigns `outputUrl` → `payload.videoUrl` (Task 8) → each video publisher consumes `videoUrl` (Telegram Task 4, Instagram Task 6, TikTok/YouTube Task 7) → scheduled path carries `platform` (Task 1) → VK is gone (Task 5). Note any gap found as a follow-up rather than forcing a fix here.
 
 ---
 
 ## Out of scope (report as follow-ups, do not implement here)
 - **LinkedIn video** (register-upload asset flow) — text-only today; lower priority for the RU beta.
 - **DB column/route renames** (`higgsfieldJobId → providerJobId`, `/webhooks/higgsfield`) — cosmetic; the `VideoProvider` interface already unblocks the lipsync A/B without them.
-- **AIGC disclosure flags** — P1 in the parent plan; no trivial publish-API field exists for IG/TG/VK, so it needs design.
+- **AIGC disclosure flags** — P1 in the parent plan; no trivial publish-API field exists for IG/TG, so it needs design.
 - **BullMQ retries/DLQ** — P1; must make `handleGenerate.createMany` idempotent first.
 - **`packages/ai/src` stray compiled `.js`** — same junk cleaned from brand-kit; out of this plan.
 
 ## Risks / decisions surfaced
-- **VK token scope** must add `video`; **TikTok** needs a verified URL domain for `PULL_FROM_URL`. Provisioning concern, not code.
+- **TikTok** needs a verified URL domain for `PULL_FROM_URL`. Provisioning concern, not code.
 - **Telegram URL send caps non-photo files at ~20MB** — a long/high-bitrate MP4 would be rejected; multipart upload fallback is a later enhancement.
 - **Presign only works against a publicly reachable S3/CDN** — local MinIO won't be fetched by real platforms (fine under mock).
 - **Task 10 (VideoProvider) is the enabler** for the lipsync decision point; Tasks 1–9 are the "video actually publishes" core and can ship without it if you'd rather close the decision first.
