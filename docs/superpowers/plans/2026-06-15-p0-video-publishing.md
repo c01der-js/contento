@@ -65,9 +65,13 @@
 ```ts
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const mockAdd = vi.fn()
-const mockFindMany = vi.fn()
-const mockAccountFindMany = vi.fn()
+// vi.mock is hoisted above const declarations, so mock fns must be created via
+// vi.hoisted() (same pattern used elsewhere in this repo's tests).
+const { mockAdd, mockFindMany, mockAccountFindMany } = vi.hoisted(() => ({
+  mockAdd: vi.fn(),
+  mockFindMany: vi.fn(),
+  mockAccountFindMany: vi.fn(),
+}))
 
 vi.mock('bullmq', () => ({
   Queue: class {
