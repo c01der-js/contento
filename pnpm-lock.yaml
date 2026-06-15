@@ -114,6 +114,12 @@ importers:
 
   apps/posting-service:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.0.0
+        version: 3.1044.0
+      '@aws-sdk/s3-request-presigner':
+        specifier: ^3.0.0
+        version: 3.1067.0
       '@contento/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -144,7 +150,7 @@ importers:
         version: link:../../packages/db
       '@remotion/bundler':
         specifier: 4.0.468
-        version: 4.0.468(@swc/helpers@0.5.15)(lightningcss@1.32.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        version: 4.0.468(@swc/helpers@0.5.15)(lightningcss@1.32.0)(postcss@8.5.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@remotion/renderer':
         specifier: 4.0.468
         version: 4.0.468(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -265,7 +271,7 @@ importers:
         version: link:../../packages/db
       '@remotion/bundler':
         specifier: 4.0.468
-        version: 4.0.468(@swc/helpers@0.5.15)(lightningcss@1.32.0)(postcss@8.5.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        version: 4.0.468(@swc/helpers@0.5.15)(lightningcss@1.32.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@remotion/renderer':
         specifier: 4.0.468
         version: 4.0.468(react-dom@19.2.6(react@19.2.6))(react@19.2.6)

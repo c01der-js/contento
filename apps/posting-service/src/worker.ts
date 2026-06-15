@@ -8,6 +8,7 @@ import {
 import { prisma, PublicationStatus } from '@contento/db'
 import { createPublisher } from '@contento/platforms'
 import type { PublishPayload } from '@contento/platforms'
+import { presignGetUrl, isOwnS3Url, keyFromUrl } from './s3.js'
 
 // ---------------------------------------------------------------------------
 // UTM tagging
@@ -124,7 +125,7 @@ export async function runWorker(consumer: TypedConsumer): Promise<void> {
         // Load publication after claim (updateMany doesn't return the record)
         const publication = await prisma.publication.findUnique({
           where: { id: publicationId },
-          include: { script: true, renderJob: true, socialAccount: true },
+          include: { script: true, renderJob: true, socialAccount: true, videoJob: true },
         })
         if (!publication) return // shouldn't happen but guard anyway
 
@@ -167,8 +168,17 @@ export async function runWorker(consumer: TypedConsumer): Promise<void> {
           publicationId,
         )
 
+        // Prefer the generated video. The MP4 lives in a private bucket, so presign
+        // a short-lived GET URL the platform's servers can fetch over the internet.
+        const rawVideoUrl = publication.videoJob?.outputUrl ?? null
+        let videoUrl: string | null = rawVideoUrl
+        if (rawVideoUrl && isOwnS3Url(rawVideoUrl)) {
+          videoUrl = await presignGetUrl(keyFromUrl(rawVideoUrl), 3600)
+        }
+
         const payload: PublishPayload = {
           text: taggedCaption,
+          ...(videoUrl ? { videoUrl } : {}),
           ...(publication.renderJob?.outputUrl ? { imageUrl: publication.renderJob.outputUrl } : {}),
           hashtags: publication.script.hashtags,
         }
