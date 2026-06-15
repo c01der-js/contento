@@ -143,6 +143,22 @@ describe('InstagramPublisher', () => {
     )
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it('with video: creates REELS container, polls FINISHED, then publishes', async () => {
+    vi.useRealTimers()
+    fetchMock.mockResolvedValueOnce(mockResponse({ id: 'cont1' }))        // container create
+    fetchMock.mockResolvedValueOnce(mockResponse({ status_code: 'FINISHED' })) // status poll
+    fetchMock.mockResolvedValueOnce(mockResponse({ id: 'media1' }))       // media_publish
+
+    const publisher = new InstagramPublisher({ accessToken: 'tok', igUserId: 'u1' })
+    const result = await publisher.publish({ text: 'Cap', videoUrl: 'https://x/v.mp4' })
+
+    const createBody = JSON.parse((fetchMock.mock.calls[0] as [string, { body: string }])[1].body)
+    expect(createBody.media_type).toBe('REELS')
+    expect(createBody.video_url).toBe('https://x/v.mp4')
+    expect((fetchMock.mock.calls[1] as [string])[0]).toContain('cont1?fields=status_code')
+    expect(result.platformPostId).toBe('media1')
+  }, 15000)
 })
 
 describe('createPublisher', () => {
