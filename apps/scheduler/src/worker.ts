@@ -71,6 +71,7 @@ export async function syncScheduledJobs() {
         publicationId: pub.id,
         workspaceId: pub.workspaceId,
         socialAccountId: pub.socialAccountId,
+        platform,
       },
       { jobId: pub.id, delay },
     )
