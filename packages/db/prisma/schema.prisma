@@ -621,6 +621,7 @@ model Publication {
   workspaceId     String
   scriptId        String
   renderJobId     String?
+  videoJobId      String?
   socialAccountId String
   status          PublicationStatus @default(PENDING)
   platformPostId  String? // returned by platform after publish
@@ -639,6 +640,7 @@ model Publication {
   workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   script          Script            @relation(fields: [scriptId], references: [id], onDelete: Cascade)
   renderJob       RenderJob?        @relation(fields: [renderJobId], references: [id], onDelete: SetNull)
+  videoJob        VideoJob?         @relation(fields: [videoJobId], references: [id], onDelete: SetNull)
   socialAccount   SocialAccount     @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
   abVariant        AbVariant?        @relation(fields: [abVariantId], references: [id], onDelete: SetNull)
   contentPlanItem ContentPlanItem?
@@ -646,6 +648,7 @@ model Publication {
   @@index([workspaceId])
   @@index([scriptId])
   @@index([socialAccountId])
+  @@index([videoJobId])
 }
 
 model Mention {
@@ -929,6 +932,7 @@ model VideoJob {
   script           Script            @relation(fields: [scriptId], references: [id], onDelete: Cascade)
   shots            VideoShot[]
   contentPlanItems ContentPlanItem[]
+  publications     Publication[]
 
   @@index([workspaceId])
   @@index([scriptId])
