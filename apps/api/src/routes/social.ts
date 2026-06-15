@@ -21,7 +21,7 @@ const SocialAccountResponse = z.object({
 })
 
 const SocialAccountBody = z.object({
-  platform: z.enum(['telegram', 'instagram', 'tiktok', 'youtube', 'linkedin', 'vk']),
+  platform: z.enum(['telegram', 'instagram', 'tiktok', 'youtube', 'linkedin']),
   name: z.string().min(1),
   credentials: z.record(z.unknown()),
 })

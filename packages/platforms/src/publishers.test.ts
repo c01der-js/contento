@@ -4,7 +4,6 @@ import { InstagramPublisher } from './instagram/publisher.js'
 import { TikTokPublisher } from './tiktok/publisher.js'
 import { YouTubePublisher } from './youtube/publisher.js'
 import { LinkedInPublisher } from './linkedin/publisher.js'
-import { VKPublisher } from './vk/publisher.js'
 import { createPublisher } from './factory.js'
 
 // Helper to build a minimal Response-like object
@@ -307,37 +306,5 @@ describe('LinkedInPublisher', () => {
 
   it('missing credentials: createPublisher throws', () => {
     expect(() => createPublisher('linkedin', {})).toThrow('linkedin credentials must include')
-  })
-})
-
-describe('VKPublisher', () => {
-  let fetchMock: ReturnType<typeof vi.fn>
-
-  beforeEach(() => {
-    fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it('happy path: wall.post returns { response: { post_id: 123 } }', async () => {
-    fetchMock.mockResolvedValueOnce(
-      mockResponse({ response: { post_id: 123 } })
-    )
-
-    const publisher = new VKPublisher({ accessToken: 'tok', ownerId: '-100500' })
-    const result = await publisher.publish({ text: 'Hello VK' })
-
-    expect(fetchMock).toHaveBeenCalledOnce()
-    const [url] = fetchMock.mock.calls[0] as [string, ...unknown[]]
-    expect(url).toContain('wall.post')
-    expect(url).not.toContain('access_token')
-    expect(result.platformPostId).toBe('123')
-  })
-
-  it('missing credentials: createPublisher throws', () => {
-    expect(() => createPublisher('vk', {})).toThrow('vk credentials must include')
   })
 })

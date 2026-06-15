@@ -3,7 +3,6 @@ import { InstagramPublisher } from './instagram/publisher.js'
 import { TikTokPublisher } from './tiktok/publisher.js'
 import { YouTubePublisher } from './youtube/publisher.js'
 import { LinkedInPublisher } from './linkedin/publisher.js'
-import { VKPublisher } from './vk/publisher.js'
 import type { PlatformPublisher } from './types.js'
 
 export function createPublisher(
@@ -41,12 +40,6 @@ export function createPublisher(
       if (typeof accessToken !== 'string' || typeof ownerUrn !== 'string')
         throw new Error('linkedin credentials must include accessToken and ownerUrn')
       return new LinkedInPublisher({ accessToken, ownerUrn })
-    }
-    case 'vk': {
-      const { accessToken, ownerId } = credentials
-      if (typeof accessToken !== 'string' || typeof ownerId !== 'string')
-        throw new Error('vk credentials must include accessToken and ownerId')
-      return new VKPublisher({ accessToken, ownerId })
     }
     default:
       throw new Error(`Unsupported platform: ${platform}`)
