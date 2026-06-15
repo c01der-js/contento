@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const SocialPlatformSchema = z.enum([
-  'telegram', 'instagram', 'tiktok', 'youtube', 'x', 'linkedin', 'vk',
+  'telegram', 'instagram', 'tiktok', 'youtube', 'linkedin',
 ])
 export type SocialPlatform = z.infer<typeof SocialPlatformSchema>
 export const SOCIAL_PLATFORMS = SocialPlatformSchema.options
