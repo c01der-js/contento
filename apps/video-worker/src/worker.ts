@@ -24,6 +24,7 @@ export interface VideoJobPayload {
   language: string
   /** Optional override; otherwise resolved from AvatarPersona, then env. */
   soulId?: string
+  platform?: string | null
 }
 
 export interface StitchJobPayload {
@@ -77,7 +78,7 @@ export function jobSeed(videoJobId: string): number {
 }
 
 async function handleGenerate(
-  { videoJobId, scriptId, workspaceId, language, soulId: payloadSoulId }: VideoJobPayload,
+  { videoJobId, scriptId, workspaceId, language, soulId: payloadSoulId, platform }: VideoJobPayload,
   enqueueStitch: (id: string) => Promise<void>,
 ) {
   await prisma.videoJob.update({ where: { id: videoJobId }, data: { status: 'STORYBOARDING' } })
@@ -106,7 +107,7 @@ async function handleGenerate(
     hook: script.hook,
     body: script.body,
     cta: script.cta,
-  }, { language, ...(characterDescription ? { characterDescription } : {}) })
+  }, { language, ...(characterDescription ? { characterDescription } : {}), ...(platform ? { platform } : {}) })
 
   await prisma.script.update({ where: { id: scriptId }, data: { storyboard: shots } })
 

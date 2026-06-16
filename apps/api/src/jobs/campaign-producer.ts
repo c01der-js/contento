@@ -94,7 +94,7 @@ export function startCampaignProducer(): Worker {
             title: item.topic,
             angle: item.hook,
             format: item.format,
-            platform: 'instagram',
+            platform: item.platform ?? 'instagram',
           })
 
           const script = await prisma.script.create({
@@ -138,7 +138,7 @@ export function startCampaignProducer(): Worker {
         // enqueue the (credit-consuming) generate job after we confirm ownership
         // via the gated VIDEO_QUEUED -> VIDEO_GENERATING write.
         const videoJob = await prisma.videoJob.create({
-          data: { workspaceId, scriptId, status: 'PENDING', language: 'ru', aspectRatio: '9:16' },
+          data: { workspaceId, scriptId, status: 'PENDING', language: 'ru', aspectRatio: '9:16', platform: item.platform ?? null },
         })
 
         const generating = await prisma.contentPlanItem.updateMany({
@@ -157,6 +157,7 @@ export function startCampaignProducer(): Worker {
           workspaceId,
           language: 'ru',
           soulId,
+          platform: item.platform ?? null,
         })
 
         // Step 3: Poll until done
