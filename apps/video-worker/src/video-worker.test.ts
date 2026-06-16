@@ -106,6 +106,12 @@ vi.mock('@contento/ai', () => ({
   wavDurationSec: vi.fn(() => 3),
   isMockMode: () => true,
   MOCK_CLIP_URL: 'https://example.com/mock.mp4',
+  createVideoProvider: () => ({
+    uploadAudio: vi.fn(),
+    characterFrame: vi.fn(),
+    talkingHead: vi.fn(),
+    motionFromImage: vi.fn(),
+  }),
 }))
 
 import { handleHiggsfieldWebhook } from './webhook-handler.js'

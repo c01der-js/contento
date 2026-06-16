@@ -5,15 +5,11 @@ import { writeFile, unlink } from 'fs/promises'
 import { prisma } from '@contento/db'
 import {
   generateVideoStoryboard,
-  submitSoulCharacterFrame,
-  submitTalkingAvatarClip,
-  submitImageToVideo,
-  pollJobUntilDone,
   synthesizeSpeechWithTimestamps,
-  uploadToHiggsfield,
   wavDurationSec,
   isMockMode,
   MOCK_CLIP_URL,
+  createVideoProvider,
 } from '@contento/ai'
 import type { WordTiming } from '@contento/ai'
 import { stitchClips, transcodeMp3ToWav, probeDurationSec } from './stitch.js'
@@ -135,6 +131,7 @@ async function handleGenerate(
   const voiceId = process.env['ELEVENLABS_VOICE_ID'] ?? ''
   const mock = isMockMode()
   const seed = jobSeed(videoJobId)
+  const provider = createVideoProvider()
 
   // Word timings per shot, persisted to Script.subtitles for the Remotion
   // stitch to burn in subtitles. Shape: { version: 1, shots: ShotTimingJson[] }
@@ -169,25 +166,17 @@ async function handleGenerate(
           // Speak fetches the audio itself, so it must live on Higgsfield's CDN —
           // our private/local S3 URL would be unreachable (-> invalid_audio_format).
           // Higgsfield's upload endpoint requires the MIME 'audio/x-wav' for WAV.
-          audioUrl = await uploadToHiggsfield(wavBuffer, 'audio/x-wav')
+          audioUrl = await provider.uploadAudio(wavBuffer, 'audio/x-wav')
           shotTimings.push({ index: shot.index, audioSec, words: tts.words })
         }
 
-        // Step 2: Higgsfield Soul Character → character image
-        const charRequestId = await submitSoulCharacterFrame(shot.prompt, soulId, { seed })
-        const imageUrl = await pollJobUntilDone(charRequestId)
+        // Step 2: character image (provider hides submit+poll)
+        const imageUrl = await provider.characterFrame(shot.prompt, { characterId: soulId, seed })
 
-        // Step 3a: talking avatar with lip-sync (has dialogue + audio)
-        // Step 3b: silent motion video via DoP (no dialogue)
-        let videoRequestId: string
-        if (audioUrl) {
-          videoRequestId = await submitTalkingAvatarClip(imageUrl, audioUrl, shot.prompt, audioSec)
-        } else {
-          videoRequestId = await submitImageToVideo(imageUrl, shot.prompt, { seed })
-        }
-
-        // Step 4: poll until clip is ready
-        const higgsfieldClipUrl = await pollJobUntilDone(videoRequestId)
+        // Step 3: talking avatar (has dialogue) or silent motion clip (no dialogue)
+        const higgsfieldClipUrl = audioUrl
+          ? await provider.talkingHead({ imageUrl, audioUrl, prompt: shot.prompt, audioDurationSec: audioSec })
+          : await provider.motionFromImage({ imageUrl, prompt: shot.prompt, seed })
 
         // Step 5: download from Higgsfield CDN and re-upload to our S3
         const clipResp = await fetch(higgsfieldClipUrl)
