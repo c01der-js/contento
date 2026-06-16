@@ -1,3 +1,4 @@
+import { getPlatformProfile } from '@contento/shared'
 import { runAnthropicMessage } from '../client.js'
 import { buildBrandContext } from '../brand-context.js'
 
@@ -19,6 +20,22 @@ Respond with valid JSON only — no markdown fences, no extra keys. Use exactly 
   "caption": "<post caption>",
   "hashtags": ["#tag1", "#tag2"]
 }`
+
+function platformInstruction(platform: string): string {
+  const p = getPlatformProfile(platform)
+  const captionGuide =
+    p.captionStyle === 'seo-keyword-first'
+      ? 'Write the caption SEO-first: lead with the keyword phrase a viewer would search; the platform indexes caption + on-screen text + voiceover.'
+      : 'Write the caption conversational and hook-forward in colloquial Russian; open a curiosity/comment loop.'
+  return [
+    `Target platform: ${p.platform}.`,
+    `The spoken script must fit a ${p.targetDurationSec.min}-${p.targetDurationSec.max}s video (aim ${p.targetDurationSec.ideal}s, ~${Math.round(p.targetDurationSec.ideal * 2.5)} words of voiceover).`,
+    `The hook must land within the first ${p.hookWindowSec} seconds.`,
+    captionGuide,
+    `Caption max ${p.captionMaxLen} characters. Provide exactly ${p.hashtagCount} hashtags.`,
+    'Write all output in Russian.',
+  ].join('\n')
+}
 
 function validateScript(data: unknown): ContentScript {
   if (typeof data !== 'object' || data === null) {
@@ -45,6 +62,7 @@ export async function writeScript(
     system: [
       systemBlock,
       { type: 'text', text: SCHEMA_INSTRUCTION },
+      { type: 'text', text: platformInstruction(idea.platform) },
     ],
     messages: [{ role: 'user', content: JSON.stringify(idea) }],
   })

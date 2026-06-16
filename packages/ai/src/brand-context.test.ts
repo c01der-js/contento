@@ -8,6 +8,7 @@ vi.mock('@contento/db', () => ({
     brandVocabulary: { findMany: vi.fn() },
     persona: { findMany: vi.fn() },
     visualIdentity: { findUnique: vi.fn() },
+    tabooTopic: { findMany: vi.fn() },
   },
 }))
 
@@ -20,6 +21,7 @@ const mockPrisma = prisma as unknown as {
   brandVocabulary: { findMany: ReturnType<typeof vi.fn> }
   persona: { findMany: ReturnType<typeof vi.fn> }
   visualIdentity: { findUnique: ReturnType<typeof vi.fn> }
+  tabooTopic: { findMany: ReturnType<typeof vi.fn> }
 }
 
 beforeEach(() => {
@@ -30,6 +32,7 @@ beforeEach(() => {
   mockPrisma.brandVocabulary.findMany.mockResolvedValue([])
   mockPrisma.persona.findMany.mockResolvedValue([])
   mockPrisma.visualIdentity.findUnique.mockResolvedValue(null)
+  mockPrisma.tabooTopic.findMany.mockResolvedValue([])
 })
 
 describe('buildBrandContext', () => {

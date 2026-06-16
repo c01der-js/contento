@@ -8,6 +8,7 @@ vi.mock('@contento/db', () => ({
     brandVocabulary: { findMany: vi.fn().mockResolvedValue([]) },
     persona: { findMany: vi.fn().mockResolvedValue([]) },
     visualIdentity: { findUnique: vi.fn().mockResolvedValue(null) },
+    tabooTopic: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }))
 
@@ -46,6 +47,7 @@ describe('analyzeTrend', () => {
     summary: 'This trend is highly relevant.',
     angles: ['Educational reels', 'Behind the scenes', 'User tips'],
     risks: ['Oversaturation'],
+    lifecycle: null,
   }
 
   it('returns parsed TrendAnalysis when Claude returns valid JSON', async () => {
@@ -182,6 +184,17 @@ describe('writeScript', () => {
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({ model: 'claude-sonnet-4-6' }),
     )
+  })
+
+  it('writeScript injects platform-specific instruction (tiktok hook window)', async () => {
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'text', text: JSON.stringify({ hook: 'h', body: 'b', cta: 'c', caption: 'cap', hashtags: ['#a'] }) }],
+    })
+    await writeScript('ws1', { title: 't', angle: 'a', format: 'reel', platform: 'tiktok' })
+    const call = mockCreate.mock.calls.at(-1)![0]
+    const systemText = call.system.map((s: { text: string }) => s.text).join('\n')
+    expect(systemText).toContain('Target platform: tiktok')
+    expect(systemText).toContain('first 3 seconds')
   })
 })
 
