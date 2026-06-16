@@ -1,0 +1,9 @@
+# Build output belongs in dist/, never in src/. Compiled .js/.d.ts committed into
+# src/ shadow their .ts sources during NodeNext './x.js' resolution (vitest/webpack),
+# silently running stale code. Keep src/ pure TypeScript.
+dist/
+src/**/*.js
+src/**/*.jsx
+src/**/*.d.ts
+src/**/*.d.ts.map
+src/**/*.js.map
