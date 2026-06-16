@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@contento/db'
 import { requireWriteRole, requireReadRole, requireRole } from '../middleware/rbac.js'
 import { generateContentPlan } from '@contento/ai'
+import { TARGET_PLATFORMS } from '@contento/shared'
 import { getCampaignProducerQueue } from '../queue.js'
 
 const WorkspaceParams = z.object({ workspaceId: z.string() })
@@ -91,7 +92,9 @@ function serializeItem(item: {
   hook: string; status: string; rejectComment: string | null
   scriptId: string | null; videoJobId: string | null; publicationId: string | null
 }) {
-  return { ...item, scheduledDate: item.scheduledDate.toISOString() }
+  // Coerce platform to null (a Prisma String? is null in DB; older rows / partial
+  // sources may omit it) so the nullable response schema always validates.
+  return { ...item, platform: item.platform ?? null, scheduledDate: item.scheduledDate.toISOString() }
 }
 
 function serializeCampaign(c: {
@@ -203,6 +206,9 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
       endsAt: campaign.endsAt.toISOString(),
     })
 
+    // Fall back to the full platform set if the campaign predates the column or has an empty array.
+    const platforms = campaign.targetPlatforms?.length ? campaign.targetPlatforms : TARGET_PLATFORMS
+
     const plan = await prisma.$transaction(async (tx) => {
       // Delete existing plan if regenerating
       const existing = await tx.contentPlan.findUnique({ where: { campaignId } })
@@ -215,8 +221,8 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
           campaignId,
           items: {
             create: items.flatMap((item) =>
-              campaign.targetPlatforms.map((platform, pIdx) => ({
-                index: item.index * campaign.targetPlatforms.length + pIdx,
+              platforms.map((platform, pIdx) => ({
+                index: item.index * platforms.length + pIdx,
                 topic: item.topic,
                 format: item.format,
                 platform,
