@@ -294,6 +294,7 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
             socialAccountId: socialAccount.id,
             scheduledAt: approved.scheduledDate,
             renderJobId: null,
+            videoJobId: approved.videoJobId,
           },
         })
         const published = await prisma.contentPlanItem.update({
