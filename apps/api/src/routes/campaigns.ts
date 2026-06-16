@@ -15,6 +15,7 @@ const ContentPlanItemResponse = z.object({
   index: z.number(),
   topic: z.string(),
   format: z.string(),
+  platform: z.string().nullable(),
   scheduledDate: z.string(),
   hook: z.string(),
   status: z.string(),
@@ -52,6 +53,7 @@ const CreateBody = z.object({
   targetAction: z.string().min(1),
   startsAt: z.string(),
   endsAt: z.string(),
+  targetPlatforms: z.array(z.enum(['tiktok', 'instagram', 'youtube', 'telegram'])).min(1).optional(),
 })
 
 const RejectBody = z.object({ comment: z.string().min(1) })
@@ -85,7 +87,7 @@ const EditCampaignBody = z.object({
 const OkResponse = z.object({ ok: z.boolean() })
 
 function serializeItem(item: {
-  id: string; index: number; topic: string; format: string; scheduledDate: Date
+  id: string; index: number; topic: string; format: string; platform: string | null; scheduledDate: Date
   hook: string; status: string; rejectComment: string | null
   scriptId: string | null; videoJobId: string | null; publicationId: string | null
 }) {
@@ -144,8 +146,9 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
   }, async (request, reply) => {
     const { workspaceId } = request.params
     const { name, goal, targetAction, startsAt, endsAt } = request.body
+    const body = request.body
     const campaign = await prisma.campaign.create({
-      data: { workspaceId, name, goal, targetAction, startsAt: new Date(startsAt), endsAt: new Date(endsAt) },
+      data: { workspaceId, name, goal, targetAction, startsAt: new Date(startsAt), endsAt: new Date(endsAt), ...(body.targetPlatforms ? { targetPlatforms: body.targetPlatforms } : {}) },
     })
     return reply.status(201).send(serializeCampaign({ ...campaign, contentPlan: null }))
   })
@@ -211,13 +214,16 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
         data: {
           campaignId,
           items: {
-            create: items.map(item => ({
-              index: item.index,
-              topic: item.topic,
-              format: item.format,
-              scheduledDate: new Date(item.scheduledDate),
-              hook: item.hook,
-            })),
+            create: items.flatMap((item) =>
+              campaign.targetPlatforms.map((platform, pIdx) => ({
+                index: item.index * campaign.targetPlatforms.length + pIdx,
+                topic: item.topic,
+                format: item.format,
+                platform,
+                scheduledDate: new Date(item.scheduledDate),
+                hook: item.hook,
+              })),
+            ),
           },
         },
         include: { items: { orderBy: { index: 'asc' } } },
@@ -283,7 +289,7 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
     // Schedule publication if script + socialAccount available
     if (approved.scriptId) {
       const socialAccount = await prisma.socialAccount.findFirst({
-        where: { workspaceId },
+        where: { workspaceId, ...(approved.platform ? { platform: approved.platform } : {}) },
         orderBy: { createdAt: 'asc' },
       })
       if (socialAccount) {
