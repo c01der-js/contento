@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { getPlatformProfile } from '@contento/shared'
 import { getAnthropicClient } from '../client.js'
 import { buildBrandContext } from '../brand-context.js'
 
@@ -33,11 +34,15 @@ function languageName(code: string): string {
 export async function generateVideoStoryboard(
   workspaceId: string,
   script: { hook: string; body: string; cta: string },
-  options?: { shotCount?: number; characterDescription?: string; language?: string },
+  options?: { shotCount?: number; characterDescription?: string; language?: string; platform?: string },
 ): Promise<VideoShot[]> {
   const client = getAnthropicClient()
   const { systemBlock } = await buildBrandContext(workspaceId)
 
+  const profile = options?.platform ? getPlatformProfile(options.platform) : undefined
+  const durationLine = profile
+    ? `Total video duration MUST be ${profile.targetDurationSec.min}-${profile.targetDurationSec.max} seconds (aim ${profile.targetDurationSec.ideal}s). The hook (first shot) must land within ${profile.hookWindowSec}s.`
+    : 'Total duration should be 15–60 seconds.'
   const shotCount = options?.shotCount ?? 5
   const language = options?.language ?? 'ru'
   const characterHint = options?.characterDescription
@@ -64,7 +69,7 @@ export async function generateVideoStoryboard(
           '  durationSec — float, how long this shot should be in seconds (typically 1.5–5)',
           'Rules:',
           '  - First shot must be the hook; last shot must be the CTA / ending',
-          '  - Total duration should be 15–60 seconds',
+          '  - ' + durationLine,
           '  - Keep the same character and visual style across all shots',
           '  - dialogue must come directly from the provided script text',
           'Respond with valid JSON array only. No markdown fences. No extra text.',
