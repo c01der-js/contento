@@ -924,6 +924,7 @@ model VideoJob {
   status       VideoJobStatus @default(PENDING)
   aspectRatio  String         @default("9:16")
   language     String         @default("ru")
+  platform     String?
   outputUrl    String?
   errorMessage String?
   createdAt    DateTime       @default(now())
@@ -990,7 +991,8 @@ model Campaign {
   workspaceId  String
   name         String
   goal         GoalType
-  targetAction String
+  targetAction    String
+  targetPlatforms String[]       @default(["tiktok", "instagram", "youtube", "telegram"])
   startsAt     DateTime
   endsAt       DateTime
   status       CampaignStatus @default(DRAFT)
@@ -1019,6 +1021,7 @@ model ContentPlanItem {
   index         Int
   topic         String
   format        String
+  platform      String?
   scheduledDate DateTime
   hook          String
   status        ContentPlanItemStatus @default(PENDING)
