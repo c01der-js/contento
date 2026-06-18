@@ -49,6 +49,13 @@ export async function generateVideoStoryboard(
     ? `Total video duration MUST be ${profile.targetDurationSec.min}-${profile.targetDurationSec.max} seconds (aim ${profile.targetDurationSec.ideal}s). The hook (first shot) must land within ${profile.hookWindowSec}s.`
     : 'Total duration should be 15–60 seconds.'
   const shotCount = options?.shotCount ?? 5
+
+  // Plan B: split shots into avatar vs b-roll by the platform's formatMix.
+  // screencast weight folds into avatar until Plan B2 ships the synthetic renderer.
+  const brollCount = profile ? Math.round(profile.formatMix.broll * shotCount) : 0
+  const formatLine = brollCount > 0
+    ? `Of the ${shotCount} shots, make exactly ${brollCount} a "broll" shot and the rest "avatar". Spread the b-roll shots through the middle (never the first or last shot).`
+    : 'Every shot is an "avatar" shot.'
   const language = options?.language ?? 'ru'
   const characterHint = options?.characterDescription
     ? `The video features a single consistent AI avatar: ${options.characterDescription}.`
@@ -69,13 +76,16 @@ export async function generateVideoStoryboard(
           `Break the script into exactly ${shotCount} shots following the viral structure: hook → value delivery → CTA/ending.`,
           'Return a JSON array. Each element must have exactly these fields:',
           '  index      — integer, starting at 0',
-          '  prompt     — visual/cinematic description of what to show (max 30 words); describe the scene, camera angle, action, mood',
-          '  dialogue   — the spoken words for this shot (direct quote from the script); omit the field if the shot is silent',
-          '  durationSec — float, how long this shot should be in seconds (typically 1.5–5)',
+          '  shotType   — "avatar" or "broll"',
+          '  prompt     — visual/cinematic description (max 30 words). For avatar: the person speaking. For broll: a scene with NO people and NO faces (objects, places, screens, hands, textures).',
+          '  dialogue   — the spoken voiceover for this shot (direct quote from the script); omit only for a purely visual beat',
+          '  headline   — REQUIRED for broll: 2–6 words of on-screen text; omit for avatar',
+          '  durationSec — float, how long this shot should be (typically 1.5–5)',
           'Rules:',
-          '  - First shot must be the hook; last shot must be the CTA / ending',
+          '  - First shot must be the hook (avatar); last shot must be the CTA / ending (avatar)',
+          '  - ' + formatLine,
           '  - ' + durationLine,
-          '  - Keep the same character and visual style across all shots',
+          '  - b-roll shots keep the voiceover in `dialogue` but show no person; put the punchy phrase in `headline`',
           '  - dialogue must come directly from the provided script text',
           'Respond with valid JSON array only. No markdown fences. No extra text.',
         ].join('\n'),

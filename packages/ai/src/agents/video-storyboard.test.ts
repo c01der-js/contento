@@ -76,4 +76,18 @@ describe('generateVideoStoryboard', () => {
       generateVideoStoryboard('ws1', { hook: 'H', body: 'B', cta: 'C' }),
     ).rejects.toThrow()
   })
+
+  it('instructs a b-roll quota for platforms with broll weight, and parses shotType', async () => {
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'text', text: JSON.stringify([
+        { index: 0, shotType: 'avatar', prompt: 'host on camera', dialogue: 'Привет', durationSec: 3 },
+        { index: 1, shotType: 'broll', prompt: 'city street timelapse, no people', headline: 'Смотри сюда', durationSec: 4 },
+      ]) }],
+    })
+    const shots = await generateVideoStoryboard('ws1', { hook: 'h', body: 'b', cta: 'c' }, { shotCount: 2, platform: 'instagram' })
+    const systemText = mockCreate.mock.calls.at(-1)![0].system.map((s: { text: string }) => s.text).join('\n')
+    expect(systemText).toContain('b-roll')
+    expect(shots[1]!.shotType).toBe('broll')
+    expect(shots[1]!.headline).toBe('Смотри сюда')
+  })
 })
