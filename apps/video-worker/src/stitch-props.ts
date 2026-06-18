@@ -1,4 +1,4 @@
-import type { StitchChunk, StitchShotProps, StitchWord, VideoStitchProps } from '@contento/brand-kit'
+import type { ScreencastContent, StitchChunk, StitchShotProps, StitchWord, VideoStitchProps } from '@contento/brand-kit'
 import { DEFAULT_VIDEO_STITCH_PROPS, VIDEO_STITCH_FPS } from '@contento/brand-kit'
 
 export const STITCH_FPS = VIDEO_STITCH_FPS
@@ -113,7 +113,7 @@ export function buildShotProps(
   }
 }
 
-export interface StitchShotInput {
+export interface VideoStitchShotInput {
   src: string
   probedSec: number
   timing?: ShotTimingJson
@@ -121,6 +121,54 @@ export interface StitchShotInput {
   headline?: string
   /** Natural length of the clip if it differs from `probedSec` (b-roll loops to fill the voiceover). */
   clipProbedSec?: number
+}
+
+export interface ScreencastStitchShotInput {
+  screencast: ScreencastContent
+  /** Voiceover length in seconds — drives the shot duration. */
+  probedSec: number
+  audioSrc?: string
+  timing?: ShotTimingJson
+}
+
+export type StitchShotInput = VideoStitchShotInput | ScreencastStitchShotInput
+
+/**
+ * Build a src-less shot props for a synthetic screencast shot.
+ * The shot duration is driven by the voiceover length (probedSec) without any
+ * Speak-tail trimming (there is no clip to trim). Word timings are still
+ * converted to frames for burned-in subtitles.
+ */
+export function buildScreencastShotProps(input: ScreencastStitchShotInput): StitchShotProps {
+  const durationInFrames = Math.max(1, Math.round(input.probedSec * STITCH_FPS))
+  const validWords = (input.timing?.words ?? []).filter(
+    w => typeof w.text === 'string' && Number.isFinite(w.startSec) && Number.isFinite(w.endSec),
+  )
+  const words: StitchWord[] = validWords
+    .map(w => ({
+      text: w.text,
+      startFrame: Math.round(w.startSec * STITCH_FPS),
+      endFrame: Math.round(w.endSec * STITCH_FPS),
+    }))
+    .filter(w => w.startFrame < durationInFrames)
+    .map(w => {
+      const startFrame = Math.max(0, Math.min(w.startFrame, durationInFrames - 1))
+      return {
+        text: w.text,
+        startFrame,
+        endFrame: Math.min(Math.max(w.endFrame, startFrame + 1), durationInFrames),
+      }
+    })
+  const chunks = chunkWords(words)
+  for (const chunk of chunks) chunk.endFrame = Math.min(chunk.endFrame, durationInFrames)
+  return {
+    shotType: 'screencast',
+    durationInFrames,
+    chunks,
+    screencastTemplate: input.screencast.template,
+    screencastContent: input.screencast,
+    ...(input.audioSrc ? { audioSrc: input.audioSrc } : {}),
+  }
 }
 
 export interface VisualIdentityColors {
@@ -138,11 +186,13 @@ export function buildStitchProps(input: {
   const d = DEFAULT_VIDEO_STITCH_PROPS
   return {
     shots: input.shots.map(s =>
-      buildShotProps(s.src, s.probedSec, s.timing, {
-        ...(s.audioSrc ? { audioSrc: s.audioSrc } : {}),
-        ...(s.headline ? { headline: s.headline } : {}),
-        ...(s.clipProbedSec != null ? { clipProbedSec: s.clipProbedSec } : {}),
-      }),
+      'screencast' in s
+        ? buildScreencastShotProps(s)
+        : buildShotProps(s.src, s.probedSec, s.timing, {
+            ...(s.audioSrc ? { audioSrc: s.audioSrc } : {}),
+            ...(s.headline ? { headline: s.headline } : {}),
+            ...(s.clipProbedSec != null ? { clipProbedSec: s.clipProbedSec } : {}),
+          }),
     ),
     cta: input.cta,
     ctaDurationInFrames: d.ctaDurationInFrames,

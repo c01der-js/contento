@@ -136,6 +136,23 @@ describe('buildStitchProps', () => {
     expect(shot.durationInFrames).toBeGreaterThan(Math.round(5 * 30))
   })
 
+  it('synthetic screencast input yields a src-less prop carrying template content', () => {
+    const props = buildStitchProps({
+      shots: [{
+        screencast: { template: 'slides', title: 'Т', bullets: ['а', 'б'] },
+        probedSec: 5, audioSrc: 'https://x/vo.mp3',
+        timing: { index: 0, audioSec: 5, words: [{ text: 'а', startSec: 0, endSec: 1 }] },
+      }],
+      cta: 'Подпишись',
+    })
+    const shot = props.shots[0]!
+    expect(shot.src).toBeUndefined()
+    expect(shot.shotType).toBe('screencast')
+    expect(shot.screencastContent?.template).toBe('slides')
+    expect(shot.audioSrc).toBe('https://x/vo.mp3')
+    expect(shot.durationInFrames).toBe(Math.round(5 * 30))
+  })
+
   it('assembles props with brand colors and falls back to defaults', () => {
     const props = buildStitchProps({
       shots: [{ src: 'http://a', probedSec: 5 }],

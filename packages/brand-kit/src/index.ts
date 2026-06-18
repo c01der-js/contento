@@ -24,4 +24,5 @@ export type {
   StitchChunk,
   StitchShotProps,
   VideoStitchProps,
+  ScreencastContent,
 } from './compositions/video-stitch-shared.js'
