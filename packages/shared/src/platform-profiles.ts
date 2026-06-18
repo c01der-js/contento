@@ -12,6 +12,7 @@ export interface PlatformProfile {
   captionMaxLen: number
   nativeSoundImportance: 'high' | 'low'
   aigcDisclosure: true
+  formatMix: { avatar: number; broll: number; screencast: number } // weights, sum = 1
 }
 
 const PROFILES: Record<TargetPlatform, PlatformProfile> = {
@@ -19,21 +20,25 @@ const PROFILES: Record<TargetPlatform, PlatformProfile> = {
     platform: 'tiktok', targetDurationSec: { min: 21, ideal: 28, max: 34 }, hookWindowSec: 3,
     captionStyle: 'conversational-trend', hashtagCount: 4, captionMaxLen: 2200,
     nativeSoundImportance: 'high', aigcDisclosure: true,
+    formatMix: { avatar: 0.7, broll: 0.2, screencast: 0.1 },
   },
   instagram: {
     platform: 'instagram', targetDurationSec: { min: 15, ideal: 20, max: 30 }, hookWindowSec: 3,
     captionStyle: 'seo-keyword-first', hashtagCount: 5, captionMaxLen: 2200,
     nativeSoundImportance: 'low', aigcDisclosure: true,
+    formatMix: { avatar: 0.4, broll: 0.4, screencast: 0.2 },
   },
   youtube: {
     platform: 'youtube', targetDurationSec: { min: 20, ideal: 28, max: 35 }, hookWindowSec: 2,
     captionStyle: 'seo-keyword-first', hashtagCount: 3, captionMaxLen: 100,
     nativeSoundImportance: 'low', aigcDisclosure: true,
+    formatMix: { avatar: 0.6, broll: 0.3, screencast: 0.1 },
   },
   telegram: {
     platform: 'telegram', targetDurationSec: { min: 20, ideal: 30, max: 45 }, hookWindowSec: 3,
     captionStyle: 'conversational-trend', hashtagCount: 3, captionMaxLen: 1024,
     nativeSoundImportance: 'low', aigcDisclosure: true,
+    formatMix: { avatar: 0.5, broll: 0.3, screencast: 0.2 },
   },
 }
 

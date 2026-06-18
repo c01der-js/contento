@@ -20,4 +20,15 @@ describe('getPlatformProfile', () => {
   it('falls back to instagram for an unknown platform', () => {
     expect(getPlatformProfile('nope').platform).toBe('instagram')
   })
+  it('every profile has a formatMix whose weights sum to 1', () => {
+    for (const pl of TARGET_PLATFORMS) {
+      const m = getPlatformProfile(pl).formatMix
+      const sum = m.avatar + m.broll + m.screencast
+      expect(Math.abs(sum - 1)).toBeLessThan(1e-9)
+    }
+  })
+  it('tiktok is avatar-heavy (storytime); instagram leans b-roll', () => {
+    expect(getPlatformProfile('tiktok').formatMix.avatar).toBeGreaterThanOrEqual(0.6)
+    expect(getPlatformProfile('instagram').formatMix.broll).toBeGreaterThanOrEqual(0.4)
+  })
 })
