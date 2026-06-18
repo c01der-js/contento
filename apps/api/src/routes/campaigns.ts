@@ -287,6 +287,15 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
     if (!item) return reply.status(404).send({ error: 'Item not found' })
     if (item.status !== 'CLIENT_REVIEW') return reply.status(400).send({ error: `Item status is ${item.status}, expected CLIENT_REVIEW` })
 
+    // QA gate: a BLOCK verdict prevents approval. WARN/PASS (or no QA record) proceed.
+    const latestQa = await prisma.qaCheck.findFirst({
+      where: { contentPlanItemId: itemId },
+      orderBy: { createdAt: 'desc' },
+    })
+    if (latestQa?.status === 'BLOCK') {
+      return reply.status(400).send({ error: 'QA check blocked this item; regenerate or reject it.' })
+    }
+
     const approved = await prisma.contentPlanItem.update({
       where: { id: itemId },
       data: { status: 'APPROVED' },
