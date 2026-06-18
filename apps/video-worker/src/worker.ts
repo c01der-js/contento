@@ -314,9 +314,24 @@ export async function handleStitch({ videoJobId }: StitchJobPayload) {
         if (!shot.clipUrl) throw new Error(`Shot ${shot.id} has no clipUrl`)
         // Mock clips are public external URLs — pass through unsigned.
         const src = isOwnS3Url(shot.clipUrl) ? await presignGetUrl(keyFromUrl(shot.clipUrl)) : shot.clipUrl
-        const probedSec = await probeDurationSec(src)
-        const timing = subtitles?.shots.find(s => s.index === shot.index)
-        shotInputs.push({ src, probedSec, ...(timing ? { timing } : {}) })
+        const clipProbedSec = await probeDurationSec(src)
+        const timing = subtitles?.shots.find((s) => s.index === shot.index)
+        if (shot.audioUrl) {
+          // b-roll: voiceover drives the shot duration; the silent clip loops underneath.
+          const audioSrc = isOwnS3Url(shot.audioUrl) ? await presignGetUrl(keyFromUrl(shot.audioUrl)) : shot.audioUrl
+          const voiceSec = timing?.audioSec ?? clipProbedSec
+          shotInputs.push({
+            src,
+            probedSec: voiceSec,
+            clipProbedSec,
+            audioSrc,
+            ...(shot.headline ? { headline: shot.headline } : {}),
+            ...(timing ? { timing } : {}),
+          })
+        } else {
+          // avatar: clip carries its own audio; duration = clip length (unchanged behavior).
+          shotInputs.push({ src, probedSec: clipProbedSec, ...(timing ? { timing } : {}) })
+        }
       }
       const logoUrl = visual?.logoUrl
         ? (isOwnS3Url(visual.logoUrl) ? await presignGetUrl(keyFromUrl(visual.logoUrl)) : visual.logoUrl)
