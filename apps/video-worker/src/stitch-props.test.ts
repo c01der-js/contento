@@ -120,6 +120,22 @@ describe('parseSubtitlesJson', () => {
 })
 
 describe('buildStitchProps', () => {
+  it('b-roll input yields audioSrc, headline, and loop frames', () => {
+    const props = buildStitchProps({
+      // b-roll caller passes the VOICEOVER length as probedSec (drives duration) and the
+      // clip's own length as clipProbedSec (drives the loop). Here: 6s voice over a 4s clip.
+      shots: [{ src: 'https://x/clip.mp4', probedSec: 6, audioSrc: 'https://x/vo.mp3', headline: 'Вот так', clipProbedSec: 4,
+        timing: { index: 0, audioSec: 6, words: [{ text: 'Вот', startSec: 0, endSec: 0.5 }, { text: 'так', startSec: 5.4, endSec: 6 }] } }],
+      cta: 'Подпишись',
+    })
+    const shot = props.shots[0]!
+    expect(shot.audioSrc).toBe('https://x/vo.mp3')
+    expect(shot.headline).toBe('Вот так')
+    expect(shot.clipDurationInFrames).toBe(Math.round(4 * 30))
+    // duration follows the 6s voiceover, not the 4s clip
+    expect(shot.durationInFrames).toBeGreaterThan(Math.round(5 * 30))
+  })
+
   it('assembles props with brand colors and falls back to defaults', () => {
     const props = buildStitchProps({
       shots: [{ src: 'http://a', probedSec: 5 }],

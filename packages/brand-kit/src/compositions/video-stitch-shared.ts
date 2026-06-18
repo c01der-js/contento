@@ -18,6 +18,12 @@ export interface StitchShotProps {
   /** Trimmed shot length in frames (may be shorter than the source clip). */
   durationInFrames: number
   chunks: StitchChunk[]
+  /** Voiceover track for non-avatar shots (avatar audio is baked into `src`). */
+  audioSrc?: string
+  /** On-screen headline for b-roll shots. */
+  headline?: string
+  /** Natural length of `src` in frames; when set and shorter than durationInFrames, the clip loops. */
+  clipDurationInFrames?: number
 }
 
 export interface VideoStitchProps {

@@ -72,7 +72,12 @@ const TRIM_PADDING_SEC = 0.4
  * bunch overflow subtitles); and every kept word holds at least one frame so the
  * karaoke highlight always fires.
  */
-export function buildShotProps(src: string, probedSec: number, timing?: ShotTimingJson): StitchShotProps {
+export function buildShotProps(
+  src: string,
+  probedSec: number,
+  timing?: ShotTimingJson,
+  extra?: { audioSrc?: string; headline?: string; clipProbedSec?: number },
+): StitchShotProps {
   const validWords = (timing?.words ?? []).filter(
     w => typeof w.text === 'string' && Number.isFinite(w.startSec) && Number.isFinite(w.endSec),
   )
@@ -96,13 +101,26 @@ export function buildShotProps(src: string, probedSec: number, timing?: ShotTimi
     })
   const chunks = chunkWords(words)
   for (const chunk of chunks) chunk.endFrame = Math.min(chunk.endFrame, durationInFrames)
-  return { src, durationInFrames, chunks }
+  const clipDurationInFrames =
+    extra?.clipProbedSec != null ? Math.max(1, Math.round(extra.clipProbedSec * STITCH_FPS)) : undefined
+  return {
+    src,
+    durationInFrames,
+    chunks,
+    ...(extra?.audioSrc ? { audioSrc: extra.audioSrc } : {}),
+    ...(extra?.headline ? { headline: extra.headline } : {}),
+    ...(clipDurationInFrames != null ? { clipDurationInFrames } : {}),
+  }
 }
 
 export interface StitchShotInput {
   src: string
   probedSec: number
   timing?: ShotTimingJson
+  audioSrc?: string
+  headline?: string
+  /** Natural length of the clip if it differs from `probedSec` (b-roll loops to fill the voiceover). */
+  clipProbedSec?: number
 }
 
 export interface VisualIdentityColors {
@@ -119,7 +137,13 @@ export function buildStitchProps(input: {
 }): VideoStitchProps {
   const d = DEFAULT_VIDEO_STITCH_PROPS
   return {
-    shots: input.shots.map(s => buildShotProps(s.src, s.probedSec, s.timing)),
+    shots: input.shots.map(s =>
+      buildShotProps(s.src, s.probedSec, s.timing, {
+        ...(s.audioSrc ? { audioSrc: s.audioSrc } : {}),
+        ...(s.headline ? { headline: s.headline } : {}),
+        ...(s.clipProbedSec != null ? { clipProbedSec: s.clipProbedSec } : {}),
+      }),
+    ),
     cta: input.cta,
     ctaDurationInFrames: d.ctaDurationInFrames,
     primaryColor: input.visual?.primaryColor ?? d.primaryColor,
