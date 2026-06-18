@@ -141,6 +141,13 @@ async function handleGenerate(
   // stitch to burn in subtitles. Shape: { version: 1, shots: ShotTimingJson[] }
   const shotTimings: Array<{ index: number; audioSec: number; words: WordTiming[] }> = []
 
+  // All screencast shots in a job share the workspace's newest uploaded recording (if any),
+  // resolved once here rather than per-shot. null => synthetic screens from screencastContent.
+  const screencastRecordingUrl =
+    !mock && shotRows.some((s) => (s.shotType ?? 'avatar') === 'screencast')
+      ? (await prisma.asset.findFirst({ where: { workspaceId, kind: 'SCREENCAST' }, orderBy: { createdAt: 'desc' } }))?.url ?? null
+      : null
+
   let cancelled = false
   for (const shot of shotRows) {
     // Abort between shots if the campaign was stopped, to stop burning render credits.
@@ -166,12 +173,8 @@ async function handleGenerate(
             shotAudioUrl = await uploadBuffer(tts.audio, audioKey, 'audio/mpeg')
             shotTimings.push({ index: shot.index, audioSec, words: tts.words })
           }
-          // Optional uploaded screen recording: newest SCREENCAST asset backs the shot as a real clip.
-          const recording = await prisma.asset.findFirst({
-            where: { workspaceId, kind: 'SCREENCAST' },
-            orderBy: { createdAt: 'desc' },
-          })
-          clipUrl = recording?.url ?? null // null => synthetic screen rendered from screencastContent
+          // Optional uploaded screen recording backs the shot as a real clip; else synthetic.
+          clipUrl = screencastRecordingUrl // null => synthetic screen rendered from screencastContent
         } else if (effectiveType === 'broll') {
           // B-ROLL: voiceover plays over a silent generated scene (no talking head).
           let audioSec = 0
