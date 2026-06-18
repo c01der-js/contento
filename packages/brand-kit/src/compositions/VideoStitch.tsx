@@ -64,6 +64,7 @@ function SubtitleChunkView({ chunk, accentColor }: { chunk: StitchChunk; accentC
 
 function ShotLayer({ shot, accentColor }: { shot: StitchShotProps; accentColor: string }) {
   const frame = useCurrentFrame()
+  // Subtle Ken Burns zoom so static avatar shots don't feel frozen; also applies to looped b-roll.
   const scale = interpolate(frame, [0, Math.max(1, shot.durationInFrames)], [1, 1.04])
   const video = (
     <OffthreadVideo
@@ -75,7 +76,7 @@ function ShotLayer({ shot, accentColor }: { shot: StitchShotProps; accentColor: 
     <AbsoluteFill style={{ backgroundColor: '#000' }}>
       {shot.clipDurationInFrames != null && shot.clipDurationInFrames < shot.durationInFrames ? (
         // b-roll: loop the short DoP clip to fill the (longer) voiceover.
-        <Loop durationInFrames={shot.clipDurationInFrames}>{video}</Loop>
+        <Loop durationInFrames={Math.max(1, shot.clipDurationInFrames)}>{video}</Loop>
       ) : (
         video
       )}
