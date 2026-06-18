@@ -12,4 +12,6 @@ export interface VideoProvider {
   talkingHead(opts: { imageUrl: string; audioUrl: string; prompt: string; audioDurationSec: number }): Promise<string>
   /** Silent motion clip from a still image; returns a video clip URL. */
   motionFromImage(opts: { imageUrl: string; prompt: string; seed?: number }): Promise<string>
+  /** Generate a b-roll scene still from a text prompt (no character/Soul); returns an image URL. */
+  sceneFrame(prompt: string, opts?: { seed?: number }): Promise<string>
 }

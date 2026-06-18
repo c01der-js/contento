@@ -4,6 +4,7 @@ export {
   submitImageToVideo,
   pollJobUntilDone,
   generateCharacterPortrait,
+  submitFoundationImage,
   uploadToHiggsfield,
   buildSoulParams,
   buildSpeakParams,

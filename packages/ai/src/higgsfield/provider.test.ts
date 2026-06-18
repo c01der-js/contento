@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { submitSoul, submitTalking, submitMotion, poll, upload } = vi.hoisted(() => ({
+const { submitSoul, submitTalking, submitMotion, poll, upload, submitFoundation } = vi.hoisted(() => ({
   submitSoul: vi.fn(),
   submitTalking: vi.fn(),
   submitMotion: vi.fn(),
   poll: vi.fn(),
   upload: vi.fn(),
+  submitFoundation: vi.fn(),
 }))
 
 vi.mock('./client.js', () => ({
@@ -14,6 +15,7 @@ vi.mock('./client.js', () => ({
   submitImageToVideo: submitMotion,
   pollJobUntilDone: poll,
   uploadToHiggsfield: upload,
+  submitFoundationImage: submitFoundation,
 }))
 
 import { HiggsfieldProvider } from './provider.js'
@@ -47,5 +49,15 @@ describe('HiggsfieldProvider', () => {
     const url = await p.motionFromImage({ imageUrl: 'i', prompt: 'p', seed: 5 })
     expect(submitMotion).toHaveBeenCalledWith('i', 'p', { seed: 5 })
     expect(url).toBe('https://hf/silent.mp4')
+  })
+
+  it('sceneFrame submits foundation text2image then polls and returns the image url', async () => {
+    submitFoundation.mockResolvedValue('job-4')
+    poll.mockResolvedValue('https://hf/scene.png')
+    const p = new HiggsfieldProvider()
+    const url = await p.sceneFrame('city street, no people', { seed: 9 })
+    expect(submitFoundation).toHaveBeenCalledWith('city street, no people', { seed: 9 })
+    expect(poll).toHaveBeenCalledWith('job-4')
+    expect(url).toBe('https://hf/scene.png')
   })
 })

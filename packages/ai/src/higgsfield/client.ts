@@ -227,6 +227,24 @@ export async function submitImageToVideo(
 }
 
 /**
+ * Generate a b-roll scene image from a raw prompt via Higgsfield foundation
+ * text2image (NO Soul character). Returns a jobSetId to poll with pollJobUntilDone().
+ * Distinct from generateCharacterPortrait (which wraps the prompt for a person portrait).
+ */
+export async function submitFoundationImage(
+  prompt: string,
+  options?: { seed?: number },
+): Promise<string> {
+  return hfGenerate('/v1/text2image/foundation', {
+    prompt,
+    width_and_height: '1152x2048', // 9:16, matches the avatar Soul frames
+    quality: '1080p',
+    batch_size: 1,
+    ...(options?.seed != null ? { seed: options.seed } : {}),
+  })
+}
+
+/**
  * Generate a character portrait image from a text description.
  * Uses Higgsfield foundation text2image (no Soul required).
  * Returns a jobSetId to poll with pollJobUntilDone().

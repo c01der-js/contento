@@ -3,6 +3,7 @@ import {
   submitSoulCharacterFrame,
   submitTalkingAvatarClip,
   submitImageToVideo,
+  submitFoundationImage,
   pollJobUntilDone,
   uploadToHiggsfield,
 } from './client.js'
@@ -34,6 +35,16 @@ export class HiggsfieldProvider implements VideoProvider {
       jobSetId = await submitImageToVideo(opts.imageUrl, opts.prompt, { seed: opts.seed })
     } else {
       jobSetId = await submitImageToVideo(opts.imageUrl, opts.prompt)
+    }
+    return pollJobUntilDone(jobSetId)
+  }
+
+  async sceneFrame(prompt: string, opts?: { seed?: number }): Promise<string> {
+    let jobSetId: string
+    if (opts?.seed != null) {
+      jobSetId = await submitFoundationImage(prompt, { seed: opts.seed })
+    } else {
+      jobSetId = await submitFoundationImage(prompt)
     }
     return pollJobUntilDone(jobSetId)
   }
