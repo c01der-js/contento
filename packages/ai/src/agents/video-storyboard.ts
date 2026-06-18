@@ -3,10 +3,15 @@ import { getPlatformProfile } from '@contento/shared'
 import { getAnthropicClient } from '../client.js'
 import { buildBrandContext } from '../brand-context.js'
 
+export const ShotTypeSchema = z.enum(['avatar', 'broll', 'screencast'])
+export type ShotType = z.infer<typeof ShotTypeSchema>
+
 export const VideoShotSchema = z.object({
   index: z.number().int().min(0),
+  shotType: ShotTypeSchema.default('avatar'),
   prompt: z.string().min(1),
   dialogue: z.string().optional(),
+  headline: z.string().optional(), // on-screen text; required-ish for broll (validated in the prompt, not the schema)
   durationSec: z.number().positive(),
 })
 
