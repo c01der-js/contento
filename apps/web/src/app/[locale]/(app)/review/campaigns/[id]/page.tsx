@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/nextjs'
 import { useParams } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { useWorkspace } from '@/lib/workspace'
+import { QaBadge } from '@/components/qa/QaBadge'
 
 interface ContentPlanItem {
   id: string
@@ -14,6 +15,8 @@ interface ContentPlanItem {
   status: string
   rejectComment: string | null
   videoJobId: string | null
+  qaStatus: 'PASS' | 'WARN' | 'BLOCK' | null
+  qaFindings: { id: string; severity: string; message: string }[] | null
 }
 
 interface VideoJob {
@@ -143,7 +146,10 @@ export default function ReviewCampaignPage() {
                     <p className="text-xs text-gray-500 italic mt-1">"{item.hook}"</p>
                     <p className="text-xs text-gray-400 mt-1">{new Date(item.scheduledDate).toLocaleDateString()}</p>
                   </div>
-                  <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded-full">Needs review</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded-full">Needs review</span>
+                    <QaBadge status={item.qaStatus} findings={item.qaFindings} />
+                  </div>
                 </div>
 
                 {videoJob?.outputUrl && videoToken ? (
@@ -170,7 +176,8 @@ export default function ReviewCampaignPage() {
                     </button>
                     <button
                       onClick={() => { void handleApprove(item.id) }}
-                      disabled={isActing}
+                      disabled={isActing || item.qaStatus === 'BLOCK'}
+                      title={item.qaStatus === 'BLOCK' ? 'QA заблокировал этот ролик — отклоните или перегенерируйте' : undefined}
                       className="flex-1 py-2 px-4 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                     >
                       {isActing ? 'Processing...' : 'Approve & Schedule'}
