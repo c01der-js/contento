@@ -187,20 +187,20 @@ export function startCampaignProducer(): Worker {
           // Auto QA gate: compute a verdict from the finished job and persist it for the
           // approve handler + the review UI. Never throws into the producer loop.
           try {
-            const job = await prisma.videoJob.findUnique({
+            const dbJob = await prisma.videoJob.findUnique({
               where: { id: videoJob.id },
               include: { shots: { orderBy: { index: 'asc' } }, script: { select: { subtitles: true } } },
             })
-            if (job) {
+            if (dbJob) {
               const qa = runQaChecks({
-                platform: job.platform,
-                outputUrl: job.outputUrl,
-                jobStatus: job.status,
-                shots: job.shots.map((s) => ({ index: s.index, durationSec: s.durationSec, dialogue: s.dialogue, status: s.status })),
-                subtitles: (job.script.subtitles as unknown as QaInputSubtitles) ?? null,
+                platform: dbJob.platform,
+                outputUrl: dbJob.outputUrl,
+                jobStatus: dbJob.status,
+                shots: dbJob.shots.map((s) => ({ index: s.index, durationSec: s.durationSec, dialogue: s.dialogue, status: s.status })),
+                subtitles: (dbJob.script.subtitles as unknown as QaInputSubtitles) ?? null,
               })
               await prisma.qaCheck.create({
-                data: { contentPlanItemId: item.id, videoJobId: job.id, status: qa.status, findings: qa.findings as object },
+                data: { contentPlanItemId: item.id, videoJobId: dbJob.id, status: qa.status, findings: qa.findings as object },
               })
             }
           } catch (err) {
