@@ -77,15 +77,20 @@ function ShotLayer({
   const frame = useCurrentFrame()
 
   // SYNTHETIC SCREENCAST: no clip; render the screen from structured content.
-  if (shot.shotType === 'screencast' && !shot.src && shot.screencastContent) {
+  // Any screencast shot without a `src` is synthetic — catch it here so it can never
+  // fall through to the video branch's `shot.src!` (which would hand OffthreadVideo an
+  // undefined src). If content is somehow missing, render a black fill, not a crash.
+  if (shot.shotType === 'screencast' && !shot.src) {
     return (
       <AbsoluteFill style={{ backgroundColor: '#000' }}>
-        <ScreencastShot
-          content={shot.screencastContent}
-          primaryColor={primaryColor}
-          secondaryColor={secondaryColor}
-          accentColor={accentColor}
-        />
+        {shot.screencastContent && (
+          <ScreencastShot
+            content={shot.screencastContent}
+            primaryColor={primaryColor}
+            secondaryColor={secondaryColor}
+            accentColor={accentColor}
+          />
+        )}
         {/* Avatar clips bake audio in; screencast/b-roll carry audioSrc — no double track. */}
         {shot.audioSrc && <Audio src={shot.audioSrc} />}
         {shot.chunks.map((c, i) => (
@@ -201,11 +206,11 @@ export function VideoStitch(props: VideoStitchProps) {
       {props.shots.map((shot, i) => (
         <Sequence key={i} from={offsets[i]!} durationInFrames={shot.durationInFrames}>
           <ShotLayer
-              shot={shot}
-              primaryColor={props.primaryColor}
-              secondaryColor={props.secondaryColor}
-              accentColor={props.accentColor}
-            />
+            shot={shot}
+            primaryColor={props.primaryColor}
+            secondaryColor={props.secondaryColor}
+            accentColor={props.accentColor}
+          />
         </Sequence>
       ))}
       <Sequence from={offset} durationInFrames={props.ctaDurationInFrames}>
