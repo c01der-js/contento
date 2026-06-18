@@ -333,12 +333,14 @@ export async function handleStitch({ videoJobId }: StitchJobPayload) {
       for (const shot of shots) {
         const timing = subtitles?.shots.find((s) => s.index === shot.index)
         // SYNTHETIC SCREENCAST: no clip; build a src-less input from the stored content.
+        // (A screencast shot WITH a clipUrl is an uploaded recording — it falls through to the clip path.)
         if (shot.shotType === 'screencast' && !shot.clipUrl) {
           if (!shot.screencastContent) throw new Error(`Screencast shot ${shot.id} has no content`)
           const audioSrc = shot.audioUrl
             ? (isOwnS3Url(shot.audioUrl) ? await presignGetUrl(keyFromUrl(shot.audioUrl)) : shot.audioUrl)
             : undefined
-          const voiceSec = timing?.audioSec ?? 3
+          // Voiceover length drives duration; a silent screencast falls back to the storyboard's durationSec.
+          const voiceSec = timing?.audioSec ?? shot.durationSec
           shotInputs.push({
             screencast: shot.screencastContent as unknown as ScreencastContent,
             probedSec: voiceSec,
