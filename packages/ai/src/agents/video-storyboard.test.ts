@@ -105,7 +105,7 @@ describe('generateVideoStoryboard', () => {
     // shotCount 5 so the prompt's "spread b-roll through the middle, never first/last" rule is satisfiable
     const shots = await generateVideoStoryboard('ws1', { hook: 'h', body: 'b', cta: 'c' }, { shotCount: 5, platform: 'instagram' })
     const systemText = mockCreate.mock.calls.at(-1)![0].system.map((s: { text: string }) => s.text).join('\n')
-    expect(systemText).toContain('b-roll')
+    expect(systemText).toContain('broll')
     expect(shots[1]!.shotType).toBe('broll')
     expect(shots[1]!.headline).toBe('Смотри сюда')
   })

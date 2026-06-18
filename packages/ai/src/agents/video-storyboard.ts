@@ -67,14 +67,17 @@ export async function generateVideoStoryboard(
   // Plan B2: split shots into avatar / b-roll / screencast by the platform's formatMix.
   const brollCount = profile ? Math.round(profile.formatMix.broll * shotCount) : 0
   const screencastCount = profile ? Math.round(profile.formatMix.screencast * shotCount) : 0
-  // Never let non-avatar shots take the first/last slot, and keep >=1 avatar slot for hook+CTA.
+  // Never let non-avatar shots take the first/last slot — reserve >=2 avatar slots for hook+CTA.
   const maxNonAvatar = Math.max(0, shotCount - 2)
   const nonAvatar = Math.min(brollCount + screencastCount, maxNonAvatar)
   const broll = Math.min(brollCount, nonAvatar)
   const screencast = Math.min(screencastCount, nonAvatar - broll)
+  const quotaParts: string[] = []
+  if (broll > 0) quotaParts.push(`${broll} "broll"`)
+  if (screencast > 0) quotaParts.push(`${screencast} "screencast"`)
   const formatLine =
-    broll + screencast > 0
-      ? `Of the ${shotCount} shots, make exactly ${broll} "broll" and ${screencast} "screencast"; the rest are "avatar". Never put a broll or screencast shot first or last.`
+    quotaParts.length > 0
+      ? `Of the ${shotCount} shots, make exactly ${quotaParts.join(' and ')}; the rest are "avatar". Never put a broll or screencast shot first or last.`
       : 'Every shot is an "avatar" shot.'
   const language = options?.language ?? 'ru'
   const characterHint = options?.characterDescription
@@ -110,7 +113,7 @@ export async function generateVideoStoryboard(
           '  - First shot is the hook (avatar); last shot is the CTA / ending (avatar)',
           '  - ' + formatLine,
           '  - ' + durationLine,
-          '  - b-roll keeps the voiceover in `dialogue`, shows no person, puts a punchy phrase in `headline`',
+          '  - broll keeps the voiceover in `dialogue`, shows no person, puts a punchy phrase in `headline`',
           '  - screencast keeps the voiceover in `dialogue`; all on-screen words go in `screencastContent` (Russian, short)',
           '  - dialogue must come directly from the provided script text',
           'Respond with valid JSON array only. No markdown fences. No extra text.',
@@ -141,6 +144,12 @@ export async function generateVideoStoryboard(
   }
   if (result.data.length < 1) {
     throw new Error('video-storyboard agent returned empty shot list')
+  }
+  // screencastContent is schema-optional (avatar/broll omit it), but a screencast shot
+  // without it would render an empty screen — fail fast here with a clear message.
+  const orphanScreencast = result.data.find((s) => s.shotType === 'screencast' && !s.screencastContent)
+  if (orphanScreencast) {
+    throw new Error(`video-storyboard: screencast shot ${orphanScreencast.index} missing screencastContent`)
   }
 
   return result.data
