@@ -18,7 +18,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
   })),
 }))
 
-import { generateVideoStoryboard } from './video-storyboard.js'
+import { generateVideoStoryboard, VideoShotSchema } from './video-storyboard.js'
 
 function agentReply(text: string) {
   return { content: [{ type: 'text', text }] }
@@ -75,6 +75,24 @@ describe('generateVideoStoryboard', () => {
     await expect(
       generateVideoStoryboard('ws1', { hook: 'H', body: 'B', cta: 'C' }),
     ).rejects.toThrow()
+  })
+
+  it('parses a screencast shot with discriminated content (slides)', () => {
+    const parsed = VideoShotSchema.parse({
+      index: 1, shotType: 'screencast', prompt: 'slides screen', dialogue: 'три причины',
+      screencastContent: { template: 'slides', title: 'Три причины', bullets: ['Раз', 'Два', 'Три'] },
+      durationSec: 5,
+    })
+    expect(parsed.shotType).toBe('screencast')
+    expect(parsed.screencastContent?.template).toBe('slides')
+  })
+
+  it('rejects screencast content with the wrong shape for its template', () => {
+    const r = VideoShotSchema.safeParse({
+      index: 1, shotType: 'screencast', prompt: 'x', durationSec: 5,
+      screencastContent: { template: 'chat', title: 'nope' }, // chat needs messages, not title
+    })
+    expect(r.success).toBe(false)
   })
 
   it('instructs a b-roll quota for platforms with broll weight, and parses shotType', async () => {

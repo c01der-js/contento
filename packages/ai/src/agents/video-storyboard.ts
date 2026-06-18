@@ -8,12 +8,26 @@ import { buildBrandContext } from '../brand-context.js'
 export const ShotTypeSchema = z.enum(['avatar', 'broll', 'screencast'])
 export type ShotType = z.infer<typeof ShotTypeSchema>
 
+export const ScreencastTemplateSchema = z.enum(['slides', 'chat', 'browser', 'phone-app'])
+export type ScreencastTemplate = z.infer<typeof ScreencastTemplateSchema>
+
+// Structured on-screen content per template. Mirror of @contento/brand-kit's
+// ScreencastContent TS types — keep the two in sync (renderer consumes the same shape).
+export const ScreencastContentSchema = z.discriminatedUnion('template', [
+  z.object({ template: z.literal('slides'), title: z.string().min(1), bullets: z.array(z.string().min(1)).min(1).max(5) }),
+  z.object({ template: z.literal('chat'), messages: z.array(z.object({ side: z.enum(['left', 'right']), text: z.string().min(1) })).min(1).max(6) }),
+  z.object({ template: z.literal('browser'), url: z.string().min(1), title: z.string().min(1), lines: z.array(z.string().min(1)).min(1).max(4) }),
+  z.object({ template: z.literal('phone-app'), appName: z.string().min(1), items: z.array(z.string().min(1)).min(1).max(5) }),
+])
+export type ScreencastContent = z.infer<typeof ScreencastContentSchema>
+
 export const VideoShotSchema = z.object({
   index: z.number().int().min(0),
   shotType: ShotTypeSchema.default('avatar'),
   prompt: z.string().min(1),
   dialogue: z.string().optional(),
   headline: z.string().optional(), // on-screen text; required-ish for broll (validated in the prompt, not the schema)
+  screencastContent: ScreencastContentSchema.optional(), // required-ish for screencast (enforced in the prompt)
   durationSec: z.number().positive(),
 })
 
