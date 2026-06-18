@@ -109,4 +109,20 @@ describe('generateVideoStoryboard', () => {
     expect(shots[1]!.shotType).toBe('broll')
     expect(shots[1]!.headline).toBe('Смотри сюда')
   })
+
+  it('instructs a screencast quota and parses screencast shots with content', async () => {
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'text', text: JSON.stringify([
+        { index: 0, shotType: 'avatar', prompt: 'host', dialogue: 'Привет', durationSec: 3 },
+        { index: 1, shotType: 'screencast', prompt: 'slides', dialogue: 'три причины',
+          screencastContent: { template: 'slides', title: 'Три причины', bullets: ['А', 'Б'] }, durationSec: 5 },
+        { index: 2, shotType: 'avatar', prompt: 'host', dialogue: 'Пока', durationSec: 3 },
+      ]) }],
+    })
+    const shots = await generateVideoStoryboard('ws1', { hook: 'h', body: 'b', cta: 'c' }, { shotCount: 5, platform: 'telegram' })
+    const systemText = mockCreate.mock.calls.at(-1)![0].system.map((s: { text: string }) => s.text).join('\n')
+    expect(systemText).toContain('screencast')
+    expect(shots[1]!.shotType).toBe('screencast')
+    expect(shots[1]!.screencastContent?.template).toBe('slides')
+  })
 })

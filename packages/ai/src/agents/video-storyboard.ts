@@ -3,8 +3,6 @@ import { getPlatformProfile } from '@contento/shared'
 import { getAnthropicClient } from '../client.js'
 import { buildBrandContext } from '../brand-context.js'
 
-// 'screencast' is a valid value but is treated as 'avatar' until Plan B2 ships the
-// synthetic-screen renderer (the storyboard prompt only instructs avatar/broll).
 export const ShotTypeSchema = z.enum(['avatar', 'broll', 'screencast'])
 export type ShotType = z.infer<typeof ShotTypeSchema>
 
@@ -66,12 +64,18 @@ export async function generateVideoStoryboard(
     : 'Total duration should be 15–60 seconds.'
   const shotCount = options?.shotCount ?? 5
 
-  // Plan B: split shots into avatar vs b-roll by the platform's formatMix.
-  // screencast weight folds into avatar until Plan B2 ships the synthetic renderer.
+  // Plan B2: split shots into avatar / b-roll / screencast by the platform's formatMix.
   const brollCount = profile ? Math.round(profile.formatMix.broll * shotCount) : 0
-  const formatLine = brollCount > 0
-    ? `Of the ${shotCount} shots, make exactly ${brollCount} a "broll" shot and the rest "avatar". Spread the b-roll shots through the middle (never the first or last shot).`
-    : 'Every shot is an "avatar" shot.'
+  const screencastCount = profile ? Math.round(profile.formatMix.screencast * shotCount) : 0
+  // Never let non-avatar shots take the first/last slot, and keep >=1 avatar slot for hook+CTA.
+  const maxNonAvatar = Math.max(0, shotCount - 2)
+  const nonAvatar = Math.min(brollCount + screencastCount, maxNonAvatar)
+  const broll = Math.min(brollCount, nonAvatar)
+  const screencast = Math.min(screencastCount, nonAvatar - broll)
+  const formatLine =
+    broll + screencast > 0
+      ? `Of the ${shotCount} shots, make exactly ${broll} "broll" and ${screencast} "screencast"; the rest are "avatar". Never put a broll or screencast shot first or last.`
+      : 'Every shot is an "avatar" shot.'
   const language = options?.language ?? 'ru'
   const characterHint = options?.characterDescription
     ? `The video features a single consistent AI avatar: ${options.characterDescription}.`
@@ -92,16 +96,22 @@ export async function generateVideoStoryboard(
           `Break the script into exactly ${shotCount} shots following the viral structure: hook → value delivery → CTA/ending.`,
           'Return a JSON array. Each element must have exactly these fields:',
           '  index      — integer, starting at 0',
-          '  shotType   — "avatar" or "broll"',
-          '  prompt     — visual/cinematic description (max 30 words). For avatar: the person speaking. For broll: a scene with NO people and NO faces (objects, places, screens, hands, textures).',
-          '  dialogue   — the spoken voiceover for this shot (direct quote from the script); omit only for a purely visual beat',
-          '  headline   — REQUIRED for broll: 2–6 words of on-screen text; omit for avatar',
-          '  durationSec — float, how long this shot should be (typically 1.5–5)',
+          '  shotType   — "avatar", "broll", or "screencast"',
+          '  prompt     — visual description (max 30 words). avatar: the person speaking. broll: a scene with NO people/faces. screencast: name the synthetic screen to show.',
+          '  dialogue   — the spoken voiceover for this shot (direct quote from the script)',
+          '  headline   — REQUIRED for broll: 2–6 words of on-screen text; omit for avatar/screencast',
+          '  screencastContent — REQUIRED for screencast only. One JSON object, pick ONE template:',
+          '      slides:    { "template":"slides", "title": string, "bullets": string[1..5] }',
+          '      chat:      { "template":"chat", "messages": [{ "side":"left"|"right", "text": string }] (1..6) }',
+          '      browser:   { "template":"browser", "url": string, "title": string, "lines": string[1..4] }',
+          '      phone-app: { "template":"phone-app", "appName": string, "items": string[1..5] }',
+          '  durationSec — float (typically 1.5–5)',
           'Rules:',
-          '  - First shot must be the hook (avatar); last shot must be the CTA / ending (avatar)',
+          '  - First shot is the hook (avatar); last shot is the CTA / ending (avatar)',
           '  - ' + formatLine,
           '  - ' + durationLine,
-          '  - b-roll shots keep the voiceover in `dialogue` but show no person; put the punchy phrase in `headline`',
+          '  - b-roll keeps the voiceover in `dialogue`, shows no person, puts a punchy phrase in `headline`',
+          '  - screencast keeps the voiceover in `dialogue`; all on-screen words go in `screencastContent` (Russian, short)',
           '  - dialogue must come directly from the provided script text',
           'Respond with valid JSON array only. No markdown fences. No extra text.',
         ].join('\n'),
