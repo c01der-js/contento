@@ -102,8 +102,11 @@ export async function createServer() {
   await app.register(webhookRoutes)
   await app.register(realtimeRoutes)
 
-  // Start background workers after server is ready
+  // Start background workers after server is ready.
+  // Skipped under vitest: the workers connect to Postgres/Redis on boot, which aren't
+  // available in the unit-test env and surfaced as an unhandled Prisma rejection.
   app.addHook('onReady', () => {
+    if (process.env['VITEST']) return
     startMentionPoller()
     startAnalyticsIngester()
     startCampaignProducer()
