@@ -3,6 +3,8 @@ import { getPlatformProfile } from '@contento/shared'
 import { getAnthropicClient } from '../client.js'
 import { buildBrandContext } from '../brand-context.js'
 
+// 'screencast' is a valid value but is treated as 'avatar' until Plan B2 ships the
+// synthetic-screen renderer (the storyboard prompt only instructs avatar/broll).
 export const ShotTypeSchema = z.enum(['avatar', 'broll', 'screencast'])
 export type ShotType = z.infer<typeof ShotTypeSchema>
 
