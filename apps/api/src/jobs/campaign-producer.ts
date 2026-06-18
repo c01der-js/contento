@@ -3,6 +3,9 @@ import { Redis as IORedis } from 'ioredis'
 import { prisma } from '@contento/db'
 import { writeScript } from '@contento/ai'
 import { getVideoQueue } from '../queue.js'
+import { runQaChecks } from '../qa/checks.js'
+import type { QaInput } from '../qa/checks.js'
+type QaInputSubtitles = QaInput['subtitles']
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379'
 const VIDEO_POLL_INTERVAL_MS = 15_000
@@ -180,6 +183,30 @@ export function startCampaignProducer(): Worker {
             data: { status: 'CLIENT_REVIEW' },
           })
           if (reviewed.count === 0) break
+
+          // Auto QA gate: compute a verdict from the finished job and persist it for the
+          // approve handler + the review UI. Never throws into the producer loop.
+          try {
+            const job = await prisma.videoJob.findUnique({
+              where: { id: videoJob.id },
+              include: { shots: { orderBy: { index: 'asc' } }, script: { select: { subtitles: true } } },
+            })
+            if (job) {
+              const qa = runQaChecks({
+                platform: job.platform,
+                outputUrl: job.outputUrl,
+                jobStatus: job.status,
+                shots: job.shots.map((s) => ({ index: s.index, durationSec: s.durationSec, dialogue: s.dialogue, status: s.status })),
+                subtitles: (job.script.subtitles as unknown as QaInputSubtitles) ?? null,
+              })
+              await prisma.qaCheck.create({
+                data: { contentPlanItemId: item.id, videoJobId: job.id, status: qa.status, findings: qa.findings as object },
+              })
+            }
+          } catch (err) {
+            console.error('[qa] failed to compute/persist QA check for item', item.id, err)
+          }
+
           await notifyClients(workspaceId, item.id)
         } else {
           const failed = await prisma.videoJob.findUnique({ where: { id: videoJob.id }, select: { errorMessage: true } })
