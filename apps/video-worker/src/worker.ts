@@ -118,6 +118,8 @@ async function handleGenerate(
       prompt: s.prompt,
       dialogue: s.dialogue ?? null,
       durationSec: s.durationSec,
+      shotType: s.shotType ?? 'avatar',
+      ...(s.headline ? { headline: s.headline } : {}),
       status: 'PENDING' as const,
     })),
   })
@@ -145,51 +147,77 @@ async function handleGenerate(
     await prisma.videoShot.update({ where: { id: shot.id }, data: { status: 'SUBMITTED' } })
     try {
       let clipUrl: string
+      let shotAudioUrl: string | null = null
+      const shotType = shot.shotType ?? 'avatar'
+      // Plan B2 not shipped: render screencast shots as avatar for now.
+      const effectiveType = shotType === 'broll' ? 'broll' : 'avatar'
 
       if (mock) {
         // Skip all external calls — use stable placeholder clip
         clipUrl = MOCK_CLIP_URL
       } else {
-        if (!soulId) {
-          throw new Error(
-            'No Higgsfield Soul ID: create an AvatarPersona for this workspace or set HIGGSFIELD_SOUL_ID',
-          )
+        if (effectiveType === 'broll') {
+          // B-ROLL: voiceover plays over a silent generated scene (no talking head).
+          let audioSec = 0
+          if (shot.dialogue) {
+            const tts = await synthesizeSpeechWithTimestamps(shot.dialogue, voiceId)
+            audioSec = wavDurationSec(await transcodeMp3ToWav(tts.audio))
+            // Remotion plays this over the silent visual, so it lives on OUR S3 (mp3 is fine for <Audio>).
+            const audioKey = `videos/shots/${videoJobId}/${shot.id}.mp3`
+            shotAudioUrl = await uploadBuffer(tts.audio, audioKey, 'audio/mpeg')
+            shotTimings.push({ index: shot.index, audioSec, words: tts.words })
+          }
+          // Foundation scene still (no Soul) → silent DoP motion clip.
+          const sceneImageUrl = await provider.sceneFrame(shot.prompt, { seed })
+          const higgsfieldClipUrl = await provider.motionFromImage({ imageUrl: sceneImageUrl, prompt: shot.prompt, seed })
+          const clipResp = await fetch(higgsfieldClipUrl)
+          if (!clipResp.ok) throw new Error(`Failed to fetch clip: ${clipResp.status}`)
+          const clipBuf = Buffer.from(await clipResp.arrayBuffer())
+          const clipKey = `videos/shots/${videoJobId}/${shot.id}.mp4`
+          clipUrl = await uploadBuffer(clipBuf, clipKey, 'video/mp4')
+        } else {
+          // AVATAR: unchanged Soul → Speak/DoP path (audio baked into the clip).
+          if (!soulId) {
+            throw new Error(
+              'No Higgsfield Soul ID: create an AvatarPersona for this workspace or set HIGGSFIELD_SOUL_ID',
+            )
+          }
+          // Step 1: ElevenLabs TTS (only if the shot has spoken dialogue)
+          let audioUrl: string | undefined
+          let audioSec = 0
+          if (shot.dialogue) {
+            // ElevenLabs returns MP3 (tier-safe); Higgsfield Speak requires WAV.
+            const tts = await synthesizeSpeechWithTimestamps(shot.dialogue, voiceId)
+            const mp3Buffer = tts.audio
+            const wavBuffer = await transcodeMp3ToWav(mp3Buffer)
+            audioSec = wavDurationSec(wavBuffer)
+            // Speak fetches the audio itself, so it must live on Higgsfield's CDN —
+            // our private/local S3 URL would be unreachable (-> invalid_audio_format).
+            // Higgsfield's upload endpoint requires the MIME 'audio/x-wav' for WAV.
+            audioUrl = await provider.uploadAudio(wavBuffer, 'audio/x-wav')
+            shotTimings.push({ index: shot.index, audioSec, words: tts.words })
+          }
+
+          // Step 2: character image (provider hides submit+poll)
+          const imageUrl = await provider.characterFrame(shot.prompt, { characterId: soulId, seed })
+
+          // Step 3: talking avatar (has dialogue) or silent motion clip (no dialogue)
+          const higgsfieldClipUrl = audioUrl
+            ? await provider.talkingHead({ imageUrl, audioUrl, prompt: shot.prompt, audioDurationSec: audioSec })
+            : await provider.motionFromImage({ imageUrl, prompt: shot.prompt, seed })
+
+          // Step 5: download from Higgsfield CDN and re-upload to our S3
+          const clipResp = await fetch(higgsfieldClipUrl)
+          if (!clipResp.ok) throw new Error(`Failed to fetch clip: ${clipResp.status}`)
+          const clipBuf = Buffer.from(await clipResp.arrayBuffer())
+          const clipKey = `videos/shots/${videoJobId}/${shot.id}.mp4`
+          clipUrl = await uploadBuffer(clipBuf, clipKey, 'video/mp4')
         }
-        // Step 1: ElevenLabs TTS (only if the shot has spoken dialogue)
-        let audioUrl: string | undefined
-        let audioSec = 0
-        if (shot.dialogue) {
-          // ElevenLabs returns MP3 (tier-safe); Higgsfield Speak requires WAV.
-          const tts = await synthesizeSpeechWithTimestamps(shot.dialogue, voiceId)
-          const mp3Buffer = tts.audio
-          const wavBuffer = await transcodeMp3ToWav(mp3Buffer)
-          audioSec = wavDurationSec(wavBuffer)
-          // Speak fetches the audio itself, so it must live on Higgsfield's CDN —
-          // our private/local S3 URL would be unreachable (-> invalid_audio_format).
-          // Higgsfield's upload endpoint requires the MIME 'audio/x-wav' for WAV.
-          audioUrl = await provider.uploadAudio(wavBuffer, 'audio/x-wav')
-          shotTimings.push({ index: shot.index, audioSec, words: tts.words })
-        }
-
-        // Step 2: character image (provider hides submit+poll)
-        const imageUrl = await provider.characterFrame(shot.prompt, { characterId: soulId, seed })
-
-        // Step 3: talking avatar (has dialogue) or silent motion clip (no dialogue)
-        const higgsfieldClipUrl = audioUrl
-          ? await provider.talkingHead({ imageUrl, audioUrl, prompt: shot.prompt, audioDurationSec: audioSec })
-          : await provider.motionFromImage({ imageUrl, prompt: shot.prompt, seed })
-
-        // Step 5: download from Higgsfield CDN and re-upload to our S3
-        const clipResp = await fetch(higgsfieldClipUrl)
-        if (!clipResp.ok) throw new Error(`Failed to fetch clip: ${clipResp.status}`)
-        const clipBuf = Buffer.from(await clipResp.arrayBuffer())
-        const clipKey = `videos/shots/${videoJobId}/${shot.id}.mp4`
-        clipUrl = await uploadBuffer(clipBuf, clipKey, 'video/mp4')
       }
 
       await prisma.videoShot.update({
         where: { id: shot.id },
-        data: { status: 'DONE', clipUrl },
+        data: { status: 'DONE', clipUrl, ...(shotAudioUrl ? { audioUrl: shotAudioUrl } : {}) },
       })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
