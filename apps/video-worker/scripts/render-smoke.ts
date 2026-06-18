@@ -9,6 +9,9 @@ import type { VideoStitchProps } from '@contento/brand-kit'
 // subtitles + a branded CTA card, and asserts a non-trivial MP4 was produced.
 // First run downloads Remotion's headless Chromium (~150MB) and webpack-bundles —
 // expect several minutes. Run: pnpm --filter @contento/video-worker exec tsx scripts/render-smoke.ts
+
+const SAMPLE_AUDIO = 'https://www.w3schools.com/html/mov_bbb.mp4'
+
 const props: VideoStitchProps = {
   shots: [
     {
@@ -31,7 +34,7 @@ const props: VideoStitchProps = {
       src: 'https://www.w3schools.com/html/mov_bbb.mp4',
       durationInFrames: 90,
       clipDurationInFrames: 30, // loop the 1-second clip 3× to fill 3 seconds
-      audioSrc: 'https://www.w3schools.com/html/mov_bbb.mp4',
+      audioSrc: SAMPLE_AUDIO,
       headline: 'Заголовок б-ролла',
       chunks: [
         {
@@ -43,6 +46,41 @@ const props: VideoStitchProps = {
           ],
         },
       ],
+    },
+    // Synthetic screencast shots — one per template.
+    {
+      shotType: 'screencast',
+      durationInFrames: 120,
+      chunks: [],
+      audioSrc: SAMPLE_AUDIO,
+      screencastContent: { template: 'slides', title: 'Три причины', bullets: ['Скорость', 'Цена', 'Качество'] },
+    },
+    {
+      shotType: 'screencast',
+      durationInFrames: 120,
+      chunks: [],
+      audioSrc: SAMPLE_AUDIO,
+      screencastContent: {
+        template: 'chat',
+        messages: [
+          { side: 'left', text: 'Это работает?' },
+          { side: 'right', text: 'Да, смотри' },
+        ],
+      },
+    },
+    {
+      shotType: 'screencast',
+      durationInFrames: 120,
+      chunks: [],
+      audioSrc: SAMPLE_AUDIO,
+      screencastContent: { template: 'browser', url: 'contento.app', title: 'Как это устроено', lines: ['Шаг первый', 'Шаг второй'] },
+    },
+    {
+      shotType: 'screencast',
+      durationInFrames: 120,
+      chunks: [],
+      audioSrc: SAMPLE_AUDIO,
+      screencastContent: { template: 'phone-app', appName: 'Contento', items: ['Новый тренд', 'Готовый сценарий'] },
     },
   ],
   cta: 'Подпишись на канал',

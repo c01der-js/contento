@@ -10,6 +10,7 @@ import {
 } from 'remotion'
 import { loadFont } from '@remotion/fonts'
 import type { StitchChunk, StitchShotProps, VideoStitchProps } from './video-stitch-shared.js'
+import { ScreencastShot } from './screencast/ScreencastShot.js'
 
 const SUBTITLE_FONT = 'ContentoInter'
 
@@ -62,13 +63,46 @@ function SubtitleChunkView({ chunk, accentColor }: { chunk: StitchChunk; accentC
   )
 }
 
-function ShotLayer({ shot, accentColor }: { shot: StitchShotProps; accentColor: string }) {
+function ShotLayer({
+  shot,
+  primaryColor,
+  secondaryColor,
+  accentColor,
+}: {
+  shot: StitchShotProps
+  primaryColor: string
+  secondaryColor: string
+  accentColor: string
+}) {
   const frame = useCurrentFrame()
+
+  // SYNTHETIC SCREENCAST: no clip; render the screen from structured content.
+  if (shot.shotType === 'screencast' && !shot.src && shot.screencastContent) {
+    return (
+      <AbsoluteFill style={{ backgroundColor: '#000' }}>
+        <ScreencastShot
+          content={shot.screencastContent}
+          primaryColor={primaryColor}
+          secondaryColor={secondaryColor}
+          accentColor={accentColor}
+        />
+        {/* Avatar clips bake audio in; screencast/b-roll carry audioSrc — no double track. */}
+        {shot.audioSrc && <Audio src={shot.audioSrc} />}
+        {shot.chunks.map((c, i) => (
+          <Sequence key={i} from={c.startFrame} durationInFrames={Math.max(1, c.endFrame - c.startFrame)}>
+            <SubtitleChunkView chunk={c} accentColor={accentColor} />
+          </Sequence>
+        ))}
+      </AbsoluteFill>
+    )
+  }
+
+  // VIDEO (avatar / b-roll / uploaded-recording screencast): unchanged clip path.
   // Subtle Ken Burns zoom so static avatar shots don't feel frozen; also applies to looped b-roll.
   const scale = interpolate(frame, [0, Math.max(1, shot.durationInFrames)], [1, 1.04])
   const video = (
     <OffthreadVideo
-      src={shot.src ?? ''} // TODO(Task 8): replace with proper screencast/video branch
+      src={shot.src!}
       style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${scale})` }}
     />
   )
@@ -166,7 +200,12 @@ export function VideoStitch(props: VideoStitchProps) {
     <AbsoluteFill style={{ backgroundColor: '#000' }}>
       {props.shots.map((shot, i) => (
         <Sequence key={i} from={offsets[i]!} durationInFrames={shot.durationInFrames}>
-          <ShotLayer shot={shot} accentColor={props.accentColor} />
+          <ShotLayer
+              shot={shot}
+              primaryColor={props.primaryColor}
+              secondaryColor={props.secondaryColor}
+              accentColor={props.accentColor}
+            />
         </Sequence>
       ))}
       <Sequence from={offset} durationInFrames={props.ctaDurationInFrames}>
