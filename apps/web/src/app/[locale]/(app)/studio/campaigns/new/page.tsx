@@ -14,6 +14,14 @@ const GOAL_OPTIONS: { value: Goal; label: string; description: string }[] = [
   { value: 'REACH', label: 'Reach', description: 'Brand awareness and visibility' },
 ]
 
+// Mirrors @contento/shared TARGET_PLATFORMS (RU-speaking diaspora + CIS set).
+const PLATFORM_OPTIONS: { value: string; label: string }[] = [
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'youtube', label: 'YouTube Shorts' },
+  { value: 'telegram', label: 'Telegram' },
+]
+
 export default function NewCampaignPage() {
   const { getToken } = useAuth()
   const { activeId: workspaceId } = useWorkspace()
@@ -26,6 +34,7 @@ export default function NewCampaignPage() {
     name: '',
     goal: 'SALES' as Goal,
     targetAction: '',
+    targetPlatforms: ['tiktok', 'instagram', 'youtube', 'telegram'] as string[],
     startsAt: new Date().toISOString().slice(0, 10),
     endsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
   })
@@ -88,6 +97,32 @@ export default function NewCampaignPage() {
         </div>
 
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Target platforms</label>
+          <div className="grid grid-cols-2 gap-2">
+            {PLATFORM_OPTIONS.map(opt => {
+              const selected = form.targetPlatforms.includes(opt.value)
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setForm(f => ({
+                    ...f,
+                    targetPlatforms: selected
+                      ? f.targetPlatforms.filter(p => p !== opt.value)
+                      : [...f.targetPlatforms, opt.value],
+                  }))}
+                  className={`text-left p-3 rounded-lg border-2 transition-colors text-sm font-medium
+                    ${selected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Each platform gets its own tailored video.</p>
+        </div>
+
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Target action</label>
           <input
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
@@ -128,7 +163,7 @@ export default function NewCampaignPage() {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={loading || !form.name || !form.targetAction}
+            disabled={loading || !form.name || !form.targetAction || form.targetPlatforms.length === 0}
             className="flex-1 py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
           >
             {loading ? 'Creating...' : 'Create campaign ->'}
