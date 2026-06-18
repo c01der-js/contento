@@ -946,6 +946,9 @@ model VideoShot {
   prompt          String
   dialogue        String?
   durationSec     Float
+  shotType        String          @default("avatar") // avatar | broll | screencast
+  headline        String?         // on-screen text for b-roll/screencast shots
+  audioUrl        String?         // voiceover track for non-avatar shots (avatar bakes audio into the clip)
   status          VideoShotStatus @default(PENDING)
   higgsfieldJobId String?
   clipUrl         String?
