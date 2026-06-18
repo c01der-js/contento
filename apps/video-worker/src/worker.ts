@@ -120,6 +120,7 @@ async function handleGenerate(
       durationSec: s.durationSec,
       shotType: s.shotType ?? 'avatar',
       ...(s.headline ? { headline: s.headline } : {}),
+      ...(s.screencastContent ? { screencastTemplate: s.screencastContent.template, screencastContent: s.screencastContent } : {}),
       status: 'PENDING' as const,
     })),
   })
@@ -146,17 +147,32 @@ async function handleGenerate(
     if (await isCampaignJobCancelled(videoJobId)) { cancelled = true; break }
     await prisma.videoShot.update({ where: { id: shot.id }, data: { status: 'SUBMITTED' } })
     try {
-      let clipUrl: string
+      let clipUrl: string | null = null
       let shotAudioUrl: string | null = null
       const shotType = shot.shotType ?? 'avatar'
-      // Plan B2 not shipped: render screencast shots as avatar for now.
-      const effectiveType = shotType === 'broll' ? 'broll' : 'avatar'
+      const effectiveType = shotType === 'broll' ? 'broll' : shotType === 'screencast' ? 'screencast' : 'avatar'
 
       if (mock) {
         // Skip all external calls — use stable placeholder clip
         clipUrl = MOCK_CLIP_URL
       } else {
-        if (effectiveType === 'broll') {
+        if (effectiveType === 'screencast') {
+          // No Higgsfield clip: synth screen is rendered at stitch time. Generate voiceover only.
+          if (shot.dialogue) {
+            const tts = await synthesizeSpeechWithTimestamps(shot.dialogue, voiceId)
+            const audioSec = wavDurationSec(await transcodeMp3ToWav(tts.audio))
+            // Remotion plays this over the synthetic screencast, so it lives on OUR S3 (mp3 is fine for <Audio>).
+            const audioKey = `videos/shots/${videoJobId}/${shot.id}.mp3`
+            shotAudioUrl = await uploadBuffer(tts.audio, audioKey, 'audio/mpeg')
+            shotTimings.push({ index: shot.index, audioSec, words: tts.words })
+          }
+          // Optional uploaded screen recording: newest SCREENCAST asset backs the shot as a real clip.
+          const recording = await prisma.asset.findFirst({
+            where: { workspaceId, kind: 'SCREENCAST' },
+            orderBy: { createdAt: 'desc' },
+          })
+          clipUrl = recording?.url ?? null // null => synthetic screen rendered from screencastContent
+        } else if (effectiveType === 'broll') {
           // B-ROLL: voiceover plays over a silent generated scene (no talking head).
           let audioSec = 0
           if (shot.dialogue) {
