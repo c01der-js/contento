@@ -15,6 +15,7 @@ import type { WordTiming } from '@contento/ai'
 import { stitchClips, transcodeMp3ToWav, probeDurationSec } from './stitch.js'
 import { uploadVideo, uploadBuffer, downloadBuffer, keyFromUrl, presignGetUrl, isOwnS3Url, redactSignedUrls } from './s3-client.js'
 import { renderStitchVideo } from './remotion-stitch.js'
+import type { ScreencastContent } from '@contento/brand-kit'
 import { buildStitchProps, parseSubtitlesJson, type StitchShotInput } from './stitch-props.js'
 
 export interface VideoJobPayload {
@@ -330,11 +331,27 @@ export async function handleStitch({ videoJobId }: StitchJobPayload) {
       })
       const shotInputs: StitchShotInput[] = []
       for (const shot of shots) {
+        const timing = subtitles?.shots.find((s) => s.index === shot.index)
+        // SYNTHETIC SCREENCAST: no clip; build a src-less input from the stored content.
+        if (shot.shotType === 'screencast' && !shot.clipUrl) {
+          if (!shot.screencastContent) throw new Error(`Screencast shot ${shot.id} has no content`)
+          const audioSrc = shot.audioUrl
+            ? (isOwnS3Url(shot.audioUrl) ? await presignGetUrl(keyFromUrl(shot.audioUrl)) : shot.audioUrl)
+            : undefined
+          const voiceSec = timing?.audioSec ?? 3
+          shotInputs.push({
+            screencast: shot.screencastContent as unknown as ScreencastContent,
+            probedSec: voiceSec,
+            ...(audioSrc ? { audioSrc } : {}),
+            ...(timing ? { timing } : {}),
+          })
+          continue
+        }
+        // VIDEO (avatar / b-roll / uploaded-recording): unchanged.
         if (!shot.clipUrl) throw new Error(`Shot ${shot.id} has no clipUrl`)
         // Mock clips are public external URLs — pass through unsigned.
         const src = isOwnS3Url(shot.clipUrl) ? await presignGetUrl(keyFromUrl(shot.clipUrl)) : shot.clipUrl
         const clipProbedSec = await probeDurationSec(src)
-        const timing = subtitles?.shots.find((s) => s.index === shot.index)
         if (shot.audioUrl) {
           // b-roll: voiceover drives the shot duration; the silent clip loops underneath.
           const audioSrc = isOwnS3Url(shot.audioUrl) ? await presignGetUrl(keyFromUrl(shot.audioUrl)) : shot.audioUrl
