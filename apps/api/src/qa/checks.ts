@@ -36,9 +36,11 @@ export function runQaChecks(input: QaInput): QaResult {
     findings.push({ id: 'output-ready', severity: 'block', message: 'No rendered video output — the render did not finish.' })
   }
 
-  // shots-rendered (BLOCK): every shot must be DONE.
+  // shots-rendered (BLOCK): there must be shots and every one must be DONE.
   const notDone = input.shots.filter((s) => s.status !== 'DONE')
-  if (input.shots.length > 0 && notDone.length === 0) {
+  if (input.shots.length === 0) {
+    findings.push({ id: 'shots-rendered', severity: 'block', message: 'No shots to render.' })
+  } else if (notDone.length === 0) {
     findings.push({ id: 'shots-rendered', severity: 'pass', message: `All ${input.shots.length} shots rendered.` })
   } else {
     findings.push({ id: 'shots-rendered', severity: 'block', message: `${notDone.length} of ${input.shots.length} shots did not render.` })

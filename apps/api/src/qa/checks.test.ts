@@ -59,12 +59,15 @@ describe('runQaChecks', () => {
     const r = runQaChecks({ ...base, outputUrl: null, shots: [
       { index: 0, durationSec: 2, dialogue: 'a', status: 'DONE' },
     ] })
+    // a WARN (short duration) and a BLOCK (no output) coexist; BLOCK wins.
+    expect(r.findings.find((f) => f.id === 'duration')?.severity).toBe('warn')
+    expect(r.findings.find((f) => f.id === 'output-ready')?.severity).toBe('block')
     expect(r.status).toBe('BLOCK')
   })
 
   it('falls back to the instagram band for an unknown/null platform', () => {
+    // base total is 28s, inside the instagram band (15-30) → duration passes, not throws.
     const r = runQaChecks({ ...base, platform: null })
-    // does not throw; produces a duration finding
-    expect(r.findings.some((f) => f.id === 'duration')).toBe(true)
+    expect(r.findings.find((f) => f.id === 'duration')?.severity).toBe('pass')
   })
 })
