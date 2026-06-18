@@ -26,6 +26,24 @@ const props: VideoStitchProps = {
         },
       ],
     },
+    {
+      // b-roll shot: short clip looped to fill a longer voiceover, with headline overlay.
+      src: 'https://www.w3schools.com/html/mov_bbb.mp4',
+      durationInFrames: 90,
+      clipDurationInFrames: 30, // loop the 1-second clip 3× to fill 3 seconds
+      audioSrc: 'https://www.w3schools.com/html/mov_bbb.mp4',
+      headline: 'Заголовок б-ролла',
+      chunks: [
+        {
+          startFrame: 0,
+          endFrame: 80,
+          words: [
+            { text: 'б-ролл', startFrame: 0, endFrame: 40 },
+            { text: 'работает', startFrame: 40, endFrame: 80 },
+          ],
+        },
+      ],
+    },
   ],
   cta: 'Подпишись на канал',
   ctaDurationInFrames: 60,

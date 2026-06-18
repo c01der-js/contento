@@ -1,5 +1,7 @@
 import {
   AbsoluteFill,
+  Audio,
+  Loop,
   OffthreadVideo,
   Sequence,
   interpolate,
@@ -62,19 +64,42 @@ function SubtitleChunkView({ chunk, accentColor }: { chunk: StitchChunk; accentC
 
 function ShotLayer({ shot, accentColor }: { shot: StitchShotProps; accentColor: string }) {
   const frame = useCurrentFrame()
-  // Subtle Ken Burns zoom so static avatar shots don't feel frozen.
   const scale = interpolate(frame, [0, Math.max(1, shot.durationInFrames)], [1, 1.04])
+  const video = (
+    <OffthreadVideo
+      src={shot.src}
+      style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${scale})` }}
+    />
+  )
   return (
     <AbsoluteFill style={{ backgroundColor: '#000' }}>
-      <OffthreadVideo
-        src={shot.src}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          transform: `scale(${scale})`,
-        }}
-      />
+      {shot.clipDurationInFrames != null && shot.clipDurationInFrames < shot.durationInFrames ? (
+        // b-roll: loop the short DoP clip to fill the (longer) voiceover.
+        <Loop durationInFrames={shot.clipDurationInFrames}>{video}</Loop>
+      ) : (
+        video
+      )}
+      {/* Avatar clips bake audio into the clip and have no audioSrc; b-roll clips are silent and have audioSrc — no double track. */}
+      {shot.audioSrc && <Audio src={shot.audioSrc} />}
+      {shot.headline && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '14%',
+            left: 60,
+            right: 60,
+            textAlign: 'center',
+            fontFamily: SUBTITLE_FONT,
+            fontWeight: 800,
+            fontSize: 72,
+            lineHeight: 1.15,
+            color: '#fff',
+            textShadow: '0 4px 24px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8)',
+          }}
+        >
+          {shot.headline}
+        </div>
+      )}
       {shot.chunks.map((c, i) => (
         <Sequence key={i} from={c.startFrame} durationInFrames={Math.max(1, c.endFrame - c.startFrame)}>
           <SubtitleChunkView chunk={c} accentColor={accentColor} />
