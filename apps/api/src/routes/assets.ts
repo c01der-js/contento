@@ -43,7 +43,7 @@ const WorkspaceParams = z.object({ workspaceId: z.string() })
 const AssetParams = z.object({ workspaceId: z.string(), id: z.string() })
 const ErrorResponse = z.object({ error: z.string() })
 
-const AssetKindEnum = z.enum(['BROLL', 'PRODUCT', 'REFERENCE', 'VOICE_SAMPLE'])
+const AssetKindEnum = z.enum(['BROLL', 'PRODUCT', 'REFERENCE', 'VOICE_SAMPLE', 'SCREENCAST'])
 
 const AssetResponse = z.object({
   id: z.string(),
@@ -125,7 +125,7 @@ export const assetRoutes: FastifyPluginAsyncZod = async (app) => {
     const rawKind = (fields['kind']?.value ?? '').toUpperCase()
     const kindParse = AssetKindEnum.safeParse(rawKind)
     if (!kindParse.success) {
-      return reply.status(400).send({ error: `Invalid or missing kind. Must be one of: BROLL, PRODUCT, REFERENCE, VOICE_SAMPLE` })
+      return reply.status(400).send({ error: `Invalid or missing kind. Must be one of: BROLL, PRODUCT, REFERENCE, VOICE_SAMPLE, SCREENCAST` })
     }
     const kind = kindParse.data as AssetKind
 

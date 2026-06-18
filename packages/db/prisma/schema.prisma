@@ -59,6 +59,7 @@ enum AssetKind {
   PRODUCT
   REFERENCE
   VOICE_SAMPLE
+  SCREENCAST
 }
 
 enum VocabularyType {
@@ -949,6 +950,8 @@ model VideoShot {
   shotType        String          @default("avatar") // avatar | broll | screencast
   headline        String?         // on-screen text for b-roll/screencast shots
   audioUrl        String?         // voiceover track for non-avatar shots (avatar bakes audio into the clip)
+  screencastTemplate String?      // slides | chat | browser | phone-app (set for synthetic screencast shots)
+  screencastContent  Json?        // structured on-screen content for the template
   status          VideoShotStatus @default(PENDING)
   higgsfieldJobId String?
   clipUrl         String?
