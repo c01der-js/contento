@@ -40,6 +40,7 @@ const CampaignResponse = z.object({
   name: z.string(),
   goal: z.string(),
   targetAction: z.string(),
+  targetPlatforms: z.array(z.string()),
   startsAt: z.string(),
   endsAt: z.string(),
   status: z.string(),
@@ -109,6 +110,7 @@ function serializeItem(item: {
 
 function serializeCampaign(c: {
   id: string; workspaceId: string; name: string; goal: string; targetAction: string
+  targetPlatforms: string[]
   startsAt: Date; endsAt: Date; status: string; createdAt: Date; updatedAt: Date
   contentPlan: null | { id: string; status: string; items: ReturnType<typeof serializeItem>[] }
 }) {
