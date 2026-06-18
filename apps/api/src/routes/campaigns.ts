@@ -24,6 +24,8 @@ const ContentPlanItemResponse = z.object({
   scriptId: z.string().nullable(),
   videoJobId: z.string().nullable(),
   publicationId: z.string().nullable(),
+  qaStatus: z.enum(['PASS', 'WARN', 'BLOCK']).nullable(),
+  qaFindings: z.array(z.object({ id: z.string(), severity: z.string(), message: z.string() })).nullable(),
 })
 
 const ContentPlanResponse = z.object({
@@ -91,10 +93,18 @@ function serializeItem(item: {
   id: string; index: number; topic: string; format: string; platform: string | null; scheduledDate: Date
   hook: string; status: string; rejectComment: string | null
   scriptId: string | null; videoJobId: string | null; publicationId: string | null
+  qaChecks?: Array<{ status: string; findings: unknown }>
 }) {
   // Coerce platform to null (a Prisma String? is null in DB; older rows / partial
   // sources may omit it) so the nullable response schema always validates.
-  return { ...item, platform: item.platform ?? null, scheduledDate: item.scheduledDate.toISOString() }
+  const qa = item.qaChecks?.[0]
+  return {
+    ...item,
+    platform: item.platform ?? null,
+    scheduledDate: item.scheduledDate.toISOString(),
+    qaStatus: (qa?.status as 'PASS' | 'WARN' | 'BLOCK' | undefined) ?? null,
+    qaFindings: (qa?.findings as Array<{ id: string; severity: string; message: string }> | undefined) ?? null,
+  }
 }
 
 function serializeCampaign(c: {
@@ -114,7 +124,7 @@ function serializeCampaign(c: {
 async function loadPlanResponse(campaignId: string) {
   const plan = await prisma.contentPlan.findUnique({
     where: { campaignId },
-    include: { items: { orderBy: { index: 'asc' } } },
+    include: { items: { orderBy: { index: 'asc' }, include: { qaChecks: { orderBy: { createdAt: 'desc' }, take: 1 } } } },
   })
   if (!plan) return null
   return { id: plan.id, status: plan.status, items: plan.items.map(serializeItem) }
@@ -129,7 +139,7 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
     const { workspaceId } = request.params
     const campaigns = await prisma.campaign.findMany({
       where: { workspaceId },
-      include: { contentPlan: { include: { items: { orderBy: { index: 'asc' } } } } },
+      include: { contentPlan: { include: { items: { orderBy: { index: 'asc' }, include: { qaChecks: { orderBy: { createdAt: 'desc' }, take: 1 } } } } } },
       orderBy: { createdAt: 'desc' },
     })
     return reply.send({
@@ -164,7 +174,7 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
     const { workspaceId, campaignId } = request.params
     const campaign = await prisma.campaign.findFirst({
       where: { id: campaignId, workspaceId },
-      include: { contentPlan: { include: { items: { orderBy: { index: 'asc' } } } } },
+      include: { contentPlan: { include: { items: { orderBy: { index: 'asc' }, include: { qaChecks: { orderBy: { createdAt: 'desc' }, take: 1 } } } } } },
     })
     if (!campaign) return reply.status(404).send({ error: 'Campaign not found' })
     return reply.send(serializeCampaign({
@@ -232,7 +242,7 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
             ),
           },
         },
-        include: { items: { orderBy: { index: 'asc' } } },
+        include: { items: { orderBy: { index: 'asc' }, include: { qaChecks: { orderBy: { createdAt: 'desc' }, take: 1 } } } },
       })
     })
 
@@ -437,7 +447,7 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
 
     const updated = await prisma.campaign.findFirst({
       where: { id: campaignId, workspaceId },
-      include: { contentPlan: { include: { items: { orderBy: { index: 'asc' } } } } },
+      include: { contentPlan: { include: { items: { orderBy: { index: 'asc' }, include: { qaChecks: { orderBy: { createdAt: 'desc' }, take: 1 } } } } } },
     })
     return reply.send(serializeCampaign({
       ...updated!,
