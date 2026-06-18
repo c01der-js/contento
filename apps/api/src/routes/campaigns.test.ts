@@ -35,22 +35,26 @@ vi.mock('@contento/db', () => ({
     campaign: {
       findMany: vi.fn().mockResolvedValue([{
         id: 'camp1', workspaceId: 'ws1', name: 'Summer Campaign', goal: 'SALES',
-        targetAction: 'Book a call', startsAt: new Date('2026-07-01'), endsAt: new Date('2026-07-31'),
+        targetAction: 'Book a call', targetPlatforms: ['tiktok', 'instagram', 'youtube', 'telegram'],
+        startsAt: new Date('2026-07-01'), endsAt: new Date('2026-07-31'),
         status: 'DRAFT', createdAt: new Date(), updatedAt: new Date(), contentPlan: null,
       }]),
       findFirst: vi.fn().mockResolvedValue({
         id: 'camp1', workspaceId: 'ws1', name: 'Summer Campaign', goal: 'SALES',
-        targetAction: 'Book a call', startsAt: new Date('2026-07-01'), endsAt: new Date('2026-07-31'),
+        targetAction: 'Book a call', targetPlatforms: ['tiktok', 'instagram', 'youtube', 'telegram'],
+        startsAt: new Date('2026-07-01'), endsAt: new Date('2026-07-31'),
         status: 'DRAFT', createdAt: new Date(), updatedAt: new Date(), contentPlan: null,
       }),
       create: vi.fn().mockResolvedValue({
         id: 'camp1', workspaceId: 'ws1', name: 'Summer Campaign', goal: 'SALES',
-        targetAction: 'Book a call', startsAt: new Date('2026-07-01'), endsAt: new Date('2026-07-31'),
+        targetAction: 'Book a call', targetPlatforms: ['tiktok', 'instagram', 'youtube', 'telegram'],
+        startsAt: new Date('2026-07-01'), endsAt: new Date('2026-07-31'),
         status: 'DRAFT', createdAt: new Date(), updatedAt: new Date(),
       }),
       update: vi.fn().mockResolvedValue({
         id: 'camp1', workspaceId: 'ws1', name: 'Summer Campaign', goal: 'SALES',
-        targetAction: 'Book a call', startsAt: new Date('2026-07-01'), endsAt: new Date('2026-07-31'),
+        targetAction: 'Book a call', targetPlatforms: ['tiktok', 'instagram', 'youtube', 'telegram'],
+        startsAt: new Date('2026-07-01'), endsAt: new Date('2026-07-31'),
         status: 'ACTIVE', createdAt: new Date(), updatedAt: new Date(),
       }),
     },
