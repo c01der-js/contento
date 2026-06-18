@@ -68,7 +68,7 @@ function ShotLayer({ shot, accentColor }: { shot: StitchShotProps; accentColor: 
   const scale = interpolate(frame, [0, Math.max(1, shot.durationInFrames)], [1, 1.04])
   const video = (
     <OffthreadVideo
-      src={shot.src}
+      src={shot.src ?? ''} // TODO(Task 8): replace with proper screencast/video branch
       style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${scale})` }}
     />
   )

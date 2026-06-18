@@ -12,10 +12,20 @@ export interface StitchChunk {
   words: StitchWord[]
 }
 
+export type ScreencastTemplate = 'slides' | 'chat' | 'browser' | 'phone-app'
+
+export interface SlidesContent { template: 'slides'; title: string; bullets: string[] }
+export interface ChatContent { template: 'chat'; messages: { side: 'left' | 'right'; text: string }[] }
+export interface BrowserContent { template: 'browser'; url: string; title: string; lines: string[] }
+export interface PhoneAppContent { template: 'phone-app'; appName: string; items: string[] }
+export type ScreencastContent = SlidesContent | ChatContent | BrowserContent | PhoneAppContent
+
 export interface StitchShotProps {
-  /** URL fetchable by the renderer (presigned S3 or public). */
-  src: string
-  /** Trimmed shot length in frames (may be shorter than the source clip). */
+  /** Video URL (avatar/b-roll/uploaded-recording). Absent for synthetic screencast shots. */
+  src?: string
+  /** Shot kind; absent/'video' renders the clip path, 'screencast' renders a synthetic screen. */
+  shotType?: 'video' | 'screencast'
+  /** Trimmed shot length in frames. */
   durationInFrames: number
   chunks: StitchChunk[]
   /** Voiceover track for non-avatar shots (avatar audio is baked into `src`). */
@@ -24,6 +34,10 @@ export interface StitchShotProps {
   headline?: string
   /** Natural length of `src` in frames; when set and shorter than durationInFrames, the clip loops. */
   clipDurationInFrames?: number
+  /** Synthetic screen template (when shotType==='screencast' and there is no `src`). */
+  screencastTemplate?: ScreencastTemplate
+  /** Structured content for the synthetic screen. */
+  screencastContent?: ScreencastContent
 }
 
 export interface VideoStitchProps {
