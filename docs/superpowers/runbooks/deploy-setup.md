@@ -1,69 +1,156 @@
-# Deploy setup runbook (finishing the push-to-main pipeline)
+# Deploy setup runbook — self-hosted VPS over SSH
 
-The repo already has a CI/CD pipeline: **`.github/workflows/ci.yml`** (lint/typecheck/test — now green) and **`.github/workflows/deploy.yml`** (deploys on every push to `main`). The deploy targets:
-- **Web** → Vercel
-- **API, posting-service, render-worker, scheduler** → Fly.io (each has its own `apps/<app>/fly.toml`)
+The deploy target is a **self-hosted VPS** (not Vercel/Fly). On every push to `main`,
+**`.github/workflows/deploy.yml`** SSHes into the server, fast-forwards the repo, and runs
+**`scripts/deploy.sh`**, which rebuilds + restarts the whole Docker Compose stack
+(**`infra/docker-compose.yml`** — api, web, posting-service, render-worker, scheduler,
+trend-* + postgres/redis/kafka/minio/clickhouse + a one-shot `migrate`).
 
-As of this writing the **CI is green** but the **Deploy workflow fails** because the deploy credentials aren't configured and the DB migrations are missing. Two gates to close:
-
----
-
-## Gate 1 — GitHub Actions secrets (deploy auth)
-
-The deploy steps run `npx vercel --prod --token=$VERCEL_TOKEN` and `flyctl deploy --app contento-* ` — both fail with empty/absent tokens (confirmed: the Vercel step ran with `--token=` empty, `VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` empty; Fly fails without `FLY_API_TOKEN`).
-
-Add these in **GitHub → repo Settings → Secrets and variables → Actions → New repository secret**:
-
-| Secret | Where to get it |
-|--------|-----------------|
-| `VERCEL_TOKEN` | Vercel → Account Settings → Tokens → Create |
-| `VERCEL_ORG_ID` | `vercel link` locally → `.vercel/project.json` (`orgId`), or Vercel project settings |
-| `VERCEL_PROJECT_ID` | same `.vercel/project.json` (`projectId`) |
-| `FLY_API_TOKEN` | `fly tokens create deploy` (Fly.io CLI), or Fly dashboard → Tokens |
-
-The four Fly apps must exist first (`fly apps create contento-api`, `contento-posting-service`, `contento-render-worker`, `contento-scheduler`) — the `fly.toml` files are committed, so `fly launch --no-deploy` / `fly deploy` from each app dir will register them. The Vercel project must be created/linked once (`vercel link` in `apps/web`).
-
-- [ ] `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `FLY_API_TOKEN` set as repo secrets.
-- [ ] Four Fly apps created; Vercel project linked.
+CI (`ci.yml`) is green. To make the deploy work, close the gates below.
 
 ---
 
-## Gate 2 — Database migrations (the runtime blocker)
+## Gate 1 — SSH key auth (NEVER the root password)
 
-This session built features behind schema changes (`PublicationMetric`, `QaCheck`, `Campaign.targetPlatforms`, `ContentPlanItem.platform`, `VideoShot.shotType/headline/audioUrl/screencast*`, `Publication.videoJobId/metricsHistory`, `GoldenExample.sourceScriptId/promotedAt`, `AssetKind.SCREENCAST`). The schema has been on **`db:push` since the initial commit — there are NO SQL migrations** for any of it (the last committed migration is `20260526000000_add_video_job_language`). The Dockerfile has a `migrate` stage (`prisma migrate deploy`) but it can only apply **committed** migrations — which don't include this work. A deploy would bring up an API whose Prisma client expects columns/tables the production DB lacks → runtime crashes.
+CI deploy must authenticate with an **SSH key**, not a password. Do this once:
 
-**Generate + commit the migrations (needs a reachable Postgres):**
+1. **Generate a deploy keypair** (on your laptop, no passphrase so CI can use it):
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/contento_deploy -C "github-deploy" -N ""
+   ```
+2. **Authorize the public key on the server:**
+   ```bash
+   ssh root@188.94.191.142   # first time, with the panel password (interactive — not stored anywhere)
+   mkdir -p ~/.ssh && chmod 700 ~/.ssh
+   echo "<contents of ~/.ssh/contento_deploy.pub>" >> ~/.ssh/authorized_keys
+   chmod 600 ~/.ssh/authorized_keys
+   ```
+   (Better than `root`: create a `deploy` user with docker access and use that.)
+3. **Add the PRIVATE key + host as GitHub repo secrets** — Settings → Secrets and variables → Actions → New repository secret:
+
+   | Secret | Value |
+   |--------|-------|
+   | `VPS_HOST` | `188.94.191.142` |
+   | `VPS_USER` | `root` (or your `deploy` user) |
+   | `VPS_SSH_KEY` | the **full contents** of `~/.ssh/contento_deploy` (the private key) |
+   | `VPS_PORT` | `22` (or your custom SSH port) |
+   | `VPS_DEPLOY_PATH` | absolute path of the repo on the server, e.g. `/opt/contento` |
+
+- [ ] Keypair generated; public key in the server's `authorized_keys`.
+- [ ] `VPS_HOST` / `VPS_USER` / `VPS_SSH_KEY` / `VPS_PORT` / `VPS_DEPLOY_PATH` set as repo secrets.
+
+---
+
+## Gate 2 — Server prerequisites (one-time)
+
+On the VPS (`ssh root@188.94.191.142`):
+
+1. **Install Docker + Compose v2:**
+   ```bash
+   curl -fsSL https://get.docker.com | sh
+   docker compose version   # must print v2.x
+   ```
+2. **Clone the repo to `VPS_DEPLOY_PATH`:**
+   ```bash
+   git clone https://github.com/c01der-js/contento.git /opt/contento
+   cd /opt/contento
+   ```
+3. **Create `infra/.env`** from the example and fill the real secrets:
+   ```bash
+   cp infra/.env.example infra/.env
+   # then edit infra/.env — at minimum:
+   #   POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB   (strong password!)
+   #   MINIO_ROOT_USER / MINIO_ROOT_PASSWORD             (strong password!)
+   #   S3_BUCKET=contento-media
+   #   ANTHROPIC_API_KEY=...          (agents)
+   #   OPENAI_API_KEY=...             (feedback-loop embeddings; omit → mock embeddings)
+   #   CLERK_SECRET_KEY / NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY   (auth)
+   #   NEXT_PUBLIC_API_URL=http://188.94.191.142:3001        (web → api, by IP for now)
+   #   HIGGSFIELD / ELEVENLABS keys (video), YOUTUBE_API_KEY (trends/metrics)
+   ```
+
+- [ ] Docker + Compose v2 installed.
+- [ ] Repo cloned at `VPS_DEPLOY_PATH`.
+- [ ] `infra/.env` filled with strong passwords + API keys.
+
+---
+
+## Gate 3 — Database schema (the runtime blocker)
+
+This session built features behind schema changes (`PublicationMetric`, `QaCheck`,
+`Campaign.targetPlatforms`, `VideoShot.shotType/headline/audioUrl/screencast*`,
+`Publication.videoJobId/metricsHistory`, `GoldenExample.sourceScriptId/promotedAt`,
+`AssetKind.SCREENCAST`, …) but the schema has been on `db:push` since the initial commit —
+**no SQL migrations exist** for any of it (last committed: `20260526000000_add_video_job_language`).
+The compose `migrate` service runs `prisma migrate deploy`, which only applies **committed**
+migrations → the new columns/tables won't be created → the API crashes at runtime.
+
+Pick one:
+
+**(A) Generate migrations (proper for prod):** from a machine with a reachable Postgres,
 ```bash
-# point DATABASE_URL at a dev/staging Postgres, then:
-pnpm --filter @contento/db run db:migrate        # = prisma migrate dev — generates the SQL from the schema drift
-git add packages/db/prisma/migrations && git commit -m "feat(db): generate SQL migrations for the schema drift since initial commit"
+pnpm --filter @contento/db run db:migrate    # prisma migrate dev — emits SQL for the drift
+git add packages/db/prisma/migrations && git commit -m "feat(db): generate SQL migrations for the schema drift"
 ```
-This produces one (large) consolidating migration for all the drift. Review it, then ensure the deploy runs `prisma migrate deploy` against production (either the Dockerfile `migrate` stage as a Fly release step, or a Fly `release_command` / one-off `fly ssh console -C "...migrate deploy"`).
-
-Also generate the **pgvector indexes** the feedback loop wants (the Prisma schema can't express `ivfflat`/`hnsw` — add by hand to the migration SQL):
+then push — the compose `migrate` step applies them. Add the pgvector index by hand to the migration SQL:
 ```sql
 CREATE INDEX IF NOT EXISTS golden_example_embedding_idx
   ON "GoldenExample" USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 ```
-(`Script_embedding_idx` already exists from an earlier migration.)
 
-- [ ] SQL migration generated + committed.
-- [ ] `prisma migrate deploy` wired into the deploy (release step) and run against production.
-- [ ] pgvector index on `GoldenExample.embedding` added.
+**(B) `db push` once on the server (fast, pre-prod — matches how dev works):**
+```bash
+cd /opt/contento
+docker compose -f infra/docker-compose.yml up -d postgres
+docker compose -f infra/docker-compose.yml run --rm \
+  -e DATABASE_URL="postgresql://<user>:<pass>@postgres:5432/<db>" \
+  migrate sh -c "pnpm --filter @contento/db exec prisma db push"
+```
+`db push` syncs the schema without migration files. Acceptable while iterating; switch to (A) before real production data.
+
+- [ ] Schema synced (migrations generated+applied, or `db push` run once).
 
 ---
 
-## After both gates
+## ⚠️ Gate 4 — Lock down the data ports (SECURITY — do not skip)
 
-Push to `main` → CI (green) → Deploy runs: Vercel builds `apps/web`, Fly deploys the four services, migrations apply. Then set the runtime env on each Fly app (`fly secrets set` for `DATABASE_URL`, `REDIS_URL`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, S3/MinIO, Higgsfield/ElevenLabs keys, etc.).
+`infra/docker-compose.yml` publishes **postgres (5432), redis (6379), kafka (9092/9094),
+minio (9000/9001), clickhouse (8123)** on `0.0.0.0`. On a public-IP VPS that exposes your
+database + an unauthenticated Redis to the internet. Before/while deploying:
 
-> Note: **video-worker and trend-fetcher are NOT in `deploy.yml`** (no deploy job, not in the Dockerfile's copy list). The heavy video render/stitch (Plan B/B2) runs there — add deploy jobs + a `fly.toml` for them when that path goes to production. The render-worker IS deployed (PNG visuals).
+- Firewall everything except the app ports. With `ufw`:
+  ```bash
+  ufw allow 22/tcp          # ssh
+  ufw allow 3000/tcp        # web
+  ufw allow 3001/tcp        # api
+  ufw --force enable        # blocks 5432/6379/9000/8123/... from outside; containers still talk internally
+  ```
+- Or edit the compose to bind data services to `127.0.0.1:` only (e.g. `"127.0.0.1:5432:5432"`).
+- Set strong `POSTGRES_PASSWORD` / `MINIO_ROOT_PASSWORD` in `infra/.env` (never the defaults).
+
+- [ ] Firewall up: only 22/3000/3001 reachable from outside.
+- [ ] Strong DB/MinIO passwords set.
+
+---
+
+## After the gates
+
+Push to `main` → CI (green) → Deploy SSHes in, `git reset --hard origin/main`, runs
+`scripts/deploy.sh` → `docker compose up -d --build` (rebuilds changed app images, runs
+`migrate`, starts everything). Reach:
+- **Web:** `http://188.94.191.142:3000`
+- **API:** `http://188.94.191.142:3001` (Swagger at `/docs`)
+
+To deploy manually without CI: `ssh root@188.94.191.142 'cd /opt/contento && git pull && bash scripts/deploy.sh'`.
+
+> **video-worker is NOT in `infra/docker-compose.yml` or the Dockerfile's build list** — the heavy
+> video render/stitch (Plan B/B2) doesn't deploy yet. Add a service + extend the Dockerfile copy
+> list when that path goes live. The render-worker (PNG visuals) IS deployed.
 
 ## Links
 | What | Link |
 |------|------|
 | Repo (CI/CD) | https://github.com/c01der-js/contento |
 | GitHub Actions secrets | https://github.com/c01der-js/contento/settings/secrets/actions |
-| Vercel | https://vercel.com/ |
-| Fly.io | https://fly.io/ |
-| Vercel tokens | https://vercel.com/account/tokens |
+| Web (after deploy) | http://188.94.191.142:3000 |
+| API (after deploy) | http://188.94.191.142:3001/docs |

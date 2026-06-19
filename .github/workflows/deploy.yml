@@ -1,61 +1,35 @@
 name: Deploy
 
+# Deploys to the self-hosted VPS over SSH: fast-forward the repo, then rebuild + restart
+# the Docker Compose stack (infra/docker-compose.yml) via scripts/deploy.sh.
+#
+# Requires these repo secrets (Settings → Secrets and variables → Actions):
+#   VPS_HOST         server IP (e.g. 188.94.191.142)
+#   VPS_USER         ssh user (e.g. root — better: a dedicated 'deploy' user)
+#   VPS_SSH_KEY      a PRIVATE ssh key whose public half is in the server's ~/.ssh/authorized_keys
+#   VPS_DEPLOY_PATH  absolute path to the cloned repo on the server (e.g. /opt/contento)
+#   VPS_PORT         (optional) ssh port; defaults to 22 if unset
+# NEVER put the server password in a secret — use key auth only.
+
 on:
   push:
     branches: [main]
 
 jobs:
-  deploy-web:
-    name: Deploy Web (Vercel)
+  deploy:
+    name: Deploy to VPS (SSH + docker compose)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Deploy to Vercel
-        run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-  deploy-api:
-    name: Deploy API (Fly.io)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --app contento-api --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        working-directory: apps/api
-
-  deploy-posting-service:
-    name: Deploy Posting Service (Fly.io)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --app contento-posting-service --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        working-directory: apps/posting-service
-
-  deploy-render-worker:
-    name: Deploy Render Worker (Fly.io)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --app contento-render-worker --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        working-directory: apps/render-worker
-
-  deploy-scheduler:
-    name: Deploy Scheduler (Fly.io)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --app contento-scheduler --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        working-directory: apps/scheduler
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+            cd "${{ secrets.VPS_DEPLOY_PATH }}"
+            git fetch --all
+            git reset --hard origin/main
+            bash scripts/deploy.sh
