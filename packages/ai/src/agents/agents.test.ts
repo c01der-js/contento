@@ -9,6 +9,8 @@ vi.mock('@contento/db', () => ({
     persona: { findMany: vi.fn().mockResolvedValue([]) },
     visualIdentity: { findUnique: vi.fn().mockResolvedValue(null) },
     tabooTopic: { findMany: vi.fn().mockResolvedValue([]) },
+    // golden-example retrieval (feedback loop): no goldens in tests → empty result, no block injected.
+    $queryRaw: vi.fn().mockResolvedValue([]),
   },
 }))
 
