@@ -109,19 +109,22 @@ async function promoteTopPerformers(): Promise<void> {
     },
   })
 
-  // Group by workspace; rank scripts by their best publication's views.
-  const byWorkspace = new Map<string, Array<{ scriptId: string; views: number }>>()
+  // Per workspace: count publications (the cold-start signal threshold) and keep each script's
+  // best publication views (a script with several publications dedups to one ranking entry).
+  const pubCount = new Map<string, number>()
+  const bestViewsByScript = new Map<string, Map<string, number>>() // workspaceId -> scriptId -> bestViews
   for (const r of rows) {
     const views = r.metricsHistory[0]?.views ?? 0
-    const list = byWorkspace.get(r.workspaceId) ?? []
-    list.push({ scriptId: r.scriptId, views })
-    byWorkspace.set(r.workspaceId, list)
+    pubCount.set(r.workspaceId, (pubCount.get(r.workspaceId) ?? 0) + 1)
+    const scripts = bestViewsByScript.get(r.workspaceId) ?? new Map<string, number>()
+    scripts.set(r.scriptId, Math.max(scripts.get(r.scriptId) ?? 0, views))
+    bestViewsByScript.set(r.workspaceId, scripts)
   }
 
-  for (const [, list] of byWorkspace) {
-    if (list.length < MIN_PUBLICATIONS_FOR_PROMOTION) continue // cold start: not enough signal
-    const top = [...list].sort((a, b) => b.views - a.views).slice(0, PROMOTE_TOP_N)
-    for (const { scriptId } of top) {
+  for (const [workspaceId, scripts] of bestViewsByScript) {
+    if ((pubCount.get(workspaceId) ?? 0) < MIN_PUBLICATIONS_FOR_PROMOTION) continue // cold start: not enough signal
+    const top = [...scripts.entries()].sort((a, b) => b[1] - a[1]).slice(0, PROMOTE_TOP_N) // distinct scripts
+    for (const [scriptId] of top) {
       try {
         await promoteGoldenExample(scriptId) // no-op if already promoted
       } catch (err) {
