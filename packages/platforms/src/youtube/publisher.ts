@@ -1,4 +1,4 @@
-import type { PlatformPublisher, PublishPayload, PublishResult } from '../types.js'
+import type { PlatformPublisher, PublishPayload, PublishResult, PostMetrics } from '../types.js'
 
 const YOUTUBE_UPLOAD = 'https://www.googleapis.com/upload/youtube/v3'
 const GOOGLE_TOKEN = 'https://oauth2.googleapis.com/token'
@@ -130,6 +130,28 @@ export class YouTubePublisher implements PlatformPublisher {
       throw new Error('YouTube token refresh returned no access_token')
     }
     this.creds = { ...this.creds, accessToken: data.access_token }
+  }
+
+  async fetchMetrics(platformPostId: string): Promise<PostMetrics | null> {
+    return this.withAuthRetry(async () => {
+      const res = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${encodeURIComponent(platformPostId)}`,
+        { headers: { Authorization: `Bearer ${this.creds.accessToken}` } },
+      )
+      // Let withAuthRetry handle a 401 the same way publish does (refresh + retry).
+      if (res.status === 401) throw new UnauthorizedError()
+      if (!res.ok) return null
+      const data = (await res.json()) as {
+        items?: Array<{ statistics?: { viewCount?: string; likeCount?: string; commentCount?: string } }>
+      }
+      const s = data.items?.[0]?.statistics
+      if (!s) return null
+      return {
+        views: Number(s.viewCount ?? 0),
+        likes: Number(s.likeCount ?? 0),
+        comments: Number(s.commentCount ?? 0),
+      }
+    })
   }
 
   private async withAuthRetry<T>(fn: () => Promise<T>): Promise<T> {

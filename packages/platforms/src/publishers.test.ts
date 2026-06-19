@@ -286,6 +286,26 @@ describe('YouTubePublisher', () => {
   it('missing credentials: createPublisher throws', () => {
     expect(() => createPublisher('youtube', {})).toThrow('youtube credentials must include')
   })
+
+  it('fetchMetrics returns normalized stats from the Data API', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({ items: [{ statistics: { viewCount: '1500', likeCount: '42', commentCount: '7' } }] })
+    )
+    const publisher = new YouTubePublisher({ accessToken: 'tok', refreshToken: 'r', clientId: 'c', clientSecret: 's' })
+    const m = await publisher.fetchMetrics('vid123')
+
+    const [url] = fetchMock.mock.calls[0] as [string]
+    expect(url).toContain('/youtube/v3/videos')
+    expect(url).toContain('part=statistics')
+    expect(url).toContain('id=vid123')
+    expect(m).toEqual({ views: 1500, likes: 42, comments: 7 })
+  })
+
+  it('fetchMetrics returns null when the video has no statistics', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse({ items: [] }))
+    const publisher = new YouTubePublisher({ accessToken: 'tok', refreshToken: 'r', clientId: 'c', clientSecret: 's' })
+    expect(await publisher.fetchMetrics('missing')).toBeNull()
+  })
 })
 
 describe('LinkedInPublisher', () => {
