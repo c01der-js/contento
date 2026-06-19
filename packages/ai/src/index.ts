@@ -1,4 +1,11 @@
 export { embedText, isEmbeddingMock, EMBEDDING_DIM } from './embeddings.js'
+export {
+  writeScriptEmbedding,
+  writeGoldenEmbedding,
+  searchGoldenExamples,
+  buildGoldenExamplesBlock,
+  promoteGoldenExample,
+} from './golden-examples.js'
 export { getAnthropicClient } from './client.js'
 export { buildBrandContext } from './brand-context.js'
 export type { BrandContext } from './brand-context.js'
