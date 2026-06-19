@@ -81,8 +81,9 @@ async function ingestPublicationMetrics(): Promise<void> {
         where: { id: pub.id },
         data: { metrics: { reach, impressions: views, likes, er } as object },
       })
-    } catch {
+    } catch (err) {
       // Isolate per-publication failures (a bad token / deleted post must not stop the rest).
+      console.error('[metrics] failed to record metrics for publication', pub.id, err)
     }
   }
 }
