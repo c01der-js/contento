@@ -146,6 +146,8 @@ export class YouTubePublisher implements PlatformPublisher {
       }
       const s = data.items?.[0]?.statistics
       if (!s) return null
+      // The Data API statistics resource exposes no per-video shares or audience reach,
+      // so those PostMetrics fields are left undefined (the poll coalesces them to 0).
       return {
         views: Number(s.viewCount ?? 0),
         likes: Number(s.likeCount ?? 0),
