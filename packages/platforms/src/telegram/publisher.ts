@@ -1,4 +1,4 @@
-import type { PlatformPublisher, PublishPayload, PublishResult } from '../types.js'
+import type { PlatformPublisher, PublishPayload, PublishResult, PostMetrics } from '../types.js'
 import { requestWithRetry, throwForResponse } from '../lib/http.js'
 
 interface TelegramCredentials {
@@ -71,5 +71,10 @@ export class TelegramPublisher implements PlatformPublisher {
     }
 
     return { platformPostId: String(data.result.message_id) }
+  }
+
+  // Bot API does not expose per-post view counts (would require MTProto).
+  async fetchMetrics(_platformPostId: string): Promise<PostMetrics | null> {
+    return null
   }
 }

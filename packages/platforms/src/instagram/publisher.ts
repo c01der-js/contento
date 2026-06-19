@@ -1,4 +1,4 @@
-import type { PlatformPublisher, PublishPayload, PublishResult } from '../types.js'
+import type { PlatformPublisher, PublishPayload, PublishResult, PostMetrics } from '../types.js'
 import { requestWithRetry, throwForResponse } from '../lib/http.js'
 
 interface InstagramCredentials {
@@ -120,5 +120,10 @@ export class InstagramPublisher implements PlatformPublisher {
       throw new Error(`Instagram publish failed: ${published.error?.message ?? 'no id'}`)
     }
     return { platformPostId: published.id }
+  }
+
+  // Insights require a Business/Creator account + app review (not yet provisioned).
+  async fetchMetrics(_platformPostId: string): Promise<PostMetrics | null> {
+    return null
   }
 }

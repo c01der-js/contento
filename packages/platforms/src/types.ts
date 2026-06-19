@@ -10,6 +10,20 @@ export interface PublishResult {
   url?: string            // direct URL to the post (if available)
 }
 
+export interface PostMetrics {
+  views?: number
+  likes?: number
+  comments?: number
+  shares?: number
+  reach?: number
+}
+
 export interface PlatformPublisher {
   publish(payload: PublishPayload): Promise<PublishResult>
+  /**
+   * Current metrics for a published post, or null when the platform exposes none yet:
+   * Telegram Bot API hides views; Instagram/TikTok insights need a Business account +
+   * app review. Only YouTube returns real data today.
+   */
+  fetchMetrics(platformPostId: string): Promise<PostMetrics | null>
 }

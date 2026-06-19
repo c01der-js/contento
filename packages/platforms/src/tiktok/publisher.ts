@@ -1,4 +1,4 @@
-import type { PlatformPublisher, PublishPayload, PublishResult } from '../types.js'
+import type { PlatformPublisher, PublishPayload, PublishResult, PostMetrics } from '../types.js'
 import { requestWithRetry, throwForResponse } from '../lib/http.js'
 
 const TIKTOK_API = 'https://open.tiktokapis.com/v2'
@@ -41,5 +41,10 @@ export class TikTokPublisher implements PlatformPublisher {
     const publishId = data.data?.publish_id
     if (!publishId) throw new Error(`TikTok publish failed: ${data.error?.message ?? 'unknown error'}`)
     return { platformPostId: publishId }
+  }
+
+  // Video Query API requires an audited app with the analytics scope (not yet provisioned).
+  async fetchMetrics(_platformPostId: string): Promise<PostMetrics | null> {
+    return null
   }
 }
