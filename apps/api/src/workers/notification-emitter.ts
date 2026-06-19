@@ -1,16 +1,7 @@
 import { prisma } from '@contento/db'
 import type { NotificationType } from '@contento/db'
-import {
-  TypedConsumer,
-  createKafkaClient,
-  PublishCompletedSchema,
-  PublishFailedSchema,
-} from '@contento/shared'
 import { notificationEmitter } from '../routes/realtime.js'
 import { dispatchNotification } from '@contento/notifications'
-
-const TOPIC_PUBLISH_COMPLETED = 'publish.completed' as const
-const TOPIC_PUBLISH_FAILED = 'publish.failed' as const
 
 const VALID_NOTIFICATION_TYPES = new Set<string>([
   'TREND_DIGEST',

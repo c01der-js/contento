@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import { prisma, NotificationChannelType } from '@contento/db'
+import type { NotificationChannelType } from '@contento/db';
+import { prisma } from '@contento/db'
 import { requireRole } from '../middleware/rbac.js'
 
 const WorkspaceParams = z.object({ workspaceId: z.string() })

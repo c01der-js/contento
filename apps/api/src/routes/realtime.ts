@@ -1,9 +1,10 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
+import type { FastifyReply } from 'fastify'
 import { EventEmitter } from 'node:events'
 
 // Global in-process pub/sub for SSE notification delivery.
 // Maps userId → list of SSE reply objects.
-const sseSubscribers = new Map<string, Set<import('fastify').FastifyReply>>()
+const sseSubscribers = new Map<string, Set<FastifyReply>>()
 
 // Internal event emitter used by notification-emitter worker to push events.
 export const notificationEmitter = new EventEmitter()

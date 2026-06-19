@@ -6,7 +6,6 @@ import { writeScript, convertFormat } from '@contento/ai'
 import { buildBrandContext } from '@contento/ai'
 import { requireRole } from '../middleware/rbac.js'
 
-const WorkspaceParams = z.object({ workspaceId: z.string() })
 const ErrorResponse = z.object({ error: z.string() })
 
 const ScriptParams = z.object({ workspaceId: z.string(), scriptId: z.string() })

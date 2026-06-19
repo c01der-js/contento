@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/nextjs'
 import { useParams } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { useWorkspace } from '@/lib/workspace'
+import { Link } from '@/i18n/navigation'
 import { Button, Input, Select } from '@/components/ui'
 
 interface ContentPlanItem {
@@ -266,9 +267,9 @@ export default function CampaignPage() {
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       {/* Back navigation */}
-      <a href="/studio" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
+      <Link href="/studio" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
         ← Back to Studio
-      </a>
+      </Link>
 
       <div className="flex items-start justify-between gap-4">
         {editingCampaign ? (

@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import { Prisma, prisma } from '@contento/db'
+import type { Prisma} from '@contento/db';
+import { prisma } from '@contento/db'
 import { requireMinRole } from '../middleware/rbac.js'
 
 const ErrorResponse = z.object({ error: z.string() })

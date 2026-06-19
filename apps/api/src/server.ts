@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
-import { ZodTypeProvider, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
+import type { ZodTypeProvider} from 'fastify-type-provider-zod';
+import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
 import { registerSwagger } from './plugins/swagger.js'
 import { registerAuth } from './plugins/auth.js'
 import { registerActivityLogger } from './plugins/activity-logger.js'

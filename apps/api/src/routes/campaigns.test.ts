@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { createServer } from '../server.js'
 import type { FastifyInstance } from 'fastify'
+import type * as ContentAI from '@contento/ai'
 
 vi.mock('@contento/ai', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@contento/ai')>()
+  const actual = await importOriginal<typeof ContentAI>()
   return {
     ...actual,
     generateContentPlan: vi.fn().mockResolvedValue([

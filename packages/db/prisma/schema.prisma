@@ -215,8 +215,8 @@ model Workspace {
   id              String            @id @default(cuid())
   name            String
   slug            String            @unique
-  plan     WorkspacePlan @default(FREE)
-  maxSeats Int           @default(5)
+  plan            WorkspacePlan     @default(FREE)
+  maxSeats        Int               @default(5)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   memberships     Membership[]
@@ -256,20 +256,20 @@ model Workspace {
 }
 
 model User {
-  id              String          @id @default(cuid())
-  email           String          @unique
-  name            String?
-  avatarUrl       String?
-  passwordHash    String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  memberships     Membership[]
-  sentInvitations Invitation[]    @relation("SentInvitations")
-  scriptVersions  ScriptVersion[] @relation("ScriptVersionCreator")
-  comments        Comment[]       @relation("CommentAuthor")
-  assignedTasks   Task[]          @relation("TaskAssignee")
-  activityLogs    ActivityLog[]   @relation("ActivityActor")
-  notificationChannels NotificationChannel[]
+  id                      String                   @id @default(cuid())
+  email                   String                   @unique
+  name                    String?
+  avatarUrl               String?
+  passwordHash            String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  memberships             Membership[]
+  sentInvitations         Invitation[]             @relation("SentInvitations")
+  scriptVersions          ScriptVersion[]          @relation("ScriptVersionCreator")
+  comments                Comment[]                @relation("CommentAuthor")
+  assignedTasks           Task[]                   @relation("TaskAssignee")
+  activityLogs            ActivityLog[]            @relation("ActivityActor")
+  notificationChannels    NotificationChannel[]
   notificationPreferences NotificationPreference[]
 }
 
@@ -399,18 +399,18 @@ model Competitor {
 }
 
 model GoldenExample {
-  id          String                       @id @default(cuid())
-  workspaceId String
-  title       String
-  content     String
-  format      String
+  id             String                       @id @default(cuid())
+  workspaceId    String
+  title          String
+  content        String
+  format         String
   platform       String
-  sourceScriptId String?   @unique  // set when auto-promoted from a top-performing Script (dedup)
-  promotedAt     DateTime?           // when the feedback loop promoted it (null = manually curated)
-  embedding   Unsupported("vector(1536)")?
-  createdAt   DateTime                     @default(now())
-  updatedAt   DateTime                     @updatedAt
-  workspace   Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceScriptId String?                      @unique // set when auto-promoted from a top-performing Script (dedup)
+  promotedAt     DateTime? // when the feedback loop promoted it (null = manually curated)
+  embedding      Unsupported("vector(1536)")?
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+  workspace      Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
 }
@@ -442,8 +442,8 @@ model Trend {
 
 model TrendFeedConfig {
   id        String   @id @default(cuid())
-  source    String   // rss | reddit | google_trends | youtube
-  config    Json     // source-specific config object
+  source    String // rss | reddit | google_trends | youtube
+  config    Json // source-specific config object
   enabled   Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -452,7 +452,7 @@ model TrendFeedConfig {
 }
 
 model Idea {
-  id          String     @id @default(cuid())
+  id          String       @id @default(cuid())
   workspaceId String
   trendId     String
   title       String
@@ -462,11 +462,11 @@ model Idea {
   platforms   String[]
   goal        IdeaGoal?
   pillarId    String?
-  status      IdeaStatus @default(PENDING)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  trend       Trend      @relation(fields: [trendId], references: [id], onDelete: Cascade)
+  status      IdeaStatus   @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  trend       Trend        @relation(fields: [trendId], references: [id], onDelete: Cascade)
   pillar      BrandPillar? @relation(fields: [pillarId], references: [id], onDelete: SetNull)
   script      Script?
 
@@ -475,7 +475,7 @@ model Idea {
 }
 
 model Script {
-  id                 String         @id @default(cuid())
+  id                 String                       @id @default(cuid())
   workspaceId        String
   ideaId             String?
   hook               String
@@ -483,13 +483,13 @@ model Script {
   cta                String
   caption            String
   hashtags           String[]
-  status             ScriptStatus   @default(DRAFT)
+  status             ScriptStatus                 @default(DRAFT)
   brandCheckScore    Int?
   brandCheckNotes    String?
   brandCheckCriteria Json?
   submittedById      String?
   parentId           String?
-  version            Int            @default(1)
+  version            Int                          @default(1)
   lengthVariant      LengthVariant?
   hasTts             Boolean?
   captions           Json?
@@ -498,12 +498,12 @@ model Script {
   musicSuggestion    Json?
   subtitles          Json?
   embedding          Unsupported("vector(1536)")?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  workspace          Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  idea               Idea?          @relation(fields: [ideaId], references: [id], onDelete: Cascade)
-  parent             Script?        @relation("ScriptVariants", fields: [parentId], references: [id], onDelete: SetNull)
-  children           Script[]       @relation("ScriptVariants")
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  workspace          Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  idea               Idea?                        @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  parent             Script?                      @relation("ScriptVariants", fields: [parentId], references: [id], onDelete: SetNull)
+  children           Script[]                     @relation("ScriptVariants")
   renderJobs         RenderJob[]
   publications       Publication[]
   approvals          Approval[]
@@ -511,7 +511,7 @@ model Script {
   videoJobs          VideoJob[]
   contentPlanItems   ContentPlanItem[]
 
-  versions       ScriptVersion[]
+  versions ScriptVersion[]
 
   @@unique([ideaId])
   @@index([workspaceId])
@@ -610,14 +610,14 @@ model RenderJob {
 }
 
 model SocialAccount {
-  id           String        @id @default(cuid())
+  id           String                  @id @default(cuid())
   workspaceId  String
   platform     String // 'telegram' | 'instagram' — matches SocialPlatformSchema
   name         String // display name, e.g. "@mychannel"
   credentials  Json // { botToken } for TG; { accessToken, userId, pageId } for IG
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  workspace    Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  workspace    Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   publications Publication[]
   snapshots    SocialAccountSnapshot[]
 
@@ -626,13 +626,13 @@ model SocialAccount {
 }
 
 model Publication {
-  id              String            @id @default(cuid())
+  id              String              @id @default(cuid())
   workspaceId     String
   scriptId        String
   renderJobId     String?
   videoJobId      String?
   socialAccountId String
-  status          PublicationStatus @default(PENDING)
+  status          PublicationStatus   @default(PENDING)
   platformPostId  String? // returned by platform after publish
   errorMessage    String?
   abVariantId     String?
@@ -644,14 +644,14 @@ model Publication {
   metrics         Json?
   publishedAt     DateTime?
   scheduledAt     DateTime?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  script          Script            @relation(fields: [scriptId], references: [id], onDelete: Cascade)
-  renderJob       RenderJob?        @relation(fields: [renderJobId], references: [id], onDelete: SetNull)
-  videoJob        VideoJob?         @relation(fields: [videoJobId], references: [id], onDelete: SetNull)
-  socialAccount   SocialAccount     @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-  abVariant        AbVariant?        @relation(fields: [abVariantId], references: [id], onDelete: SetNull)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  script          Script              @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+  renderJob       RenderJob?          @relation(fields: [renderJobId], references: [id], onDelete: SetNull)
+  videoJob        VideoJob?           @relation(fields: [videoJobId], references: [id], onDelete: SetNull)
+  socialAccount   SocialAccount       @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+  abVariant       AbVariant?          @relation(fields: [abVariantId], references: [id], onDelete: SetNull)
   contentPlanItem ContentPlanItem?
   metricsHistory  PublicationMetric[]
 
@@ -930,13 +930,13 @@ model SocialAccountSnapshot {
 model PublicationMetric {
   id            String      @id @default(cuid())
   publicationId String
-  date          DateTime    // day bucket (UTC midnight); one snapshot per publication per day
+  date          DateTime // day bucket (UTC midnight); one snapshot per publication per day
   views         Int         @default(0)
   likes         Int         @default(0)
   comments      Int         @default(0)
   shares        Int         @default(0)
   reach         Int         @default(0)
-  raw           Json?       // raw normalized provider payload, for debugging / future fields
+  raw           Json? // raw normalized provider payload, for debugging / future fields
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   publication   Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
@@ -946,17 +946,17 @@ model PublicationMetric {
 }
 
 model VideoJob {
-  id           String         @id @default(cuid())
-  workspaceId  String
-  scriptId     String
-  status       VideoJobStatus @default(PENDING)
-  aspectRatio  String         @default("9:16")
-  language     String         @default("ru")
-  platform     String?
-  outputUrl    String?
-  errorMessage String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id               String            @id @default(cuid())
+  workspaceId      String
+  scriptId         String
+  status           VideoJobStatus    @default(PENDING)
+  aspectRatio      String            @default("9:16")
+  language         String            @default("ru")
+  platform         String?
+  outputUrl        String?
+  errorMessage     String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   script           Script            @relation(fields: [scriptId], references: [id], onDelete: Cascade)
   shots            VideoShot[]
@@ -969,22 +969,22 @@ model VideoJob {
 }
 
 model VideoShot {
-  id              String          @id @default(cuid())
-  videoJobId      String
-  index           Int
-  prompt          String
-  dialogue        String?
-  durationSec     Float
-  shotType        String          @default("avatar") // avatar | broll | screencast
-  headline        String?         // on-screen text for b-roll/screencast shots
-  audioUrl        String?         // voiceover track for non-avatar shots (avatar bakes audio into the clip)
-  screencastTemplate String?      // slides | chat | browser | phone-app (set for synthetic screencast shots)
-  screencastContent  Json?        // structured on-screen content for the template
-  status          VideoShotStatus @default(PENDING)
-  higgsfieldJobId String?
-  clipUrl         String?
-  errorMessage    String?
-  videoJob        VideoJob        @relation(fields: [videoJobId], references: [id], onDelete: Cascade)
+  id                 String          @id @default(cuid())
+  videoJobId         String
+  index              Int
+  prompt             String
+  dialogue           String?
+  durationSec        Float
+  shotType           String          @default("avatar") // avatar | broll | screencast
+  headline           String? // on-screen text for b-roll/screencast shots
+  audioUrl           String? // voiceover track for non-avatar shots (avatar bakes audio into the clip)
+  screencastTemplate String? // slides | chat | browser | phone-app (set for synthetic screencast shots)
+  screencastContent  Json? // structured on-screen content for the template
+  status             VideoShotStatus @default(PENDING)
+  higgsfieldJobId    String?
+  clipUrl            String?
+  errorMessage       String?
+  videoJob           VideoJob        @relation(fields: [videoJobId], references: [id], onDelete: Cascade)
 
   @@index([videoJobId])
   @@index([higgsfieldJobId])
@@ -1021,19 +1021,19 @@ model AvatarPersona {
 }
 
 model Campaign {
-  id           String         @id @default(cuid())
-  workspaceId  String
-  name         String
-  goal         GoalType
+  id              String         @id @default(cuid())
+  workspaceId     String
+  name            String
+  goal            GoalType
   targetAction    String
   targetPlatforms String[]       @default(["tiktok", "instagram", "youtube", "telegram"])
-  startsAt     DateTime
-  endsAt       DateTime
-  status       CampaignStatus @default(DRAFT)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  contentPlan  ContentPlan?
+  startsAt        DateTime
+  endsAt          DateTime
+  status          CampaignStatus @default(DRAFT)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  workspace       Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contentPlan     ContentPlan?
 
   @@index([workspaceId])
   @@index([workspaceId, status])
@@ -1062,7 +1062,7 @@ model ContentPlanItem {
   rejectComment String?
   scriptId      String?
   videoJobId    String?
-  publicationId String? @unique
+  publicationId String?               @unique
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
   contentPlan   ContentPlan           @relation(fields: [contentPlanId], references: [id], onDelete: Cascade)
@@ -1081,7 +1081,7 @@ model QaCheck {
   contentPlanItemId String
   videoJobId        String?
   status            QaCheckStatus
-  findings          Json            // Array<{ id: string; severity: 'pass'|'warn'|'block'|'skip'; message: string }>
+  findings          Json // Array<{ id: string; severity: 'pass'|'warn'|'block'|'skip'; message: string }>
   createdAt         DateTime        @default(now())
   contentPlanItem   ContentPlanItem @relation(fields: [contentPlanItemId], references: [id], onDelete: Cascade)
   videoJob          VideoJob?       @relation(fields: [videoJobId], references: [id], onDelete: SetNull)

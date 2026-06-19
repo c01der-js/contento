@@ -2,8 +2,7 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 import { prisma } from '@contento/db'
 import type { Prisma } from '@contento/db'
-import { analyzeTrend, generateIdeas, writeScript, checkBrand, convertFormat } from '@contento/ai'
-import { buildBrandContext } from '@contento/ai'
+import { analyzeTrend, generateIdeas, writeScript, checkBrand } from '@contento/ai'
 import { TrendSourceSchema } from '@contento/shared'
 import { requireRole } from '../middleware/rbac.js'
 import { getTrendFetchQueue } from '../queue.js'
@@ -99,39 +98,6 @@ const ScriptResponse = z.object({
 })
 
 const ScriptParams = z.object({ workspaceId: z.string(), scriptId: z.string() })
-
-const PatchScriptBody = z.object({
-  hook: z.string().min(1).optional(),
-  body: z.string().min(1).optional(),
-  cta: z.string().min(1).optional(),
-  captions: z.record(z.string()).optional(),
-  hashtags: z.array(z.string()).optional(),
-})
-
-const RegenerateScriptBody = z.object({
-  feedback: z.string().optional(),
-})
-
-const ScriptVersionResponse = z.object({
-  id: z.string(),
-  scriptId: z.string(),
-  version: z.number(),
-  hook: z.string(),
-  body: z.string(),
-  cta: z.string(),
-  captions: z.unknown().nullable(),
-  createdAt: z.string(),
-  createdById: z.string().nullable(),
-})
-
-const DiffQuerystring = z.object({
-  from: z.coerce.number().int().positive(),
-  to: z.coerce.number().int().positive(),
-})
-
-const ConvertScriptBody = z.object({
-  targetFormat: z.string().min(1),
-})
 
 const CreateVariantBody = z.object({
   lengthVariant: z.enum(['SHORT', 'LONG']).optional(),
@@ -283,30 +249,6 @@ function serializeScript(s: {
     hasTts: s.hasTts,
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
-  }
-}
-
-function serializeScriptVersion(v: {
-  id: string
-  scriptId: string
-  version: number
-  hook: string
-  body: string
-  cta: string
-  captions: unknown
-  createdAt: Date
-  createdById: string | null
-}) {
-  return {
-    id: v.id,
-    scriptId: v.scriptId,
-    version: v.version,
-    hook: v.hook,
-    body: v.body,
-    cta: v.cta,
-    captions: v.captions ?? null,
-    createdAt: v.createdAt.toISOString(),
-    createdById: v.createdById,
   }
 }
 

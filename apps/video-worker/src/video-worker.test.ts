@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { buildConcatArgs } from './stitch.js'
+import type * as StitchModule from './stitch.js'
 
 // ─── stitch: buildConcatArgs ─────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ vi.mock('./remotion-stitch.js', () => ({ renderStitchVideo: mockRenderStitch }))
 // Partial mock: keep buildConcatArgs/stitchClips real (used elsewhere), stub the
 // ffprobe-spawning probeDurationSec so the Remotion happy path doesn't shell out.
 vi.mock('./stitch.js', async (importActual) => {
-  const actual = await importActual<typeof import('./stitch.js')>()
+  const actual = await importActual<typeof StitchModule>()
   return { ...actual, probeDurationSec: mockProbeDuration }
 })
 

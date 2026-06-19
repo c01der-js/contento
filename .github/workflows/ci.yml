@@ -77,7 +77,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Validate Prisma schema
+        # prisma validate resolves env("DATABASE_URL") even though it makes no connection;
+        # a placeholder is enough for the datasource block to parse in CI.
         run: pnpm --filter @contento/db exec prisma validate
+        env:
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db
 
       - name: Check Prisma schema format
         run: pnpm --filter @contento/db exec prisma format --check

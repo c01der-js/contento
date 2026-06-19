@@ -938,7 +938,7 @@ export const brandKitRoutes: FastifyPluginAsyncZod = async (app) => {
         cta: s.cta,
         caption: s.caption,
       }))
-    } catch (e) {
+    } catch {
       return reply.status(500).send({ error: 'Failed to generate brand preview' })
     }
   })

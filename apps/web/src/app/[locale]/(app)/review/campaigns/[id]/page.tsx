@@ -143,7 +143,7 @@ export default function ReviewCampaignPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-medium text-gray-900">{item.topic}</h3>
-                    <p className="text-xs text-gray-500 italic mt-1">"{item.hook}"</p>
+                    <p className="text-xs text-gray-500 italic mt-1">&ldquo;{item.hook}&rdquo;</p>
                     <p className="text-xs text-gray-400 mt-1">{new Date(item.scheduledDate).toLocaleDateString()}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
