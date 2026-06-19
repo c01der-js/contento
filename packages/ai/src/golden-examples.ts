@@ -20,8 +20,9 @@ export interface GoldenMatch { id: string; title: string; content: string; simil
 
 /** Top-K workspace golden examples by cosine similarity to `vec` (only rows with an embedding). */
 export async function searchGoldenExamples(workspaceId: string, vec: number[], k = 3): Promise<GoldenMatch[]> {
+  // Cast similarity to float8 so $queryRaw returns a JS number (not a string) across Prisma versions.
   return prisma.$queryRaw<GoldenMatch[]>`
-    SELECT id, title, content, 1 - (embedding <=> ${vectorLiteral(vec)}::vector) AS similarity
+    SELECT id, title, content, (1 - (embedding <=> ${vectorLiteral(vec)}::vector))::float8 AS similarity
     FROM "GoldenExample"
     WHERE "workspaceId" = ${workspaceId} AND embedding IS NOT NULL
     ORDER BY similarity DESC
@@ -34,6 +35,7 @@ export function formatGoldenBlock(matches: GoldenMatch[]): string | null {
   if (matches.length === 0) return null
   const lines = [
     '## High-performing examples from this brand (match their structure and energy, do not copy verbatim)',
+    // 600-char cap per example bounds the (uncached) prompt token cost of the injected block.
     ...matches.map((m, i) => `${i + 1}. ${m.title ? m.title + ' — ' : ''}${m.content.slice(0, 600)}`),
   ]
   return lines.join('\n')
@@ -66,21 +68,32 @@ export async function promoteGoldenExample(scriptId: string): Promise<string | n
   if (!script) return null
 
   const content = [script.hook, script.body, script.cta].filter(Boolean).join('\n')
-  const golden = await prisma.goldenExample.create({
-    data: {
-      workspaceId: script.workspaceId,
-      title: script.hook.slice(0, 120),
-      content,
-      format: 'reel',
-      platform: 'tiktok',
-      sourceScriptId: scriptId,
-      promotedAt: new Date(),
-    },
-  })
+  let goldenId: string
   try {
-    await writeGoldenEmbedding(golden.id, await embedText(content))
+    const golden = await prisma.goldenExample.create({
+      data: {
+        workspaceId: script.workspaceId,
+        title: script.hook.slice(0, 120),
+        content,
+        // Script carries no platform field (platform lives on the content-plan item, not the
+        // Script), so v1 promotion defaults to the most common short-form pairing. Thread the
+        // real platform through when a platform-aware source is available.
+        format: 'reel',
+        platform: 'tiktok',
+        sourceScriptId: scriptId,
+        promotedAt: new Date(),
+      },
+    })
+    goldenId = golden.id
   } catch (err) {
-    console.error('[feedback] failed to embed promoted golden', golden.id, err)
+    // P2002 = unique violation on sourceScriptId: a concurrent run promoted it first. Idempotent no-op.
+    if (err && typeof err === 'object' && (err as { code?: string }).code === 'P2002') return null
+    throw err
   }
-  return golden.id
+  try {
+    await writeGoldenEmbedding(goldenId, await embedText(content))
+  } catch (err) {
+    console.error('[feedback] failed to embed promoted golden', goldenId, err)
+  }
+  return goldenId
 }
