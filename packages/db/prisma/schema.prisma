@@ -651,6 +651,7 @@ model Publication {
   socialAccount   SocialAccount     @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
   abVariant        AbVariant?        @relation(fields: [abVariantId], references: [id], onDelete: SetNull)
   contentPlanItem ContentPlanItem?
+  metricsHistory  PublicationMetric[]
 
   @@index([workspaceId])
   @@index([scriptId])
@@ -922,6 +923,24 @@ model SocialAccountSnapshot {
   @@unique([socialAccountId, date])
   @@index([socialAccountId])
   @@index([socialAccountId, date])
+}
+
+model PublicationMetric {
+  id            String      @id @default(cuid())
+  publicationId String
+  date          DateTime    // day bucket (UTC midnight); one snapshot per publication per day
+  views         Int         @default(0)
+  likes         Int         @default(0)
+  comments      Int         @default(0)
+  shares        Int         @default(0)
+  reach         Int         @default(0)
+  raw           Json?       // raw normalized provider payload, for debugging / future fields
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  publication   Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@unique([publicationId, date])
+  @@index([publicationId])
 }
 
 model VideoJob {
