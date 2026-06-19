@@ -1,7 +1,7 @@
 import { Worker } from 'bullmq'
 import { Redis as IORedis } from 'ioredis'
 import { prisma } from '@contento/db'
-import { writeScript } from '@contento/ai'
+import { writeScript, embedText, writeScriptEmbedding } from '@contento/ai'
 import { getVideoQueue } from '../queue.js'
 import { runQaChecks } from '../qa/checks.js'
 import type { QaInput } from '../qa/checks.js'
@@ -112,6 +112,13 @@ export function startCampaignProducer(): Worker {
             },
           })
           scriptId = script.id
+
+          // Feedback loop: embed the script so it's retrievable / rankable. Best-effort.
+          try {
+            await writeScriptEmbedding(script.id, await embedText(`${script.hook}\n${script.body}\n${script.caption}`))
+          } catch (err) {
+            console.error('[feedback] failed to embed script', script.id, err)
+          }
 
           // SCRIPTING -> SCRIPTED. If a Stop reset the item during writeScript, this
           // matches 0 rows: discard the script and halt.
