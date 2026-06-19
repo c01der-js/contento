@@ -50,6 +50,9 @@ importers:
       '@contento/notifications':
         specifier: workspace:*
         version: link:../../packages/notifications
+      '@contento/platforms':
+        specifier: workspace:*
+        version: link:../../packages/platforms
       '@contento/shared':
         specifier: workspace:*
         version: link:../../packages/shared

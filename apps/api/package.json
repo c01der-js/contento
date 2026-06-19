@@ -24,6 +24,7 @@
     "@clerk/backend": "^1.0.0",
     "@contento/ai": "workspace:*",
     "@contento/db": "workspace:*",
+    "@contento/platforms": "workspace:*",
     "@contento/notifications": "workspace:*",
     "@contento/shared": "workspace:*",
     "@fastify/cors": "^11.2.0",
