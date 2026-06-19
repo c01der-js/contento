@@ -1,6 +1,7 @@
 import { getPlatformProfile } from '@contento/shared'
 import { runAnthropicMessage } from '../client.js'
 import { buildBrandContext } from '../brand-context.js'
+import { buildGoldenExamplesBlock } from '../golden-examples.js'
 
 export interface ContentScript {
   hook: string
@@ -55,6 +56,7 @@ export async function writeScript(
   idea: { title: string; angle: string; format: string; platform: string },
 ): Promise<ContentScript> {
   const { systemBlock } = await buildBrandContext(workspaceId)
+  const goldenBlock = await buildGoldenExamplesBlock(workspaceId, `${idea.title}\n${idea.angle}`)
 
   const response = await runAnthropicMessage({ agent: 'scriptwriter', workspaceId }, {
     model: 'claude-sonnet-4-6',
@@ -63,6 +65,7 @@ export async function writeScript(
       systemBlock,
       { type: 'text', text: SCHEMA_INSTRUCTION },
       { type: 'text', text: platformInstruction(idea.platform) },
+      ...(goldenBlock ? [{ type: 'text' as const, text: goldenBlock }] : []),
     ],
     messages: [{ role: 'user', content: JSON.stringify(idea) }],
   })

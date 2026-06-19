@@ -1,5 +1,6 @@
 import { runAnthropicMessage } from '../client.js'
 import { buildBrandContext } from '../brand-context.js'
+import { buildGoldenExamplesBlock } from '../golden-examples.js'
 
 export interface ContentIdea {
   title: string
@@ -15,6 +16,7 @@ export async function generateIdeas(
   count: number = 7,
 ): Promise<ContentIdea[]> {
   const { systemBlock } = await buildBrandContext(workspaceId)
+  const goldenBlock = await buildGoldenExamplesBlock(workspaceId, `${trend.title}\n${trend.description ?? ''}`)
 
   const response = await runAnthropicMessage({ agent: 'idea-generator', workspaceId }, {
     model: 'claude-sonnet-4-6',
@@ -25,6 +27,7 @@ export async function generateIdeas(
         type: 'text',
         text: 'You are a creative content strategist. Generate diverse content ideas. Respond with valid JSON only, no markdown fences.',
       },
+      ...(goldenBlock ? [{ type: 'text' as const, text: goldenBlock }] : []),
     ],
     messages: [{ role: 'user', content: JSON.stringify({ trend, count }) }],
   })
