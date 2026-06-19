@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@contento/db'
 import { requireRole } from '../middleware/rbac.js'
 import { ContentFormatSchema } from '@contento/shared'
-import { buildBrandContext, writeScript } from '@contento/ai'
+import { buildBrandContext, writeScript, embedText, writeGoldenEmbedding } from '@contento/ai'
 
 const WorkspaceParams = z.object({ workspaceId: z.string() })
 const ItemParams = z.object({ workspaceId: z.string(), id: z.string() })
@@ -698,6 +698,13 @@ export const brandKitRoutes: FastifyPluginAsyncZod = async (app) => {
         platform: request.body.platform,
       },
     })
+    // Feedback loop: embed so this example is retrievable by similarity. Best-effort.
+    try {
+      await writeGoldenEmbedding(example.id, await embedText(example.content))
+    } catch (err) {
+      console.error('[feedback] failed to embed golden example', example.id, err)
+    }
+
     return reply.status(201).send({
       id: example.id,
       workspaceId: example.workspaceId,
