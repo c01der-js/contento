@@ -404,7 +404,9 @@ model GoldenExample {
   title       String
   content     String
   format      String
-  platform    String
+  platform       String
+  sourceScriptId String?   @unique  // set when auto-promoted from a top-performing Script (dedup)
+  promotedAt     DateTime?           // when the feedback loop promoted it (null = manually curated)
   embedding   Unsupported("vector(1536)")?
   createdAt   DateTime                     @default(now())
   updatedAt   DateTime                     @updatedAt
