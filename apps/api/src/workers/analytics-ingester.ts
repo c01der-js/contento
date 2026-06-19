@@ -1,5 +1,6 @@
 import { prisma } from '@contento/db'
 import { createPublisher } from '@contento/platforms'
+import { promoteGoldenExample } from '@contento/ai'
 
 async function ingestFollowerCounts(): Promise<void> {
   const accounts = await prisma.socialAccount.findMany()
@@ -88,9 +89,53 @@ async function ingestPublicationMetrics(): Promise<void> {
   }
 }
 
+const MIN_PUBLICATIONS_FOR_PROMOTION = 5 // cold-start guard: don't promote until a workspace has signal
+const PROMOTE_TOP_N = 3                  // per run, per workspace
+
+/**
+ * Promote top-performing published scripts to golden examples so future generation learns
+ * from what worked. Ranks each workspace's published scripts by their best publication's
+ * latest views; promotes the top N once the workspace has >= MIN_PUBLICATIONS_FOR_PROMOTION
+ * publications with metrics. Idempotent (promoteGoldenExample dedupes via sourceScriptId).
+ */
+async function promoteTopPerformers(): Promise<void> {
+  // Latest metric per publication, joined to its script + workspace, for published rows.
+  const rows = await prisma.publication.findMany({
+    where: { status: 'PUBLISHED', metricsHistory: { some: {} } },
+    select: {
+      scriptId: true,
+      workspaceId: true,
+      metricsHistory: { orderBy: { date: 'desc' }, take: 1, select: { views: true } },
+    },
+  })
+
+  // Group by workspace; rank scripts by their best publication's views.
+  const byWorkspace = new Map<string, Array<{ scriptId: string; views: number }>>()
+  for (const r of rows) {
+    const views = r.metricsHistory[0]?.views ?? 0
+    const list = byWorkspace.get(r.workspaceId) ?? []
+    list.push({ scriptId: r.scriptId, views })
+    byWorkspace.set(r.workspaceId, list)
+  }
+
+  for (const [, list] of byWorkspace) {
+    if (list.length < MIN_PUBLICATIONS_FOR_PROMOTION) continue // cold start: not enough signal
+    const top = [...list].sort((a, b) => b.views - a.views).slice(0, PROMOTE_TOP_N)
+    for (const { scriptId } of top) {
+      try {
+        await promoteGoldenExample(scriptId) // no-op if already promoted
+      } catch (err) {
+        console.error('[feedback] failed to promote script', scriptId, err)
+      }
+    }
+  }
+}
+
 export function startAnalyticsIngester(): void {
   void ingestFollowerCounts()
   setInterval(() => { void ingestFollowerCounts() }, 6 * 60 * 60 * 1000)
   void ingestPublicationMetrics()
   setInterval(() => { void ingestPublicationMetrics() }, 24 * 60 * 60 * 1000)
+  void promoteTopPerformers()
+  setInterval(() => { void promoteTopPerformers() }, 24 * 60 * 60 * 1000)
 }
