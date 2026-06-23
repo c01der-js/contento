@@ -14,7 +14,11 @@ interface TikTokApiResponse {
   status_code?: number
 }
 
-export async function fetchTikTokTrends(_workspaceId: string): Promise<FetchedTrend[]> {
+// TikTok Creative Radar is a global API keyed by a single TIKTOK_API_KEY — there is no
+// per-workspace dimension. Trends are fetched once globally and scored per-workspace
+// downstream in trend-analyzer (relevance vs each workspace's pillars), so no workspace
+// arg is threaded here.
+export async function fetchTikTokTrends(): Promise<FetchedTrend[]> {
   const apiKey = process.env.TIKTOK_API_KEY
   if (!apiKey) {
     console.warn('[trend-fetcher/tiktok] TIKTOK_API_KEY not set, skipping')

@@ -80,12 +80,12 @@ export function createWorker(): Worker {
               break
             }
             case 'tiktok': {
-              const trends = await fetchTikTokTrends('')
+              const trends = await fetchTikTokTrends()
               await broadcastTrends(source, trends, { force })
               break
             }
             case 'x': {
-              const trends = await fetchXTrends('')
+              const trends = await fetchXTrends()
               await broadcastTrends(source, trends, { force })
               break
             }
