@@ -397,7 +397,10 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-contento}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-contento123}
       MINIO_BUCKET: ${MINIO_BUCKET:-contento}
-      LORA_MOCK_TRAINING: ${LORA_MOCK_TRAINING:-true}
+      # Default false: real LoRA training is not implemented, so an unset flag now fails
+      # loudly (NotImplementedError) instead of silently shipping placeholder weights.
+      # Set LORA_MOCK_TRAINING=true explicitly to exercise the pipeline without a GPU.
+      LORA_MOCK_TRAINING: ${LORA_MOCK_TRAINING:-false}
     profiles:
       - ml
 
