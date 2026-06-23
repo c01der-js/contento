@@ -196,6 +196,10 @@ services:
       context: ..
       dockerfile: Dockerfile
       target: web-runner
+      args:
+        # NEXT_PUBLIC_* must be baked at build time (inlined into the client bundle)
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
     ports:
       - "3000:3000"
     environment:
