@@ -44,6 +44,9 @@ importers:
       '@contento/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@contento/brand-kit':
+        specifier: workspace:*
+        version: link:../../packages/brand-kit
       '@contento/db':
         specifier: workspace:*
         version: link:../../packages/db

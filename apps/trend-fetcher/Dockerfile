@@ -23,6 +23,6 @@ FROM node:22-alpine AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /deploy .
-# Entry emits under dist/apps/trend-fetcher/src/ (base tsconfig paths pull sibling
-# src, raising tsc rootDir to the monorepo root — there is no dist/index.js).
-CMD ["node", "dist/apps/trend-fetcher/src/index.js"]
+# trend-fetcher's tsconfig sets paths:{} + project references, so it emits a clean
+# dist/index.js (unlike the apps that inherit the base paths→src mapping).
+CMD ["node", "dist/index.js"]
