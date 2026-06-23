@@ -46,7 +46,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-contento}
       POSTGRES_DB: ${POSTGRES_DB:-contento}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -59,7 +59,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -84,8 +84,8 @@ services:
       KAFKA_LOG_DIRS: /var/lib/kafka/data
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     ports:
-      - "9092:9092"
-      - "9094:9094"
+      - "127.0.0.1:9092:9092"
+      - "127.0.0.1:9094:9094"
     volumes:
       - kafka_data:/var/lib/kafka/data
     healthcheck:
@@ -103,7 +103,7 @@ services:
     volumes:
       - ./karapace.json:/config/karapace.json:ro
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8081/subjects > /dev/null 2>&1 || exit 1"]
       interval: 10s
@@ -118,8 +118,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-contento}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-contento123}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -132,8 +132,8 @@ services:
     image: clickhouse/clickhouse-server:24
     restart: unless-stopped
     ports:
-      - "8123:8123"
-      - "9900:9000"
+      - "127.0.0.1:8123:8123"
+      - "127.0.0.1:9900:9000"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     healthcheck:
