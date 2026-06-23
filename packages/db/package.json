@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && node -e \"const fs=require('fs'); const s='src/generated/client'; if (fs.existsSync(s)) fs.cpSync(s,'dist/generated/client',{recursive:true})\"",
     "dev": "tsc --build --watch",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
@@ -21,7 +21,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
-    "db:generate-and-build": "prisma generate && tsc --build"
+    "db:generate-and-build": "prisma generate && pnpm run build"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0"

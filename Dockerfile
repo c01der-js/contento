@@ -40,12 +40,16 @@ RUN --mount=type=cache,id=turbo,target=/app/.turbo \
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm --filter=@contento/${APP} deploy --prod --legacy /deploy
 
 # ── lean production runner (non-web apps) ─────────────────────────────────────
+# tsc raises rootDir to the monorepo root (base tsconfig `paths` resolve @contento/*
+# to sibling src), so each app's entry emits at dist/apps/<APP>/src/index.js — there
+# is NO dist/index.js. CMD is shell-form so $APP expands at runtime.
 FROM node:22-alpine AS runner
 ARG APP=api
 ENV NODE_ENV=production
+ENV APP=$APP
 WORKDIR /app
 COPY --from=builder /deploy .
-CMD ["node", "dist/index.js"]
+CMD node dist/apps/$APP/src/index.js
 
 # ── video-worker runner: same as runner + ffmpeg/ffprobe (stitch.ts shells out) ──
 # Remotion's chrome-headless-shell is downloaded at runtime (same as render-worker on
