@@ -16,6 +16,9 @@ export interface RenderJobPayload {
 }
 
 const RENDER_TIMEOUT_MS = Number(process.env['RENDER_TIMEOUT_MS'] ?? 15 * 60 * 1000)
+// Per-worker BullMQ concurrency. Scale render throughput by raising this (CPU permitting)
+// and/or running more worker replicas against the same Redis — the non-AWS alternative to Lambda.
+const WORKER_CONCURRENCY = Math.max(1, Number(process.env['WORKER_CONCURRENCY'] ?? 2) || 2)
 const REMOTION_ENTRY = fileURLToPath(
   new URL('../../../packages/brand-kit/src/remotion-entry.ts', import.meta.url),
 )
@@ -138,7 +141,7 @@ export function createWorker(redisUrl: string) {
     },
     {
       connection,
-      concurrency: 2,
+      concurrency: WORKER_CONCURRENCY,
     },
   )
 }

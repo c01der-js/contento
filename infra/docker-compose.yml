@@ -232,6 +232,9 @@ services:
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-contento}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-contento123}
       S3_BUCKET: ${S3_BUCKET:-contento-media}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+    # Scale stills throughput without AWS: raise WORKER_CONCURRENCY and/or
+    # `docker compose up -d --scale render-worker=N`.
     depends_on:
       <<: *depends-ready
       minio-init:
@@ -297,6 +300,9 @@ services:
       S3_BUCKET: ${S3_BUCKET:-contento-media}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       VIDEO_STITCHER: ${VIDEO_STITCHER:-remotion}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+    # Scale render throughput without AWS: raise WORKER_CONCURRENCY (CPU permitting) and/or
+    # run more replicas — `docker compose --profile video up -d --scale video-worker=N`.
     depends_on:
       <<: *depends-ready
       minio-init:

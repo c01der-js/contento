@@ -32,6 +32,11 @@ export interface StitchJobPayload {
   videoJobId: string
 }
 
+// Per-worker BullMQ concurrency. Scale video throughput by raising this (CPU permitting)
+// and/or running more video-worker replicas against the same Redis — the non-AWS
+// alternative to Remotion Lambda (workers reach MinIO internally, no public media needed).
+const WORKER_CONCURRENCY = Math.max(1, Number(process.env['WORKER_CONCURRENCY'] ?? 2) || 2)
+
 export function createWorker(redisUrl: string) {
   const connection = { url: redisUrl }
   const queue = new Queue<VideoJobPayload | StitchJobPayload>('video', { connection: { url: redisUrl } })
@@ -48,7 +53,7 @@ export function createWorker(redisUrl: string) {
       }
       return handleGenerate(job.data as VideoJobPayload, enqueueStitch)
     },
-    { connection, concurrency: 2 },
+    { connection, concurrency: WORKER_CONCURRENCY },
   )
 
   return { worker, queue }
