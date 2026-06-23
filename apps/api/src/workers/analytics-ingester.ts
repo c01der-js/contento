@@ -89,7 +89,14 @@ async function ingestPublicationMetrics(): Promise<void> {
   }
 }
 
-const MIN_PUBLICATIONS_FOR_PROMOTION = 5 // cold-start guard: don't promote until a workspace has signal
+// Cold-start guard: don't auto-promote scripts to golden examples until a workspace has
+// enough published signal. Default 5 (early signal, current behaviour). Strategy docs
+// suggest ~20 for *meaningful* feedback-loop lift — tune via GOLDEN_PROMOTION_MIN_PUBLICATIONS
+// per market without a code change. Higher = stronger signal but later first promotion.
+const MIN_PUBLICATIONS_FOR_PROMOTION = Math.max(
+  1,
+  Number(process.env['GOLDEN_PROMOTION_MIN_PUBLICATIONS'] ?? 5) || 5,
+)
 const PROMOTE_TOP_N = 3                  // per run, per workspace
 
 /**
