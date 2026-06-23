@@ -5,6 +5,9 @@ import path from 'path'
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
 const nextConfig: NextConfig = {
+  // Emit a self-contained server bundle that the Docker web-runner stage copies
+  // from .next/standalone (outputFileTracingRoot already points at the monorepo root).
+  output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../../'),
   eslint: {
     // ESLint plugin packages not installed in this workspace — run separately via pnpm lint
