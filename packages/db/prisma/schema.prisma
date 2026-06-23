@@ -634,6 +634,7 @@ model Publication {
   socialAccountId String
   status          PublicationStatus   @default(PENDING)
   platformPostId  String? // returned by platform after publish
+  postUrl         String? // direct URL to the published post (if the platform returns one)
   errorMessage    String?
   abVariantId     String?
   utmCampaign     String?

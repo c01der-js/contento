@@ -35,6 +35,7 @@ const PublicationResponse = z.object({
   socialAccountId: z.string(),
   status: z.string(),
   platformPostId: z.string().nullable(),
+  postUrl: z.string().nullable(),
   errorMessage: z.string().nullable(),
   publishedAt: z.string().nullable(),
   scheduledAt: z.string().nullable(),
@@ -75,6 +76,7 @@ function serializePublication(p: {
   socialAccountId: string
   status: string
   platformPostId: string | null
+  postUrl: string | null
   errorMessage: string | null
   publishedAt: Date | null
   scheduledAt: Date | null
@@ -89,6 +91,7 @@ function serializePublication(p: {
     socialAccountId: p.socialAccountId,
     status: p.status,
     platformPostId: p.platformPostId,
+    postUrl: p.postUrl,
     errorMessage: p.errorMessage,
     publishedAt: p.publishedAt ? p.publishedAt.toISOString() : null,
     scheduledAt: p.scheduledAt ? p.scheduledAt.toISOString() : null,

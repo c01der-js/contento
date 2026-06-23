@@ -29,6 +29,7 @@ const PublicationResponse = z.object({
   renderJobId: z.string().nullable(),
   status: z.string(),
   platformPostId: z.string().nullable(),
+  postUrl: z.string().nullable(),
   errorMessage: z.string().nullable(),
   abVariantId: z.string().nullable(),
   utmCampaign: z.string().nullable(),
@@ -55,6 +56,7 @@ function serializePublication(p: {
   renderJobId: string | null
   status: string
   platformPostId: string | null
+  postUrl: string | null
   errorMessage: string | null
   abVariantId: string | null
   utmCampaign: string | null
@@ -76,6 +78,7 @@ function serializePublication(p: {
     renderJobId: p.renderJobId,
     status: p.status,
     platformPostId: p.platformPostId,
+    postUrl: p.postUrl,
     errorMessage: p.errorMessage,
     abVariantId: p.abVariantId,
     utmCampaign: p.utmCampaign,

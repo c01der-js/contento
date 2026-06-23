@@ -196,6 +196,7 @@ export async function runWorker(consumer: TypedConsumer): Promise<void> {
             data: {
               status: PublicationStatus.PUBLISHED,
               platformPostId: result.platformPostId,
+              postUrl: result.url ?? null,
               utmCampaign,
               publishedAt,
             },
