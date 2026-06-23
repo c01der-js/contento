@@ -10,10 +10,9 @@ export { generateVariants, generateCoverVariants } from './variant-generator.js'
 export type { ScriptVariant, CoverConcept } from './variant-generator.js'
 export { convertFormat } from './format-converter.js'
 export type { ConvertedScript } from './format-converter.js'
-export { generateCoverConcept } from './cover-concept.js'
-export type { CoverConceptResult } from './cover-concept.js'
-export { generateStoryboard } from './storyboard.js'
-export type { StoryboardShot } from './storyboard.js'
+// NOTE: music-suggester and viral-analyzer below are implemented but not yet wired into any
+// route/worker (features, not duplicates) — kept intentionally. The former cover-concept and
+// storyboard agents were removed (superseded by variant-generator and video-storyboard).
 export { suggestMusic } from './music-suggester.js'
 export type { MusicSuggestion } from './music-suggester.js'
 export { planSeries } from './series-planner.js'
