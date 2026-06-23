@@ -17,6 +17,7 @@ COPY apps/web/package.json           apps/web/
 COPY packages/ai/package.json        packages/ai/
 COPY packages/brand-kit/package.json packages/brand-kit/
 COPY packages/db/package.json        packages/db/
+COPY packages/notifications/package.json packages/notifications/
 COPY packages/platforms/package.json packages/platforms/
 COPY packages/shared/package.json    packages/shared/
 COPY packages/ui/package.json        packages/ui/
@@ -35,7 +36,8 @@ ARG APP=api
 COPY . .
 RUN --mount=type=cache,id=turbo,target=/app/.turbo \
     pnpm exec turbo run build --filter=@contento/${APP}...
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm --filter=@contento/${APP} deploy --prod /deploy
+# --legacy: pnpm v10 refuses non-injected workspace deploys without it
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm --filter=@contento/${APP} deploy --prod --legacy /deploy
 
 # ── lean production runner (non-web apps) ─────────────────────────────────────
 FROM node:22-alpine AS runner
