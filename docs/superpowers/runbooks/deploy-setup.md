@@ -99,13 +99,12 @@ migrations are archived under `packages/db/prisma/_broken_migrations_archive/` (
 **Nothing to do for this gate** — the compose `migrate` service (`prisma migrate deploy`) now
 creates the full schema automatically on first deploy against the fresh server DB.
 
-> **pgvector index (deferred, optional perf):** the feedback-loop search (`embedding <=> …`, cosine)
-> runs without an index — fine at beta scale (≪ 10k vectors). When volume grows, add HNSW indexes:
-> ```sql
-> CREATE INDEX IF NOT EXISTS "GoldenExample_embedding_idx" ON "GoldenExample" USING hnsw ("embedding" vector_cosine_ops);
-> CREATE INDEX IF NOT EXISTS "Script_embedding_idx"        ON "Script"        USING hnsw ("embedding" vector_cosine_ops);
-> ```
-> Apply as raw SQL (Prisma can't model indexes on `Unsupported()` columns, so they're not in the migration).
+> **pgvector HNSW indexes (now automatic):** the feedback-loop search (`embedding <=> …`, cosine)
+> indexes on `GoldenExample.embedding` and `Script.embedding` ship as raw SQL in migration
+> `20260624000001_add_pgvector_hnsw_indexes` and are applied by `migrate deploy` — no manual step.
+> They're created non-concurrently (Prisma wraps migrations in a transaction; `CONCURRENTLY` can't
+> run inside one), which is fine at beta scale. At large volume, rebuild with `CONCURRENTLY`
+> out-of-band during a maintenance window. See `packages/db/prisma/migrations/README.md`.
 
 - [x] Schema synced — squashed baseline migration committed + validated; `migrate deploy` works on a fresh DB.
 
