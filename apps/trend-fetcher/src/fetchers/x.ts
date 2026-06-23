@@ -13,7 +13,10 @@ interface XTrendsResponse {
   }
 }
 
-export async function fetchXTrends(_workspaceId: string): Promise<FetchedTrend[]> {
+// X trends are global, scoped by X_TRENDS_WOEID (a place id), not by workspace. Like the
+// other fetchers, trends are fetched globally and scored per-workspace downstream in
+// trend-analyzer, so no workspace arg is threaded here.
+export async function fetchXTrends(): Promise<FetchedTrend[]> {
   const bearerToken = process.env.X_BEARER_TOKEN
   if (!bearerToken) {
     console.warn('[trend-fetcher/x] X_BEARER_TOKEN not set, skipping')
