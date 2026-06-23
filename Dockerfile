@@ -12,6 +12,7 @@ COPY apps/posting-service/package.json apps/posting-service/
 COPY apps/render-worker/package.json apps/render-worker/
 COPY apps/scheduler/package.json     apps/scheduler/
 COPY apps/trend-analyzer/package.json apps/trend-analyzer/
+COPY apps/video-worker/package.json  apps/video-worker/
 COPY apps/web/package.json           apps/web/
 COPY packages/ai/package.json        packages/ai/
 COPY packages/brand-kit/package.json packages/brand-kit/
@@ -43,6 +44,23 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /deploy .
 CMD ["node", "dist/index.js"]
+
+# ── video-worker runner: same as runner + ffmpeg/ffprobe (stitch.ts shells out) ──
+# Remotion's chrome-headless-shell is downloaded at runtime (same as render-worker on
+# this base image). Build via:  --build-arg APP=video-worker  --target video-runner
+#
+# NOTE the unusual entry path: video-worker's tsconfig `paths` point at sibling-package
+# *src* (unlike the other workers, which point at dist), so `tsc --build` raises rootDir
+# to the monorepo root and emits the entry at dist/apps/video-worker/src/index.js — there
+# is NO dist/index.js. Proper fix (deferred): align its tsconfig paths to sibling dist
+# like @contento/brand-kit already is, then this becomes plain dist/index.js.
+FROM node:22-alpine AS video-runner
+ARG APP=video-worker
+ENV NODE_ENV=production
+WORKDIR /app
+RUN apk add --no-cache ffmpeg
+COPY --from=builder /deploy .
+CMD ["node", "dist/apps/video-worker/src/index.js"]
 
 # ── Next.js: build with standalone output ─────────────────────────────────────
 FROM deps AS web-builder

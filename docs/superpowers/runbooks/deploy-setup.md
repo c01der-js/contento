@@ -75,40 +75,39 @@ On the VPS (`ssh root@188.94.191.142`):
 
 ---
 
-## Gate 3 — Database schema (the runtime blocker)
+## Gate 3 — Database schema ✅ RESOLVED (squashed baseline migration)
 
-This session built features behind schema changes (`PublicationMetric`, `QaCheck`,
-`Campaign.targetPlatforms`, `VideoShot.shotType/headline/audioUrl/screencast*`,
-`Publication.videoJobId/metricsHistory`, `GoldenExample.sourceScriptId/promotedAt`,
-`AssetKind.SCREENCAST`, …) but the schema has been on `db:push` since the initial commit —
-**no SQL migrations exist** for any of it (last committed: `20260526000000_add_video_job_language`).
-The compose `migrate` service runs `prisma migrate deploy`, which only applies **committed**
-migrations → the new columns/tables won't be created → the API crashes at runtime.
+**Fixed (2026-06-23).** The old migration history (18 migrations) was **not replayable** — a fresh
+`prisma migrate deploy` crashed at the 2nd migration (`column "scheduledAt" … already exists`),
+because the schema had drifted under `db:push` while migrations were only intermittently generated.
+That meant the compose `migrate` service could never succeed on a fresh server DB.
 
-Pick one:
+It has been replaced by a single squashed baseline that captures the **entire current schema**
+(`PublicationMetric`, `QaCheck`, `Campaign.targetPlatforms`, `VideoShot.shotType/headline/…`,
+`Publication.videoJobId/metricsHistory`, `GoldenExample.sourceScriptId/promotedAt`, `AssetKind.SCREENCAST`,
+the `vector` extension + embedding columns, …):
 
-**(A) Generate migrations (proper for prod):** from a machine with a reachable Postgres,
-```bash
-pnpm --filter @contento/db run db:migrate    # prisma migrate dev — emits SQL for the drift
-git add packages/db/prisma/migrations && git commit -m "feat(db): generate SQL migrations for the schema drift"
 ```
-then push — the compose `migrate` step applies them. Add the pgvector index by hand to the migration SQL:
-```sql
-CREATE INDEX IF NOT EXISTS golden_example_embedding_idx
-  ON "GoldenExample" USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+packages/db/prisma/migrations/20260623000000_baseline_squash/migration.sql
 ```
 
-**(B) `db push` once on the server (fast, pre-prod — matches how dev works):**
-```bash
-cd /opt/contento
-docker compose -f infra/docker-compose.yml up -d postgres
-docker compose -f infra/docker-compose.yml run --rm \
-  -e DATABASE_URL="postgresql://<user>:<pass>@postgres:5432/<db>" \
-  migrate sh -c "pnpm --filter @contento/db exec prisma db push"
-```
-`db push` syncs the schema without migration files. Acceptable while iterating; switch to (A) before real production data.
+It was generated with `prisma migrate diff --from-empty --to-schema-datamodel` and **validated**:
+`migrate deploy` applies it cleanly on a fresh DB, and `migrate diff` then reports
+**"No difference detected"** vs `schema.prisma` (zero drift, in all Prisma workflows). The 18 broken
+migrations are archived under `packages/db/prisma/_broken_migrations_archive/` (Prisma ignores them).
 
-- [ ] Schema synced (migrations generated+applied, or `db push` run once).
+**Nothing to do for this gate** — the compose `migrate` service (`prisma migrate deploy`) now
+creates the full schema automatically on first deploy against the fresh server DB.
+
+> **pgvector index (deferred, optional perf):** the feedback-loop search (`embedding <=> …`, cosine)
+> runs without an index — fine at beta scale (≪ 10k vectors). When volume grows, add HNSW indexes:
+> ```sql
+> CREATE INDEX IF NOT EXISTS "GoldenExample_embedding_idx" ON "GoldenExample" USING hnsw ("embedding" vector_cosine_ops);
+> CREATE INDEX IF NOT EXISTS "Script_embedding_idx"        ON "Script"        USING hnsw ("embedding" vector_cosine_ops);
+> ```
+> Apply as raw SQL (Prisma can't model indexes on `Unsupported()` columns, so they're not in the migration).
+
+- [x] Schema synced — squashed baseline migration committed + validated; `migrate deploy` works on a fresh DB.
 
 ---
 
@@ -143,9 +142,18 @@ Push to `main` → CI (green) → Deploy SSHes in, `git reset --hard origin/main
 
 To deploy manually without CI: `ssh root@188.94.191.142 'cd /opt/contento && git pull && bash scripts/deploy.sh'`.
 
-> **video-worker is NOT in `infra/docker-compose.yml` or the Dockerfile's build list** — the heavy
-> video render/stitch (Plan B/B2) doesn't deploy yet. Add a service + extend the Dockerfile copy
-> list when that path goes live. The render-worker (PNG visuals) IS deployed.
+> **video-worker (heavy render/stitch, Plan B/B2) is now wired but gated behind the `video` profile.**
+> The Dockerfile has a `video-runner` stage (base runner + `apk add ffmpeg`, since `stitch.ts` shells
+> out to `ffmpeg`/`ffprobe`) and `infra/docker-compose.yml` has a `video-worker` service under
+> `profiles: [video]`. The **default deploy does NOT build it**, so an unvalidated image can't block
+> web/api. Its image build is **not yet validated** (no Docker was available when it was added) — the
+> main risk is Remotion's chrome-headless-shell on Alpine (same base as the already-deployed
+> render-worker, so precedented). Validate + run it once Docker is up:
+> ```bash
+> docker compose -f infra/docker-compose.yml --profile video build video-worker   # validate the image
+> docker compose -f infra/docker-compose.yml --profile video up -d video-worker    # then run it
+> ```
+> The render-worker (PNG visuals) IS in the default deploy.
 
 ## Links
 | What | Link |

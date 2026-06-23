@@ -273,6 +273,34 @@ services:
       - postgres
     restart: unless-stopped
 
+  # ── heavy video render/stitch — Plan B/B2 (Higgsfield + ElevenLabs + Remotion + ffmpeg) ──
+  # Gated behind the 'video' profile: the default deploy does NOT build it, so an unbuilt/
+  # broken image can never block web/api. Bring it up explicitly once its image is validated:
+  #   docker compose -f infra/docker-compose.yml --profile video up -d --build video-worker
+  video-worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: video-runner
+      args:
+        APP: video-worker
+    env_file: .env          # HF_KEY_ID / HF_KEY / HIGGSFIELD_* / ELEVENLABS_* from infra/.env
+    environment:
+      <<: *app-env          # cluster-internal DATABASE_URL / REDIS_URL override .env
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-contento}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-contento123}
+      S3_BUCKET: ${S3_BUCKET:-contento-media}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      VIDEO_STITCHER: ${VIDEO_STITCHER:-remotion}
+    depends_on:
+      <<: *depends-ready
+      minio-init:
+        condition: service_completed_successfully
+    profiles:
+      - video
+    restart: unless-stopped
+
   # ── optional Python workers (activate with --profile) ────────────────────────
 
   scrapers-py:

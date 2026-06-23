@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx --env-file=.env --watch src/index.ts",
     "build": "tsc --build",
-    "start": "node --env-file=.env dist/index.js",
+    "start": "node --env-file=.env dist/apps/video-worker/src/index.js",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
