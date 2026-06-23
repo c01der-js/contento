@@ -24,6 +24,7 @@ import { analyticsRoutes } from './routes/analytics.js'
 import { commentRoutes } from './routes/comments.js'
 import { assetRoutes } from './routes/assets.js'
 import { libraryRoutes } from './routes/library.js'
+import { authRoutes } from './routes/auth.js'
 import { authSocialRoutes } from './routes/auth-social.js'
 import { integrationRoutes, notificationPreferenceRoutes } from './routes/integrations.js'
 import { mentionRoutes } from './routes/mentions.js'
@@ -71,6 +72,7 @@ export async function createServer() {
   await registerAuth(app)
   await registerActivityLogger(app)
 
+  await app.register(authRoutes)
   await app.register(healthRoutes)
   await app.register(workspaceRoutes, { prefix: '/workspaces' })
   await app.register(invitationRoutes, { prefix: '/workspaces' })
