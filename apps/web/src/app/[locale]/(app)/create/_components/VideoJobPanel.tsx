@@ -2,6 +2,7 @@
 
 import { useAuth } from '@clerk/nextjs'
 import { useEffect, useRef, useState } from 'react'
+import { QaBadge } from '@/components/qa/QaBadge'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
@@ -17,12 +18,18 @@ interface VideoShot {
   errorMessage: string | null
 }
 
+interface QaVerdict {
+  status: 'PASS' | 'WARN' | 'BLOCK'
+  findings: { id: string; severity: string; message: string }[]
+}
+
 interface VideoJob {
   id: string
   status: 'PENDING' | 'STORYBOARDING' | 'RENDERING_SHOTS' | 'STITCHING' | 'DONE' | 'FAILED'
   outputUrl: string | null
   errorMessage: string | null
   shots?: VideoShot[]
+  qa?: QaVerdict | null
 }
 
 type ApiFetch = (path: string, init?: RequestInit) => Promise<Response>
@@ -181,6 +188,12 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
                 <ShotChip key={shot.id} shot={shot} />
               ))}
             </div>
+          )}
+
+          {/* Auto QA verdict (PASS/WARN/BLOCK), computed live from the finished video —
+              the same checks the campaign approval gate uses. */}
+          {isDone && videoJob.qa && (
+            <QaBadge status={videoJob.qa.status} findings={videoJob.qa.findings} />
           )}
 
           {/* Error message */}
