@@ -4,6 +4,7 @@ import { prisma } from '@contento/db'
 import { requireWriteRole, requireReadRole } from '../middleware/rbac.js'
 import { getVideoQueue } from '../queue.js'
 import { getObjectStream, keyFromUrl } from '../lib/s3.js'
+import { runQaChecks, type QaInput } from '../qa/checks.js'
 
 const WorkspaceParams = z.object({ workspaceId: z.string() })
 const ScriptParams = z.object({ workspaceId: z.string(), scriptId: z.string() })
@@ -31,6 +32,16 @@ const VideoCreateBody = z.object({
   language: z.string().min(2).max(8).optional().default('ru'),
 })
 
+const QaFindingResponse = z.object({
+  id: z.string(),
+  severity: z.string(),
+  message: z.string(),
+})
+const QaResponse = z.object({
+  status: z.string(), // PASS | WARN | BLOCK
+  findings: z.array(QaFindingResponse),
+})
+
 const VideoJobResponse = z.object({
   id: z.string(),
   workspaceId: z.string(),
@@ -43,6 +54,8 @@ const VideoJobResponse = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   shots: z.array(VideoShotResponse).optional(),
+  // Auto QA verdict, computed live for finished jobs (DONE). Null while generating.
+  qa: QaResponse.nullable().optional(),
 })
 
 const VideoJobListResponse = z.object({
@@ -62,12 +75,20 @@ function serializeJob(job: {
   id: string; workspaceId: string; scriptId: string; status: string
   aspectRatio: string; language: string; outputUrl: string | null; errorMessage: string | null
   createdAt: Date; updatedAt: Date
-}, shots?: ReturnType<typeof serializeShot>[]) {
+}, shots?: ReturnType<typeof serializeShot>[], qa?: { status: string; findings: { id: string; severity: string; message: string }[] } | null) {
   return {
-    ...job,
+    id: job.id,
+    workspaceId: job.workspaceId,
+    scriptId: job.scriptId,
+    status: job.status,
+    aspectRatio: job.aspectRatio,
+    language: job.language,
+    outputUrl: job.outputUrl,
+    errorMessage: job.errorMessage,
     createdAt: job.createdAt.toISOString(),
     updatedAt: job.updatedAt.toISOString(),
     shots,
+    qa: qa ?? null,
   }
 }
 
@@ -130,12 +151,33 @@ export const videoRoutes: FastifyPluginAsyncZod = async (app) => {
 
     const job = await prisma.videoJob.findFirst({
       where: { id: jobId, workspaceId },
-      include: { shots: { orderBy: { index: 'asc' } } },
+      include: {
+        shots: { orderBy: { index: 'asc' } },
+        script: { select: { subtitles: true } },
+      },
     })
 
     if (!job) return reply.status(404).send({ error: 'Video job not found' })
 
-    return reply.status(200).send(serializeJob(job, job.shots.map(serializeShot)))
+    // Surface the same auto-QA verdict the campaign gate uses, in the standalone create
+    // flow too. Computed live (pure, no IO) once the job is finished; null while generating.
+    const qa =
+      job.status === 'DONE'
+        ? runQaChecks({
+            platform: job.platform,
+            outputUrl: job.outputUrl,
+            jobStatus: job.status,
+            shots: job.shots.map((s) => ({
+              index: s.index,
+              durationSec: s.durationSec,
+              dialogue: s.dialogue,
+              status: s.status,
+            })),
+            subtitles: (job.script.subtitles as unknown as QaInput['subtitles']) ?? null,
+          })
+        : null
+
+    return reply.status(200).send(serializeJob(job, job.shots.map(serializeShot), qa))
   })
 
   // GET /video-jobs/:jobId/output — stream the rendered MP4 from private storage.
