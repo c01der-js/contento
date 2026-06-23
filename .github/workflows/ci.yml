@@ -85,3 +85,73 @@ jobs:
 
       - name: Check Prisma schema format
         run: pnpm --filter @contento/db exec prisma format --check
+
+  migrate-check:
+    name: Migrations replay & drift
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: contento
+          POSTGRES_PASSWORD: contento
+          POSTGRES_DB: contento
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U contento"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://contento:contento@localhost:5432/contento
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.10.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Replay full migration history on a fresh DB
+        # Catches unreplayable migrations — the db:push drift that broke the old 18-migration
+        # chain (migrate deploy failed on the 2nd migration). This is the gate that the prior
+        # squash was needed for; it stays green only as long as the history replays cleanly.
+        run: pnpm --filter @contento/db exec prisma migrate deploy
+
+      - name: Create shadow DB for the drift check
+        run: PGPASSWORD=contento psql -h localhost -U contento -d contento -c 'CREATE DATABASE contento_shadow;'
+
+      - name: Drift check (schema.prisma vs migrations)
+        # Fails if schema.prisma diverges from the migrations (e.g. someone edited the schema
+        # and forgot to add a migration). The ONLY tolerated diff is the two pgvector HNSW
+        # indexes, which Prisma cannot model on Unsupported("vector") columns and therefore
+        # always appear as phantom DropIndex drift. Anything else fails the build.
+        run: |
+          script="$(pnpm --filter @contento/db exec prisma migrate diff \
+            --from-migrations ./prisma/migrations \
+            --to-schema-datamodel ./prisma/schema.prisma \
+            --shadow-database-url postgresql://contento:contento@localhost:5432/contento_shadow \
+            --script)"
+          echo "----- migrate diff (migrations -> schema) -----"
+          printf '%s\n' "$script"
+          echo "-----------------------------------------------"
+          unexpected="$(printf '%s\n' "$script" \
+            | grep -vE '^[[:space:]]*--' \
+            | grep -vE '^[[:space:]]*$' \
+            | grep -vE '^[[:space:]]*DROP INDEX "(GoldenExample|Script)_embedding_idx";[[:space:]]*$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo "::error::Schema/migration drift detected beyond the known pgvector HNSW indexes."
+            echo "Add a migration for your schema.prisma change (prisma migrate dev), then commit it."
+            echo "Unexpected statements:"
+            printf '%s\n' "$unexpected"
+            exit 1
+          fi
+          echo "OK: migrations match schema.prisma (only the unmodelable pgvector HNSW indexes differ)."
