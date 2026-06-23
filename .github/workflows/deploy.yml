@@ -11,14 +11,22 @@ name: Deploy
 #   VPS_PORT         (optional) ssh port; defaults to 22 if unset
 # NEVER put the server password in a secret — use key auth only.
 
+# Gated on CI: deploy runs only after the "CI" workflow finishes successfully on main
+# (lint/typecheck/test/prisma + migrate replay & drift). A red CI no longer deploys.
+# workflow_dispatch is a manual escape hatch (Actions → Deploy → Run workflow).
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
     name: Deploy to VPS (SSH + docker compose)
     runs-on: ubuntu-latest
+    # Manual dispatch always allowed; auto-deploy only when the triggering CI run passed.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
