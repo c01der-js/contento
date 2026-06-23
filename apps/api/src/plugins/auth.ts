@@ -14,6 +14,7 @@ declare module 'fastify' {
 }
 
 export const registerAuth = fp(async (app: FastifyInstance) => {
+  if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required')
   app.decorateRequest('authUser', null)
 
   app.addHook('onRequest', async (request: FastifyRequest) => {
@@ -52,8 +53,10 @@ export function decodeUserId(token: string): string | null {
   const secret = process.env.JWT_SECRET
   if (!secret) return null
   try {
-    const payload = jwt.verify(token, secret) as { sub?: string }
-    return payload.sub ?? null
+    const raw = jwt.verify(token, secret)
+    if (typeof raw !== 'object' || raw === null) return null
+    const payload = raw as { sub?: string }
+    return typeof payload.sub === 'string' ? payload.sub : null
   } catch {
     return null
   }
