@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
+import { TOKEN_COOKIE } from './auth'
 
 interface AuthContextValue {
   token: string | null
@@ -37,15 +38,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
 
   useEffect(() => {
-    setToken(getCookie('auth_token'))
+    setToken(getCookie(TOKEN_COOKIE))
   }, [])
 
   const userId = token ? parseJwtSub(token) : null
 
   function signOut() {
-    document.cookie = 'auth_token=; path=/; max-age=0'
+    document.cookie = `${TOKEN_COOKIE}=; path=/; max-age=0`
     setToken(null)
-    window.location.href = '/sign-in'
+    const locale = window.location.pathname.split('/')[1] || 'en'
+    window.location.href = `/${locale}/sign-in`
   }
 
   return (
@@ -53,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         token,
         userId,
-        getToken: async () => getCookie('auth_token'),
+        getToken: async () => getCookie(TOKEN_COOKIE),
         signOut,
       }}
     >

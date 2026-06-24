@@ -14,7 +14,8 @@ export default function middleware(request: NextRequest) {
   const isPublic = PUBLIC_PATH.test(pathname)
 
   if (!hasToken && !isPublic) {
-    const locale = pathname.split('/')[1] || routing.defaultLocale
+    const rawLocale = pathname.split('/')[1]
+    const locale = (routing.locales as readonly string[]).includes(rawLocale) ? rawLocale : routing.defaultLocale
     return NextResponse.redirect(new URL(`/${locale}/sign-in`, request.url))
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/auth-context'
 import { useApiFetch, API_BASE } from '@/lib/api'
 import { useEffect, useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
