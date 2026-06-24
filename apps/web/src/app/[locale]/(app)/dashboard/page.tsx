@@ -1,8 +1,8 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
 import { useCallback, useEffect, useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch } from '@/lib/api'
 import { Link } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 import { FunnelStats } from './_components/FunnelStats'
@@ -284,26 +284,11 @@ function AnalyticsWidgets({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
   const t = useTranslations('dashboard')
 
   const { activeId: workspaceId } = useWorkspace()
 
-  const apiFetch = useCallback(
-    async (path: string, options?: RequestInit) => {
-      const token = await getToken()
-      return fetch(`${apiBase}${path}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...options?.headers,
-        },
-      })
-    },
-    [apiBase, getToken],
-  )
+  const apiFetch = useApiFetch()
 
   return (
     <div className="space-y-8">

@@ -1,8 +1,8 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch } from '@/lib/api'
 import { Button, Card, Spinner, EmptyState } from '@/components/ui'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -71,21 +71,10 @@ function DeltaBadge({ value }: { value: number }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
-  const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
 
   const { activeId: workspaceId } = useWorkspace()
   const [period, setPeriod] = useState<Period>('30d')
-
-  async function apiFetch(path: string) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    })
-  }
 
   return (
     <div className="space-y-8">

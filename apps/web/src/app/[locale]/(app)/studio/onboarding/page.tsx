@@ -1,9 +1,9 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
 import { useRouter } from '@/i18n/navigation'
 import { useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch } from '@/lib/api'
 
 type Step = 'company' | 'portrait' | 'avatar' | 'generate-avatar'
 
@@ -40,10 +40,9 @@ const STEPS = [
 ]
 
 export default function OnboardingPage() {
-  const { getToken } = useAuth()
+  const apiFetch = useApiFetch()
   const { activeId: workspaceId } = useWorkspace()
   const router = useRouter()
-  const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
   const [step, setStep] = useState<Step>('company')
   const [loading, setLoading] = useState(false)
@@ -63,10 +62,8 @@ export default function OnboardingPage() {
     setLoading(true)
     setError(null)
     try {
-      const token = await getToken()
-      const res = await fetch(`${API}/workspaces/${workspaceId}/company-portrait/generate`, {
+      const res = await apiFetch(`/workspaces/${workspaceId}/company-portrait/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', authorization: `Bearer ${token}` },
         body: JSON.stringify({
           ...companyForm,
           competitors: companyForm.competitors.split(',').map(s => s.trim()).filter(Boolean),
@@ -84,10 +81,8 @@ export default function OnboardingPage() {
     setLoading(true)
     setError(null)
     try {
-      const token = await getToken()
-      const res = await fetch(`${API}/workspaces/${workspaceId}/avatar-persona`, {
+      const res = await apiFetch(`/workspaces/${workspaceId}/avatar-persona`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', authorization: `Bearer ${token}` },
         body: JSON.stringify(avatarForm),
       })
       if (!res.ok) throw new Error(await res.text())
@@ -101,10 +96,8 @@ export default function OnboardingPage() {
     setLoading(true)
     setError(null)
     try {
-      const token = await getToken()
-      const res = await fetch(`${API}/workspaces/${workspaceId}/avatar-persona/generate-image`, {
+      const res = await apiFetch(`/workspaces/${workspaceId}/avatar-persona/generate-image`, {
         method: 'POST',
-        headers: { authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error(await res.text())
       router.push('/studio/campaigns/new')

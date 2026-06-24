@@ -1,9 +1,9 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
 import { Link } from '@/i18n/navigation'
 import { useEffect, useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch } from '@/lib/api'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import {
   Button,
@@ -111,23 +111,10 @@ function PubStatusBadge({ status }: { status: string }) {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function CalendarPage() {
-  const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
 
   const { activeId: workspaceId, status } = useWorkspace()
   const workspaceError = status === 'no-workspaces' ? 'no-workspaces' : status === 'fetch-failed' ? 'fetch-failed' : null
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   if (workspaceError === 'no-workspaces') {
     return (

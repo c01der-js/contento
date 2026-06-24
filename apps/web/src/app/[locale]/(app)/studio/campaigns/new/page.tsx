@@ -1,9 +1,9 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
 import { useRouter } from '@/i18n/navigation'
 import { useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch } from '@/lib/api'
 
 type Goal = 'SUBSCRIBERS' | 'SALES' | 'ENGAGEMENT' | 'REACH'
 
@@ -23,10 +23,9 @@ const PLATFORM_OPTIONS: { value: string; label: string }[] = [
 ]
 
 export default function NewCampaignPage() {
-  const { getToken } = useAuth()
+  const apiFetch = useApiFetch()
   const { activeId: workspaceId } = useWorkspace()
   const router = useRouter()
-  const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,10 +43,8 @@ export default function NewCampaignPage() {
     setLoading(true)
     setError(null)
     try {
-      const token = await getToken()
-      const res = await fetch(`${API}/workspaces/${workspaceId}/campaigns`, {
+      const res = await apiFetch(`/workspaces/${workspaceId}/campaigns`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', authorization: `Bearer ${token}` },
         body: JSON.stringify(form),
       })
       if (!res.ok) throw new Error(await res.text())

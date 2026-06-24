@@ -2,6 +2,7 @@
 
 import { useAuth } from '@clerk/nextjs'
 import { useEffect, useRef, useState } from 'react'
+import { API_BASE } from '@/lib/api'
 
 interface NotificationPayload {
   id: string
@@ -23,7 +24,6 @@ const INITIAL_RECONNECT_DELAY_MS = 1_000
 
 export function NotificationBell() {
   const { getToken, isSignedIn } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
   const [badgeCount, setBadgeCount] = useState(0)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
@@ -57,7 +57,7 @@ export function NotificationBell() {
       if (!token || cancelled) return
 
       // EventSource doesn't support custom headers; pass token as query param
-      const url = `${apiBase}/realtime/notifications?token=${encodeURIComponent(token)}`
+      const url = `${API_BASE}/realtime/notifications?token=${encodeURIComponent(token)}`
       const es = new EventSource(url)
       esRef.current = es
 

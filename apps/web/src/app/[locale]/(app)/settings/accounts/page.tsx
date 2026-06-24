@@ -1,9 +1,9 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch, API_BASE } from '@/lib/api'
 import { Button, Card, Badge, Spinner, EmptyState, ErrorBanner, Input } from '@/components/ui'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -29,23 +29,10 @@ const PLATFORM_LABELS: Record<OAuthPlatform, string> = {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function AccountsPage() {
-  const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
 
   const { activeId: workspaceId, status } = useWorkspace()
   const workspaceError = status === 'no-workspaces' ? 'no-workspaces' : status === 'fetch-failed' ? 'fetch-failed' : null
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   if (workspaceError === 'no-workspaces') {
     return <EmptyState title="No workspace found" description="Create a workspace first." />
@@ -57,7 +44,7 @@ export default function AccountsPage() {
     return <div className="p-6 flex items-center gap-2 text-gray-400 text-sm"><Spinner /><span>Loading…</span></div>
   }
 
-  return <AccountsContent workspaceId={workspaceId} apiFetch={apiFetch} apiBase={apiBase} />
+  return <AccountsContent workspaceId={workspaceId} apiFetch={apiFetch} apiBase={API_BASE} />
 }
 
 // ── Accounts Content ───────────────────────────────────────────────────────────

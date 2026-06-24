@@ -1,9 +1,9 @@
 'use client'
 
-import { useAuth } from '@/lib/auth'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch, API_BASE } from '@/lib/api'
 import { Button, Card, Badge, Spinner, Input, Select, EmptyState, ErrorBanner } from '@/components/ui'
 
 type MemberRole = 'OWNER' | 'ADMIN' | 'EDITOR' | 'APPROVER' | 'VIEWER'
@@ -27,8 +27,7 @@ interface Invitation {
 const ROLES: Exclude<MemberRole, 'OWNER'>[] = ['ADMIN', 'EDITOR', 'APPROVER', 'VIEWER']
 
 export default function MembersPage() {
-  const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
   const searchParams = useSearchParams()
 
   const { activeId, status } = useWorkspace()
@@ -43,18 +42,6 @@ export default function MembersPage() {
   const [inviteRole, setInviteRole] = useState<Exclude<MemberRole, 'OWNER'>>('EDITOR')
   const [inviting, setInviting] = useState(false)
   const [inviteResult, setInviteResult] = useState<string | null>(null)
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   function loadData(wsId: string) {
     setLoading(true)
@@ -116,7 +103,7 @@ export default function MembersPage() {
     if (!res.ok) {
       setError(body.error ?? 'Failed to send invitation')
     } else {
-      const acceptUrl = `${apiBase}/workspaces/invitations/${body.token}/accept`
+      const acceptUrl = `${API_BASE}/workspaces/invitations/${body.token}/accept`
       setInviteResult(`Invite token: ${body.token} | Accept URL: ${acceptUrl}`)
       setInviteEmail('')
       if (workspaceId) loadData(workspaceId)

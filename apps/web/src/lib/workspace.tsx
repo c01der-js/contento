@@ -1,7 +1,7 @@
 'use client'
 
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { useAuth } from '@clerk/nextjs'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { useApiFetch } from '@/lib/api'
 
 interface Workspace {
   id: string
@@ -28,28 +28,13 @@ export function useWorkspace(): WorkspaceContextValue {
 }
 
 const STORAGE_KEY = 'activeWorkspaceId'
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
-  const { getToken } = useAuth()
-  const getTokenRef = useRef(getToken)
-  getTokenRef.current = getToken
+  const apiFetch = useApiFetch()
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [activeId, setActiveIdState] = useState<string | null>(null)
   const [status, setStatus] = useState<WorkspaceContextValue['status']>('loading')
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getTokenRef.current()
-    return fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   async function load() {
     try {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/lib/auth'
+import { useApiFetch } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
@@ -56,8 +56,7 @@ function DraftCard({ script }: { script: Script }) {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function DraftsPage() {
-  const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
   const t = useTranslations('library')
   const tCommon = useTranslations('common')
   const searchParams = useSearchParams()
@@ -68,18 +67,6 @@ export default function DraftsPage() {
   const [scripts, setScripts] = useState<Script[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   // Load drafts
   useEffect(() => {

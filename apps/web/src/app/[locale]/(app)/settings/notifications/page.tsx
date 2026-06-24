@@ -1,7 +1,7 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
+import { useApiFetch } from '@/lib/api'
 import { Card, Spinner, ErrorBanner } from '@/components/ui'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -32,25 +32,12 @@ const CHANNELS = [
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
-  const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
 
   const [preferences, setPreferences] = useState<NotificationPreference[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState<string | null>(null)
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   async function load() {
     setIsLoading(true)

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useAuth } from '@/lib/auth'
+import { useApiFetch } from '@/lib/api'
 import { useWorkspace } from '@/lib/workspace'
 import { Link, useRouter } from '@/i18n/navigation'
 import { Button, Spinner, EmptyState, ErrorBanner, Input } from '@/components/ui'
@@ -103,8 +103,7 @@ function HashtagInput({
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function ManualPage() {
-  const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -144,18 +143,6 @@ export default function ManualPage() {
   // submission
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   // load social accounts once workspace is known
   useEffect(() => {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/auth'
+import { useApiFetch, API_BASE } from '@/lib/api'
 import { useEffect, useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
@@ -122,7 +123,7 @@ function AssetCard({
 
 export default function AssetsPage() {
   const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
   const t = useTranslations('library')
   const tCommon = useTranslations('common')
   const searchParams = useSearchParams()
@@ -139,17 +140,6 @@ export default function AssetsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   function buildQuery(cursor?: string) {
     const params = new URLSearchParams()
@@ -224,9 +214,16 @@ export default function AssetsPage() {
       const form = new FormData()
       form.append('file', file)
       form.append('kind', 'REFERENCE')
-      const r = await apiFetch(`/workspaces/${workspaceId}/assets`, {
+      // Multipart upload: send the FormData without a JSON Content-Type so the browser sets
+      // the multipart boundary itself. The shared apiFetch always injects application/json,
+      // so this one call uses a direct fetch with the bearer token.
+      const token = await getToken()
+      const r = await fetch(`${API_BASE}/workspaces/${workspaceId}/assets`, {
         method: 'POST',
         body: form,
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       })
       if (!r.ok) throw new Error('upload-failed')
       const asset = (await r.json()) as Asset

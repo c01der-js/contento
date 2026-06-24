@@ -1,8 +1,8 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
 import { useCallback, useEffect, useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch } from '@/lib/api'
 import { Button, Card, Select, Spinner, ErrorBanner } from '@/components/ui/index'
 
 type SourceName = 'rss' | 'reddit' | 'google_trends' | 'youtube'
@@ -26,9 +26,8 @@ const SOURCE_LABEL: Record<string, string> = {
 }
 
 export default function TrendSourcesPage() {
-  const { getToken } = useAuth()
   const { activeId: workspaceId } = useWorkspace()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
 
   const [configs, setConfigs] = useState<FeedConfig[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,21 +36,6 @@ export default function TrendSourcesPage() {
   const [addSource, setAddSource] = useState<SourceName>('rss')
   const [addEnabled, setAddEnabled] = useState(true)
   const [adding, setAdding] = useState(false)
-
-  const apiFetch = useCallback(
-    async (path: string, options?: RequestInit) => {
-      const token = await getToken()
-      return fetch(`${apiBase}${path}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...options?.headers,
-        },
-      })
-    },
-    [apiBase, getToken],
-  )
 
   const load = useCallback(async () => {
     if (!workspaceId) return
