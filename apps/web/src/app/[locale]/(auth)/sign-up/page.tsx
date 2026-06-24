@@ -1,97 +1,65 @@
-import { SignUp } from '@clerk/nextjs'
-import { API_BASE } from '@/lib/api'
+'use client'
 
-interface Props {
-  searchParams: Promise<{ token?: string }>
-}
+import { useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
+import { setAuthToken } from '@/lib/auth'
 
-interface InvitationPreview {
-  email: string
-  workspaceId: string
-  role: string
-  expiresAt: string
-}
+export default function SignUpPage() {
+  const router = useRouter()
+  const { locale } = useParams<{ locale: string }>()
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-type ValidationResult =
-  | { ok: true; data: InvitationPreview }
-  | { ok: false; reason: 'missing' | 'invalid' | 'expired' | 'network' }
+  const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
-async function validateInvitation(token: string | undefined): Promise<ValidationResult> {
-  if (!token) return { ok: false, reason: 'missing' }
-
-  try {
-    const res = await fetch(
-      `${API_BASE}/workspaces/invitations/${encodeURIComponent(token)}/preview`,
-      { cache: 'no-store' },
-    )
-    if (res.status === 404) return { ok: false, reason: 'invalid' }
-    if (res.status === 410) return { ok: false, reason: 'expired' }
-    if (!res.ok) return { ok: false, reason: 'network' }
-    const data = (await res.json()) as InvitationPreview
-    return { ok: true, data }
-  } catch {
-    return { ok: false, reason: 'network' }
-  }
-}
-
-function InvitationNotice({
-  title,
-  message,
-}: {
-  title: string
-  message: string
-}) {
-  return (
-    <div className="text-center max-w-md mx-auto">
-      <h1 className="text-2xl font-semibold mb-2">{title}</h1>
-      <p className="text-gray-500">{message}</p>
-    </div>
-  )
-}
-
-export default async function SignUpPage({ searchParams }: Props) {
-  const { token } = await searchParams
-  const result = await validateInvitation(token)
-
-  if (!result.ok) {
-    switch (result.reason) {
-      case 'missing':
-        return (
-          <InvitationNotice
-            title="Invitation Required"
-            message="You need a valid invitation link to create an account."
-          />
-        )
-      case 'invalid':
-        return (
-          <InvitationNotice
-            title="Invalid Invitation"
-            message="This invitation link is not recognized. Please ask your workspace admin for a new one."
-          />
-        )
-      case 'expired':
-        return (
-          <InvitationNotice
-            title="Invitation Expired"
-            message="This invitation is no longer valid. Ask your workspace admin to resend it."
-          />
-        )
-      case 'network':
-        return (
-          <InvitationNotice
-            title="Cannot Verify Invitation"
-            message="We can't reach the server right now. Please try again in a moment."
-          />
-        )
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (password.length < 8) {
+      setError('Пароль должен быть не короче 8 символов')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`${API}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name: name || undefined }),
+      })
+      if (!res.ok) {
+        setError(res.status === 409 ? 'Этот email уже зарегистрирован' : 'Ошибка регистрации')
+        return
+      }
+      const { token } = (await res.json()) as { token: string }
+      setAuthToken(token)
+      router.replace(`/${locale}/dashboard`)
+    } catch {
+      setError('Сеть недоступна. Попробуйте ещё раз.')
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <p className="text-sm text-gray-500">
-        Invited as <span className="font-medium text-gray-800">{result.data.email}</span>
+    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
+      <h1 className="text-2xl font-semibold">Регистрация</h1>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <input type="text" placeholder="Имя (необязательно)" value={name} onChange={(e) => setName(e.target.value)} className="rounded-md border px-3 py-2" />
+        <input type="email" required placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-md border px-3 py-2" />
+        <input type="password" required minLength={8} placeholder="Пароль (мин. 8 символов)" value={password} onChange={(e) => setPassword(e.target.value)} className="rounded-md border px-3 py-2" />
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <button type="submit" disabled={loading} className="rounded-md bg-black px-3 py-2 text-white disabled:opacity-50">
+          {loading ? 'Создаём…' : 'Зарегистрироваться'}
+        </button>
+      </form>
+      <p className="text-sm">
+        Уже есть аккаунт?{' '}
+        <Link href={`/${locale}/sign-in`} className="underline">Войти</Link>
       </p>
-      <SignUp initialValues={{ emailAddress: result.data.email }} />
     </div>
   )
 }
