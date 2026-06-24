@@ -1,32 +1,36 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 
 interface NavItem {
   href: string
-  label: string
+  // Key into the 'nav' message namespace. Not named `key` — React reserves that prop and would
+  // strip it when spreading items into <NavLink>.
+  labelKey: string
   icon: string
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/studio', label: 'Studio', icon: '▶' },
-  { href: '/dashboard', label: 'Dashboard', icon: '⊞' },
-  { href: '/trends', label: 'Trends', icon: '↑' },
-  { href: '/brand', label: 'Brand Kit', icon: '◈' },
-  { href: '/create', label: 'Create', icon: '+' },
-  { href: '/review', label: 'Review', icon: '✓' },
-  { href: '/calendar', label: 'Calendar', icon: '□' },
-  { href: '/analytics', label: 'Analytics', icon: '∿' },
-  { href: '/library', label: 'Library', icon: '⊟' },
+  { href: '/studio', labelKey: 'studio', icon: '▶' },
+  { href: '/dashboard', labelKey: 'dashboard', icon: '⊞' },
+  { href: '/trends', labelKey: 'trends', icon: '↑' },
+  { href: '/brand', labelKey: 'brand', icon: '◈' },
+  { href: '/create', labelKey: 'create', icon: '+' },
+  { href: '/review', labelKey: 'review', icon: '✓' },
+  { href: '/calendar', labelKey: 'calendar', icon: '□' },
+  { href: '/analytics', labelKey: 'analytics', icon: '∿' },
+  { href: '/library', labelKey: 'library', icon: '⊟' },
 ]
 
 const BOTTOM_ITEMS: NavItem[] = [
-  { href: '/settings', label: 'Settings', icon: '⚙' },
+  { href: '/settings', labelKey: 'settings', icon: '⚙' },
 ]
 
-function NavLink({ href, label, icon }: NavItem) {
+function NavLink({ href, labelKey, icon }: NavItem) {
   const pathname = usePathname()
+  const t = useTranslations('nav')
   // pathname has locale prefix like /en/dashboard — strip it for matching
   const normalised = pathname.replace(/^\/[a-z]{2}/, '') || '/'
   const isActive = normalised === href || (href !== '/dashboard' && normalised.startsWith(href))
@@ -41,7 +45,7 @@ function NavLink({ href, label, icon }: NavItem) {
         }`}
     >
       <span className="w-4 text-center shrink-0 text-[13px]">{icon}</span>
-      <span>{label}</span>
+      <span>{t(labelKey)}</span>
     </Link>
   )
 }

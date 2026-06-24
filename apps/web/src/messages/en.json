@@ -46,7 +46,8 @@
     "calendar": "Calendar",
     "analytics": "Analytics",
     "library": "Library",
-    "settings": "Settings"
+    "settings": "Settings",
+    "studio": "Studio"
   },
   "common": {
     "loading": "Loading…",
@@ -183,5 +184,14 @@
     "goCalendar": "Go to Calendar",
     "approveLoading": "Approving…",
     "sendingForReview": "Sending…"
+  },
+  "settings": {
+    "title": "Settings",
+    "accounts": "Connected Accounts",
+    "notifications": "Notification Preferences",
+    "tasks": "My Tasks",
+    "members": "Members",
+    "trendSources": "Trend Sources",
+    "platformProfiles": "Platform Profiles"
   }
 }

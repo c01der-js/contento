@@ -46,7 +46,8 @@
     "calendar": "Календарь",
     "analytics": "Аналитика",
     "library": "Библиотека",
-    "settings": "Настройки"
+    "settings": "Настройки",
+    "studio": "Студия"
   },
   "common": {
     "loading": "Загрузка…",
@@ -183,5 +184,14 @@
     "goCalendar": "Открыть календарь",
     "approveLoading": "Утверждаем…",
     "sendingForReview": "Отправляем…"
+  },
+  "settings": {
+    "title": "Настройки",
+    "accounts": "Подключённые аккаунты",
+    "notifications": "Настройки уведомлений",
+    "tasks": "Мои задачи",
+    "members": "Участники",
+    "trendSources": "Источники трендов",
+    "platformProfiles": "Профили платформ"
   }
 }
