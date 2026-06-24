@@ -73,9 +73,7 @@ CMD ["node", "dist/apps/video-worker/src/index.js"]
 # present here (not just at runtime). Passed through from compose build.args.
 FROM deps AS web-builder
 ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 COPY . .
 RUN --mount=type=cache,id=turbo,target=/app/.turbo \
     pnpm exec turbo run build --filter=@contento/web...
