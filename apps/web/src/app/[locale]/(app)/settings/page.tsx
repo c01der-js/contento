@@ -40,6 +40,13 @@ export default function SettingsPage() {
           <span>Trend Sources</span>
           <span className="text-gray-400">→</span>
         </Link>
+        <Link
+          href="/settings/platform-profiles"
+          className="flex items-center justify-between border rounded p-3 hover:bg-gray-50 text-sm"
+        >
+          <span>Platform Profiles</span>
+          <span className="text-gray-400">→</span>
+        </Link>
       </nav>
     </div>
   )

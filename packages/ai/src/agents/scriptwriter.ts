@@ -1,4 +1,4 @@
-import { getPlatformProfile } from '@contento/shared'
+import { getPlatformProfile, type PlatformProfile } from '@contento/shared'
 import { runAnthropicMessage } from '../client.js'
 import { buildBrandContext } from '../brand-context.js'
 import { buildGoldenExamplesBlock } from '../golden-examples.js'
@@ -22,8 +22,8 @@ Respond with valid JSON only — no markdown fences, no extra keys. Use exactly 
   "hashtags": ["#tag1", "#tag2"]
 }`
 
-function platformInstruction(platform: string): string {
-  const p = getPlatformProfile(platform)
+function platformInstruction(platform: string, profileOverride?: PlatformProfile): string {
+  const p = profileOverride ?? getPlatformProfile(platform)
   const captionGuide =
     p.captionStyle === 'seo-keyword-first'
       ? 'Write the caption SEO-first: lead with the keyword phrase a viewer would search; the platform indexes caption + on-screen text + voiceover.'
@@ -54,6 +54,7 @@ function validateScript(data: unknown): ContentScript {
 export async function writeScript(
   workspaceId: string,
   idea: { title: string; angle: string; format: string; platform: string },
+  profile?: PlatformProfile,
 ): Promise<ContentScript> {
   const { systemBlock } = await buildBrandContext(workspaceId)
   const goldenBlock = await buildGoldenExamplesBlock(workspaceId, `${idea.title}\n${idea.angle}`)
@@ -64,7 +65,7 @@ export async function writeScript(
     system: [
       systemBlock,
       { type: 'text', text: SCHEMA_INSTRUCTION },
-      { type: 'text', text: platformInstruction(idea.platform) },
+      { type: 'text', text: platformInstruction(idea.platform, profile) },
       ...(goldenBlock ? [{ type: 'text' as const, text: goldenBlock }] : []),
     ],
     messages: [{ role: 'user', content: JSON.stringify(idea) }],

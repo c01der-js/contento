@@ -48,3 +48,64 @@ export const TARGET_PLATFORMS: TargetPlatform[] = ['tiktok', 'instagram', 'youtu
 export function getPlatformProfile(platform: string): PlatformProfile {
   return PROFILES[platform as TargetPlatform] ?? PROFILES.instagram
 }
+
+// --- Per-workspace overrides (DB-backed editing) ---------------------------------------
+// A stored override row is a COMPLETE profile, flattened to scalar columns. Absent row =
+// use the static default above. These pure mappers let apps/api + apps/video-worker convert
+// between the DB row and the nested PlatformProfile without importing prisma into shared.
+
+export interface PlatformProfileRow {
+  platform: string
+  targetDurationMinSec: number
+  targetDurationIdealSec: number
+  targetDurationMaxSec: number
+  hookWindowSec: number
+  captionStyle: string
+  hashtagCount: number
+  captionMaxLen: number
+  nativeSoundImportance: string
+  formatAvatar: number
+  formatBroll: number
+  formatScreencast: number
+}
+
+/** Map a stored override row to the nested PlatformProfile shape. */
+export function platformProfileFromRow(row: PlatformProfileRow): PlatformProfile {
+  return {
+    platform: row.platform as TargetPlatform,
+    targetDurationSec: {
+      min: row.targetDurationMinSec,
+      ideal: row.targetDurationIdealSec,
+      max: row.targetDurationMaxSec,
+    },
+    hookWindowSec: row.hookWindowSec,
+    captionStyle: row.captionStyle as PlatformProfile['captionStyle'],
+    hashtagCount: row.hashtagCount,
+    captionMaxLen: row.captionMaxLen,
+    nativeSoundImportance: row.nativeSoundImportance as PlatformProfile['nativeSoundImportance'],
+    aigcDisclosure: true,
+    formatMix: {
+      avatar: row.formatAvatar,
+      broll: row.formatBroll,
+      screencast: row.formatScreencast,
+    },
+  }
+}
+
+/** Inverse: nested profile -> flat row fields (e.g. to seed the editor with defaults). */
+export function platformProfileToRow(p: PlatformProfile): PlatformProfileRow {
+  return {
+    platform: p.platform,
+    targetDurationMinSec: p.targetDurationSec.min,
+    targetDurationIdealSec: p.targetDurationSec.ideal,
+    targetDurationMaxSec: p.targetDurationSec.max,
+    hookWindowSec: p.hookWindowSec,
+    captionStyle: p.captionStyle,
+    hashtagCount: p.hashtagCount,
+    captionMaxLen: p.captionMaxLen,
+    nativeSoundImportance: p.nativeSoundImportance,
+    formatAvatar: p.formatMix.avatar,
+    formatBroll: p.formatMix.broll,
+    formatScreencast: p.formatMix.screencast,
+  }
+}

@@ -38,6 +38,7 @@ import { trendFeedConfigRoutes } from './routes/trend-feed-configs.js'
 import { companyPortraitRoutes } from './routes/company-portrait.js'
 import { avatarPersonaRoutes } from './routes/avatar-persona.js'
 import { campaignRoutes } from './routes/campaigns.js'
+import { platformProfileRoutes } from './routes/platform-profiles.js'
 import { startCampaignProducer } from './jobs/campaign-producer.js'
 
 export async function createServer() {
@@ -102,6 +103,7 @@ export async function createServer() {
   await app.register(companyPortraitRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(avatarPersonaRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(campaignRoutes, { prefix: '/workspaces/:workspaceId' })
+  await app.register(platformProfileRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(webhookRoutes)
   await app.register(realtimeRoutes)
 

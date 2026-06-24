@@ -253,6 +253,7 @@ model Workspace {
   campaigns       Campaign[]
   companyPortrait CompanyPortrait?
   avatarPersona   AvatarPersona?
+  platformProfiles PlatformProfile[]
 }
 
 model User {
@@ -1088,4 +1089,30 @@ model QaCheck {
   videoJob          VideoJob?       @relation(fields: [videoJobId], references: [id], onDelete: SetNull)
 
   @@index([contentPlanItemId])
+}
+
+/// Per-workspace, per-platform overrides for the static defaults in
+/// packages/shared/platform-profiles.ts. An absent row means "use the static default".
+/// Nested objects are flattened to scalar columns for typed editing.
+model PlatformProfile {
+  id                     String   @id @default(cuid())
+  workspaceId            String
+  platform               String // tiktok | instagram | youtube | telegram
+  targetDurationMinSec   Int
+  targetDurationIdealSec Int
+  targetDurationMaxSec   Int
+  hookWindowSec          Int
+  captionStyle           String // seo-keyword-first | conversational-trend
+  hashtagCount           Int
+  captionMaxLen          Int
+  nativeSoundImportance  String // high | low
+  formatAvatar           Float
+  formatBroll            Float
+  formatScreencast       Float
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  workspace             Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, platform])
+  @@index([workspaceId])
 }
