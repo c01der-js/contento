@@ -47,6 +47,15 @@ const SimilarScriptResponse = z.object({
 
 const SimilarParams = z.object({ workspaceId: z.string(), id: z.string() })
 
+// ── Golden-example influence schemas (feedback-loop surface) ───────────────────
+
+const GoldenInfluenceResponse = z.object({
+  id: z.string(),
+  title: z.string(),
+  similarity: z.number(),
+  snippet: z.string(),
+})
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 export const libraryRoutes: FastifyPluginAsyncZod = async (app) => {
@@ -187,6 +196,51 @@ export const libraryRoutes: FastifyPluginAsyncZod = async (app) => {
       hook: s.hook,
       body: s.body,
       similarity: Number(s.similarity),
+    }))
+  })
+
+  // GET /workspaces/:workspaceId/scripts/:id/golden-influences
+  // The feedback-loop surface: which golden examples are most similar to this script (i.e. what
+  // the weighting injects into generation for content like this). Reuses the script's stored
+  // embedding — no re-embed.
+  app.get('/scripts/:id/golden-influences', {
+    schema: {
+      params: SimilarParams,
+      response: {
+        200: z.array(GoldenInfluenceResponse),
+        401: ErrorResponse,
+        403: ErrorResponse,
+        404: ErrorResponse,
+      },
+    },
+    preHandler: [requireRole('VIEWER', 'APPROVER', 'EDITOR', 'ADMIN', 'OWNER')],
+  }, async (request, reply) => {
+    const { workspaceId, id } = request.params
+
+    type EmbeddingRow = { embedding: string | null }
+    const rows = await prisma.$queryRaw<EmbeddingRow[]>`
+      SELECT embedding::text AS embedding
+      FROM "Script"
+      WHERE id = ${id} AND "workspaceId" = ${workspaceId}
+      LIMIT 1
+    `
+    if (!rows.length) return reply.status(404).send({ error: 'Script not found' })
+    const target = rows[0]!
+    if (!target.embedding) return [] // not embedded yet → nothing to show
+
+    type GoldenRow = { id: string; title: string | null; content: string; similarity: number }
+    const matches = await prisma.$queryRaw<GoldenRow[]>`
+      SELECT id, title, content, (1 - (embedding <=> ${target.embedding}::vector))::float8 AS similarity
+      FROM "GoldenExample"
+      WHERE "workspaceId" = ${workspaceId} AND embedding IS NOT NULL
+      ORDER BY similarity DESC
+      LIMIT 3
+    `
+    return matches.map((m) => ({
+      id: m.id,
+      title: m.title ?? '',
+      similarity: Number(m.similarity),
+      snippet: (m.content ?? '').slice(0, 200),
     }))
   })
 }
