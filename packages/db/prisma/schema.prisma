@@ -212,47 +212,47 @@ enum VideoShotStatus {
 }
 
 model Workspace {
-  id              String            @id @default(cuid())
-  name            String
-  slug            String            @unique
-  plan            WorkspacePlan     @default(FREE)
-  maxSeats        Int               @default(5)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  memberships     Membership[]
-  invitations     Invitation[]
-  brandTones      BrandTone[]
-  brandPillars    BrandPillar[]
-  brandVocabulary BrandVocabulary[]
-  personas        Persona[]
-  visualIdentity  VisualIdentity?
-  competitors     Competitor[]
-  goldenExamples  GoldenExample[]
-  trends          Trend[]
-  ideas           Idea[]
-  scripts         Script[]
-  hooks           Hook[]
-  renderJobs      RenderJob[]
-  socialAccounts  SocialAccount[]
-  publications    Publication[]
-  mentions        Mention[]
-  loraJobs        LoraJob[]
-  abTests         AbTest[]
-  tabooTopics     TabooTopic[]
-  trendFeedbacks  TrendFeedback[]
-  notifications   Notification[]
-  comments        Comment[]
-  projects        Project[]
-  tasks           Task[]
-  activityLogs    ActivityLog[]
-  integrations    Integration[]
-  assets          Asset[]
-  goals           Goal[]
-  antiExamples    AntiExample[]
-  videoJobs       VideoJob[]
-  campaigns       Campaign[]
-  companyPortrait CompanyPortrait?
-  avatarPersona   AvatarPersona?
+  id               String            @id @default(cuid())
+  name             String
+  slug             String            @unique
+  plan             WorkspacePlan     @default(FREE)
+  maxSeats         Int               @default(5)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  memberships      Membership[]
+  invitations      Invitation[]
+  brandTones       BrandTone[]
+  brandPillars     BrandPillar[]
+  brandVocabulary  BrandVocabulary[]
+  personas         Persona[]
+  visualIdentity   VisualIdentity?
+  competitors      Competitor[]
+  goldenExamples   GoldenExample[]
+  trends           Trend[]
+  ideas            Idea[]
+  scripts          Script[]
+  hooks            Hook[]
+  renderJobs       RenderJob[]
+  socialAccounts   SocialAccount[]
+  publications     Publication[]
+  mentions         Mention[]
+  loraJobs         LoraJob[]
+  abTests          AbTest[]
+  tabooTopics      TabooTopic[]
+  trendFeedbacks   TrendFeedback[]
+  notifications    Notification[]
+  comments         Comment[]
+  projects         Project[]
+  tasks            Task[]
+  activityLogs     ActivityLog[]
+  integrations     Integration[]
+  assets           Asset[]
+  goals            Goal[]
+  antiExamples     AntiExample[]
+  videoJobs        VideoJob[]
+  campaigns        Campaign[]
+  companyPortrait  CompanyPortrait?
+  avatarPersona    AvatarPersona?
   platformProfiles PlatformProfile[]
 }
 
@@ -1095,7 +1095,7 @@ model QaCheck {
 /// packages/shared/platform-profiles.ts. An absent row means "use the static default".
 /// Nested objects are flattened to scalar columns for typed editing.
 model PlatformProfile {
-  id                     String   @id @default(cuid())
+  id                     String    @id @default(cuid())
   workspaceId            String
   platform               String // tiktok | instagram | youtube | telegram
   targetDurationMinSec   Int
@@ -1111,7 +1111,7 @@ model PlatformProfile {
   formatScreencast       Float
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
-  workspace             Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace              Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, platform])
   @@index([workspaceId])
