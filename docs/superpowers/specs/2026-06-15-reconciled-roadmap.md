@@ -1,5 +1,10 @@
 # Reconciled roadmap — office-hours report × session decisions (2026-06-15)
 
+> **Update 2026-06-24:** the feature roadmap below is built in code (verified). Current state,
+> the refreshed prioritized backlog, and what shipped are in
+> `2026-06-23-state-audit-and-task-breakdown.md`. Remotion Lambda was **dropped** in favour of
+> horizontal self-hosted render scaling (RENDER-SCALE) — no AWS.
+
 Two strategy artifacts landed the same day and **partially contradict**. This doc reconciles them, records the report's notes, retires already-done risks, and flags the open decision.
 
 - **Office-hours report:** `~/.gstack/projects/Contento-main/office-hours-2026-06-15.md` (YC-style review, "Full agency mode").

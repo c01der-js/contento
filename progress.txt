@@ -23,3 +23,8 @@ LEARNINGS (updated as we go):
 
 ITERATION LOG:
 2026-05-18 — PRD created with 52 user stories (US-000 to US-051). Phase 0 starting.
+2026-06-24 — This log is stale. Current state, the prioritized backlog, and what shipped on
+            branch feat/roadmap-2026-06-23 live in
+            docs/superpowers/specs/2026-06-23-state-audit-and-task-breakdown.md (the source of
+            truth). The product feature roadmap is built in code; remaining work is operational
+            (deploy/security audit, app-review for metrics) + per-screen i18n + render scaling.
