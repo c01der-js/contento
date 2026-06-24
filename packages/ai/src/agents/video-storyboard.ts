@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { getPlatformProfile } from '@contento/shared'
+import { getPlatformProfile, type PlatformProfile } from '@contento/shared'
 import { getAnthropicClient } from '../client.js'
 import { buildBrandContext } from '../brand-context.js'
 
@@ -53,12 +53,12 @@ function languageName(code: string): string {
 export async function generateVideoStoryboard(
   workspaceId: string,
   script: { hook: string; body: string; cta: string },
-  options?: { shotCount?: number; characterDescription?: string; language?: string; platform?: string },
+  options?: { shotCount?: number; characterDescription?: string; language?: string; platform?: string; profile?: PlatformProfile },
 ): Promise<VideoShot[]> {
   const client = getAnthropicClient()
   const { systemBlock } = await buildBrandContext(workspaceId)
 
-  const profile = options?.platform ? getPlatformProfile(options.platform) : undefined
+  const profile = options?.profile ?? (options?.platform ? getPlatformProfile(options.platform) : undefined)
   const durationLine = profile
     ? `Total video duration MUST be ${profile.targetDurationSec.min}-${profile.targetDurationSec.max} seconds (aim ${profile.targetDurationSec.ideal}s). The hook (first shot) must land within ${profile.hookWindowSec}s.`
     : 'Total duration should be 15–60 seconds.'

@@ -12,6 +12,7 @@ import {
   createVideoProvider,
 } from '@contento/ai'
 import type { WordTiming } from '@contento/ai'
+import { platformProfileFromRow } from '@contento/shared'
 import { stitchClips, transcodeMp3ToWav, probeDurationSec } from './stitch.js'
 import { uploadVideo, uploadBuffer, downloadBuffer, keyFromUrl, presignGetUrl, isOwnS3Url, redactSignedUrls } from './s3-client.js'
 import { renderStitchVideo } from './remotion-stitch.js'
@@ -109,11 +110,23 @@ async function handleGenerate(
     ? `${persona.description} (style: ${persona.style}, gender: ${persona.gender})`
     : undefined
 
+  // Honor the workspace's per-platform profile override (falls back to the static default
+  // inside the agent when no row exists).
+  const profileRow = platform
+    ? await prisma.platformProfile.findUnique({ where: { workspaceId_platform: { workspaceId, platform } } })
+    : null
+  const platformProfile = profileRow ? platformProfileFromRow(profileRow) : undefined
+
   const shots = await generateVideoStoryboard(workspaceId, {
     hook: script.hook,
     body: script.body,
     cta: script.cta,
-  }, { language, ...(characterDescription ? { characterDescription } : {}), ...(platform ? { platform } : {}) })
+  }, {
+    language,
+    ...(characterDescription ? { characterDescription } : {}),
+    ...(platform ? { platform } : {}),
+    ...(platformProfile ? { profile: platformProfile } : {}),
+  })
 
   await prisma.script.update({ where: { id: scriptId }, data: { storyboard: shots } })
 

@@ -5,6 +5,7 @@ import { writeScript, embedText, writeScriptEmbedding } from '@contento/ai'
 import { getVideoQueue } from '../queue.js'
 import { runQaChecks } from '../qa/checks.js'
 import type { QaInput } from '../qa/checks.js'
+import { resolvePlatformProfile } from '../lib/platform-profile.js'
 type QaInputSubtitles = QaInput['subtitles']
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379'
@@ -93,12 +94,14 @@ export function startCampaignProducer(): Worker {
 
         let scriptId: string
         try {
+          // Honor the workspace's per-platform profile override (falls back to static default).
+          const platformProfile = await resolvePlatformProfile(workspaceId, item.platform ?? 'instagram')
           const contentScript = await writeScript(workspaceId, {
             title: item.topic,
             angle: item.hook,
             format: item.format,
             platform: item.platform ?? 'instagram',
-          })
+          }, platformProfile)
 
           const script = await prisma.script.create({
             data: {
