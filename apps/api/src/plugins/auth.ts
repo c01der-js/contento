@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import fp from 'fastify-plugin'
-import { verifyToken, createClerkClient } from '@clerk/backend'
+import jwt from 'jsonwebtoken'
 import { prisma } from '@contento/db'
 
 interface AuthUser {
@@ -14,11 +14,16 @@ declare module 'fastify' {
 }
 
 export const registerAuth = fp(async (app: FastifyInstance) => {
+  if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required')
   app.decorateRequest('authUser', null)
 
   app.addHook('onRequest', async (request: FastifyRequest) => {
     const token = extractToken(request)
-    request.authUser = token ? await resolveAuthUser(token) : null
+    if (!token) { request.authUser = null; return }
+    const userId = decodeUserId(token)
+    if (!userId) { request.authUser = null; return }
+    await ensureUser(userId)
+    request.authUser = { userId }
   })
 })
 
@@ -43,73 +48,43 @@ function extractToken(request: FastifyRequest): string | null {
   return null
 }
 
-async function resolveAuthUser(token: string): Promise<AuthUser | null> {
-  const secretKey = process.env.CLERK_SECRET_KEY
-
-  if (!secretKey) {
-    // CLERK_SECRET_KEY not set — development fallback (decode without verify)
-    try {
-      const [, payloadB64] = token.split('.')
-      if (!payloadB64) return null
-      const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString()) as { sub?: string }
-      if (!payload.sub) return null
-      await ensureUser(payload.sub)
-      return { userId: payload.sub }
-    } catch {
-      return null
-    }
-  }
-
+/** Verify a local JWT (signed by /auth/{register,login}) and return its `sub`, or null. */
+export function decodeUserId(token: string): string | null {
+  const secret = process.env.JWT_SECRET
+  if (!secret) return null
   try {
-    const payload = await verifyToken(token, { secretKey })
-    await ensureUser(payload.sub)
-    return { userId: payload.sub }
+    const raw = jwt.verify(token, secret)
+    if (typeof raw !== 'object' || raw === null) return null
+    const payload = raw as { sub?: string }
+    return typeof payload.sub === 'string' ? payload.sub : null
   } catch {
     return null
   }
 }
 
-async function ensureUser(clerkId: string): Promise<void> {
-  // Fast path — user already has a workspace, nothing to provision.
-  const existing = await prisma.membership.findFirst({ where: { userId: clerkId } })
+/** Provision the user's first workspace on their first authenticated request. */
+async function ensureUser(userId: string): Promise<void> {
+  // Fast path — already a member of some workspace.
+  const existing = await prisma.membership.findFirst({ where: { userId } })
   if (existing) return
 
-  // Fetch real profile from Clerk when the secret key is available.
-  let email = `${clerkId}@clerk.local`
-  let firstName: string | null = null
-  const secretKey = process.env.CLERK_SECRET_KEY
-  if (secretKey) {
-    try {
-      const clerk = createClerkClient({ secretKey })
-      const user = await clerk.users.getUser(clerkId)
-      email = user.emailAddresses[0]?.emailAddress ?? email
-      firstName = user.firstName ?? null
-    } catch {
-      // Fall back to synthetic values — don't block the request.
-    }
-  }
+  // The User row is created at /auth/register. If the sub doesn't map to a user, do nothing.
+  const user = await prisma.user.findUnique({ where: { id: userId } })
+  if (!user) return
 
-  await prisma.user.upsert({
-    where: { id: clerkId },
-    update: {},
-    create: { id: clerkId, email, name: firstName ?? null },
-  })
-
-  // Auto-create the first workspace. Deterministic slug so concurrent first-requests
-  // collapse to a single workspace via the unique-constraint catch below.
-  const slug = `ws-${clerkId.replace(/[^a-z0-9]/gi, '').slice(-12).toLowerCase()}`
-  const workspaceName = firstName ? `${firstName}'s Workspace` : 'My Workspace'
+  const slug = `ws-${userId.replace(/[^a-z0-9]/gi, '').slice(-12).toLowerCase()}`
+  const workspaceName = user.name ? `${user.name}'s Workspace` : 'My Workspace'
 
   try {
     await prisma.workspace.create({
       data: {
         name: workspaceName,
         slug,
-        memberships: { create: { userId: clerkId, role: 'OWNER' } },
+        memberships: { create: { userId, role: 'OWNER' } },
       },
     })
   } catch (e: unknown) {
-    // P2002 = unique constraint — another concurrent request already created it; ignore.
+    // P2002 = unique constraint — a concurrent first request already created it; ignore.
     if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: string }).code === 'P2002') return
     throw e
   }

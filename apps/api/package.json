@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1044.0",
-    "@clerk/backend": "^1.0.0",
     "@contento/ai": "workspace:*",
     "@contento/brand-kit": "workspace:*",
     "@contento/db": "workspace:*",
