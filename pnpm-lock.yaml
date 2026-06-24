@@ -153,7 +153,7 @@ importers:
         version: link:../../packages/db
       '@remotion/bundler':
         specifier: 4.0.468
-        version: 4.0.468(@swc/helpers@0.5.15)(lightningcss@1.32.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        version: 4.0.468(@swc/helpers@0.5.15)(lightningcss@1.32.0)(postcss@8.5.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@remotion/renderer':
         specifier: 4.0.468
         version: 4.0.468(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -272,9 +272,12 @@ importers:
       '@contento/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@contento/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@remotion/bundler':
         specifier: 4.0.468
-        version: 4.0.468(@swc/helpers@0.5.15)(lightningcss@1.32.0)(postcss@8.5.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        version: 4.0.468(@swc/helpers@0.5.15)(lightningcss@1.32.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@remotion/renderer':
         specifier: 4.0.468
         version: 4.0.468(react-dom@19.2.6(react@19.2.6))(react@19.2.6)

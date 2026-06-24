@@ -16,6 +16,7 @@
     "@contento/db": "workspace:*",
     "@contento/ai": "workspace:*",
     "@contento/brand-kit": "workspace:*",
+    "@contento/shared": "workspace:*",
     "@remotion/bundler": "4.0.468",
     "@remotion/renderer": "4.0.468",
     "@aws-sdk/s3-request-presigner": "^3.0.0",
