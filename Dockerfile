@@ -64,7 +64,13 @@ FROM node:22-alpine AS video-runner
 ARG APP=video-worker
 ENV NODE_ENV=production
 WORKDIR /app
-RUN apk add --no-cache ffmpeg
+# ffmpeg/ffprobe (stitch.ts shells out) + Remotion render deps on Alpine:
+# - setpriv (full util-linux): Remotion launches Chromium via `setpriv --pdeathsig`,
+#   which BusyBox's setpriv doesn't support → "Failed to launch the browser process".
+# - chromium + nss/freetype/harfbuzz/fonts: use Alpine's musl-native Chromium instead
+#   of Remotion's glibc chrome-headless-shell (avoids gcompat/lib issues).
+RUN apk add --no-cache ffmpeg setpriv chromium nss freetype harfbuzz ttf-freefont font-noto-emoji
+ENV REMOTION_BROWSER_EXECUTABLE=/usr/bin/chromium-browser
 COPY --from=builder /deploy .
 CMD ["node", "dist/apps/video-worker/src/index.js"]
 

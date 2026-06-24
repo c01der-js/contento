@@ -58,7 +58,11 @@ function getBundle(): Promise<string> {
 export async function renderStitchVideo(props: VideoStitchProps, outputPath: string): Promise<void> {
   const serveUrl = await getBundle()
   const inputProps = props as unknown as Record<string, unknown>
-  const composition = await selectComposition({ serveUrl, id: VIDEO_STITCH_ID, inputProps })
+  // On Alpine, point Remotion at the system (musl-native) Chromium via
+  // REMOTION_BROWSER_EXECUTABLE instead of its glibc chrome-headless-shell.
+  // Unset elsewhere (null) → Remotion's default downloaded browser.
+  const browserExecutable = process.env['REMOTION_BROWSER_EXECUTABLE'] || null
+  const composition = await selectComposition({ serveUrl, id: VIDEO_STITCH_ID, inputProps, browserExecutable })
   await renderMedia({
     composition,
     serveUrl,
@@ -66,6 +70,7 @@ export async function renderStitchVideo(props: VideoStitchProps, outputPath: str
     crf: 20,
     outputLocation: outputPath,
     inputProps,
+    browserExecutable,
     // Remote clip fetches (presigned S3) can take a while on first frame.
     timeoutInMilliseconds: 180_000,
   })
