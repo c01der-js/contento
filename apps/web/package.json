@@ -13,7 +13,6 @@
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.0.0",
     "@contento/brand-kit": "workspace:*",
     "@hello-pangea/dnd": "^18.0.1",
     "clsx": "^2.0.0",
