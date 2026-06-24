@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { BrandCard } from '@contento/brand-kit'
 import { VideoJobPanel } from './_components/VideoJobPanel'
+import { GoldenInfluences } from './_components/GoldenInfluences'
 import { useWorkspace } from '@/lib/workspace'
 import {
   Button,
@@ -895,6 +896,15 @@ function Step3ReviewScript({
           {/* Video Generation */}
           {scriptId && (
             <VideoJobPanel
+              workspaceId={workspaceId}
+              scriptId={scriptId}
+              apiFetch={apiFetch}
+            />
+          )}
+
+          {/* Feedback loop: which golden examples influence generation for content like this */}
+          {scriptId && (
+            <GoldenInfluences
               workspaceId={workspaceId}
               scriptId={scriptId}
               apiFetch={apiFetch}
