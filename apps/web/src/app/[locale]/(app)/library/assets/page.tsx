@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/lib/auth-context'
+import { getAuthToken } from '@/lib/auth'
 import { useApiFetch, API_BASE } from '@/lib/api'
 import { useEffect, useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
@@ -122,7 +122,6 @@ function AssetCard({
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function AssetsPage() {
-  const { getToken } = useAuth()
   const apiFetch = useApiFetch()
   const t = useTranslations('library')
   const tCommon = useTranslations('common')
@@ -217,7 +216,7 @@ export default function AssetsPage() {
       // Multipart upload: send the FormData without a JSON Content-Type so the browser sets
       // the multipart boundary itself. The shared apiFetch always injects application/json,
       // so this one call uses a direct fetch with the bearer token.
-      const token = await getToken()
+      const token = getAuthToken()
       const r = await fetch(`${API_BASE}/workspaces/${workspaceId}/assets`, {
         method: 'POST',
         body: form,

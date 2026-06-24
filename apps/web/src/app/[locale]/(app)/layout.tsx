@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server'
 import { WorkspaceSwitcher } from '@/components/workspace-switcher'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import { NavLinks, BottomNavLinks } from '@/components/nav-links'
-import { SignedIn, UserButton } from '@clerk/nextjs'
+import { LogoutButton } from '@/components/logout-button'
 import { WorkspaceProvider } from '@/lib/workspace'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -33,9 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <BottomNavLinks />
             <div className="flex items-center gap-2 px-2.5 py-2 mt-1">
               <LocaleSwitcher />
-              <SignedIn>
-                <UserButton />
-              </SignedIn>
+              <LogoutButton />
             </div>
           </div>
         </aside>

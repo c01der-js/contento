@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
+import { getAuthToken } from '@/lib/auth'
 import { useEffect, useRef, useState } from 'react'
 import { QaBadge } from '@/components/qa/QaBadge'
 import { API_BASE } from '@/lib/api'
@@ -55,7 +55,6 @@ const VOICE_LANGUAGES = [
 ]
 
 export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
-  const { getToken } = useAuth()
   const [videoJob, setVideoJob] = useState<VideoJob | null>(null)
   const [isStarting, setIsStarting] = useState(false)
   const [language, setLanguage] = useState('ru')
@@ -96,15 +95,12 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
   }, [videoJob?.id, videoJob?.status])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // The MP4 lives in private storage — play it through the authenticated API proxy,
-  // passing the Clerk token as a query param since <video> can't send headers.
+  // passing the token as a query param since <video> can't send headers.
   useEffect(() => {
     if (videoJob?.status !== 'DONE' || !videoJob.outputUrl) { setVideoSrc(null); return }
-    let active = true
-    void getToken().then(t => {
-      if (active) setVideoSrc(`${API_BASE}/workspaces/${workspaceId}/video-jobs/${videoJob.id}/output?token=${encodeURIComponent(t ?? '')}`)
-    })
-    return () => { active = false }
-  }, [videoJob?.status, videoJob?.id, videoJob?.outputUrl, workspaceId, getToken])
+    const t = getAuthToken()
+    setVideoSrc(`${API_BASE}/workspaces/${workspaceId}/video-jobs/${videoJob.id}/output?token=${encodeURIComponent(t ?? '')}`)
+  }, [videoJob?.status, videoJob?.id, videoJob?.outputUrl, workspaceId])
 
   async function handleGenerate() {
     setIsStarting(true)

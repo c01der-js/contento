@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
+import { getAuthToken } from '@/lib/auth'
 import { useEffect, useRef, useState } from 'react'
 import { API_BASE } from '@/lib/api'
 
@@ -23,8 +23,6 @@ const MAX_RECONNECT_DELAY_MS = 30_000
 const INITIAL_RECONNECT_DELAY_MS = 1_000
 
 export function NotificationBell() {
-  const { getToken, isSignedIn } = useAuth()
-
   const [badgeCount, setBadgeCount] = useState(0)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const reconnectDelay = useRef(INITIAL_RECONNECT_DELAY_MS)
@@ -47,13 +45,13 @@ export function NotificationBell() {
   }
 
   useEffect(() => {
-    if (!isSignedIn) return
+    if (!getAuthToken()) return
 
     let cancelled = false
 
-    async function connect() {
+    function connect() {
       if (cancelled) return
-      const token = await getToken()
+      const token = getAuthToken()
       if (!token || cancelled) return
 
       // EventSource doesn't support custom headers; pass token as query param
@@ -83,7 +81,7 @@ export function NotificationBell() {
       }
     }
 
-    void connect()
+    connect()
 
     return () => {
       cancelled = true
@@ -92,9 +90,9 @@ export function NotificationBell() {
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSignedIn])
+  }, [])
 
-  if (!isSignedIn) return null
+  if (!getAuthToken()) return null
 
   return (
     <>

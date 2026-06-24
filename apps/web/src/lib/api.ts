@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
+import { getAuthToken } from './auth'
 import { useCallback } from 'react'
 
 /**
@@ -22,10 +22,9 @@ export type ApiFetch = (path: string, options?: RequestInit) => Promise<Response
  *   const res = await apiFetch(`/workspaces/${id}/trends`)
  */
 export function useApiFetch(): ApiFetch {
-  const { getToken } = useAuth()
   return useCallback<ApiFetch>(
     async (path, options) => {
-      const token = await getToken()
+      const token = getAuthToken()
       return fetch(`${API_BASE}${path}`, {
         ...options,
         headers: {
@@ -35,6 +34,6 @@ export function useApiFetch(): ApiFetch {
         },
       })
     },
-    [getToken],
+    [],
   )
 }

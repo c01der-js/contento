@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
+import { getAuthToken } from '@/lib/auth'
 import { useParams } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { useWorkspace } from '@/lib/workspace'
@@ -34,7 +34,6 @@ interface Campaign {
 }
 
 export default function ReviewCampaignPage() {
-  const { getToken } = useAuth()
   const apiFetch = useApiFetch()
   const { activeId: workspaceId } = useWorkspace()
   const params = useParams()
@@ -52,8 +51,7 @@ export default function ReviewCampaignPage() {
   const fetchCampaign = useCallback(async () => {
     if (!workspaceId) return
     try {
-      const token = await getToken()
-      setVideoToken(token)
+      setVideoToken(getAuthToken())
       const res = await apiFetch(`/workspaces/${workspaceId}/campaigns/${campaignId}`)
       if (!res.ok) throw new Error('Failed to load')
       const data = await res.json() as Campaign
@@ -69,7 +67,7 @@ export default function ReviewCampaignPage() {
       setVideoJobs(jobs)
     } catch (e) { setError(e instanceof Error ? e.message : 'Error') }
     finally { setLoading(false) }
-  }, [workspaceId, campaignId, apiFetch, getToken])
+  }, [workspaceId, campaignId, apiFetch])
 
   useEffect(() => { void fetchCampaign() }, [fetchCampaign])
 

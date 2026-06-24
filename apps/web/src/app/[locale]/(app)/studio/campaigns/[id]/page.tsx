@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
+import { getAuthToken } from '@/lib/auth'
 import { useParams } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { useWorkspace } from '@/lib/workspace'
@@ -90,7 +90,6 @@ function formatDate(iso: string): string {
 }
 
 export default function CampaignPage() {
-  const { getToken } = useAuth()
   const apiFetch = useApiFetch()
   const { activeId: workspaceId } = useWorkspace()
   const params = useParams()
@@ -124,9 +123,9 @@ export default function CampaignPage() {
 
   useEffect(() => { void fetchCampaign() }, [fetchCampaign])
 
-  // Keep a fresh Clerk token for streaming finished videos through the API proxy
+  // Keep a fresh token for streaming finished videos through the API proxy
   // (a <video> tag can't send an Authorization header, so it goes in ?token=).
-  useEffect(() => { void getToken().then(t => setVideoToken(t)) }, [getToken, campaign])
+  useEffect(() => { setVideoToken(getAuthToken()) }, [campaign])
 
   useEffect(() => {
     if (!campaign?.contentPlan) return
