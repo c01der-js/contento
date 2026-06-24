@@ -1,26 +1,29 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import createIntlMiddleware from 'next-intl/middleware'
+import { NextResponse, type NextRequest } from 'next/server'
 import { routing } from './i18n/routing'
-import type { NextRequest } from 'next/server'
+import { TOKEN_COOKIE } from './lib/auth'
 
 const intlMiddleware = createIntlMiddleware(routing)
 
-const isPublicRoute = createRouteMatcher([
-  '/:locale/sign-in(.*)',
-  '/:locale/sign-up(.*)',
-])
+// Public (no auth needed): the localized sign-in / sign-up pages.
+const PUBLIC_PATH = /^\/[^/]+\/(sign-in|sign-up)(?:\/.*)?$/
 
-export default clerkMiddleware(async (auth, request: NextRequest) => {
-  if (!isPublicRoute(request)) {
-    await auth.protect()
+export default function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  const hasToken = request.cookies.has(TOKEN_COOKIE)
+  const isPublic = PUBLIC_PATH.test(pathname)
+
+  if (!hasToken && !isPublic) {
+    const locale = pathname.split('/')[1] || routing.defaultLocale
+    return NextResponse.redirect(new URL(`/${locale}/sign-in`, request.url))
   }
+
   return intlMiddleware(request)
-})
+}
 
 export const config = {
   matcher: [
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     '/(api|trpc)(.*)',
-    '/__clerk/(.*)',
   ],
 }
