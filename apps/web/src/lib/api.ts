@@ -14,8 +14,8 @@ export type ApiFetch = (path: string, options?: RequestInit) => Promise<Response
 
 /**
  * Authenticated fetch against the API: prepends API_BASE, sets JSON content-type, and attaches
- * the Clerk bearer token. Caller-supplied headers win over the defaults. Same behaviour the
- * per-page `apiFetch` had — just shared.
+ * the auth bearer token (the contento_token cookie JWT). Caller-supplied headers win over the
+ * defaults. Same behaviour the per-page `apiFetch` had — just shared.
  *
  * Usage (client component):
  *   const apiFetch = useApiFetch()
