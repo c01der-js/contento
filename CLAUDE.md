@@ -91,20 +91,22 @@ apps/
   scheduler       # BullMQ worker: fires scheduled publications, sends trend digest
   trend-analyzer  # BullMQ worker: calls AI to score trend relevance
   trend-fetcher   # BullMQ worker: fetches trends from YouTube/Reddit/Google/RSS
+  video-worker    # BullMQ worker: storyboard→shots→stitch (Higgsfield/ElevenLabs + Remotion); profile-gated `video`
 
 packages/
   db/             # @contento/db — Prisma client + schema (PostgreSQL + pgvector)
   ai/             # @contento/ai — Anthropic SDK wrapper + AI agents
   brand-kit/      # @contento/brand-kit — Remotion video composition templates
-  platforms/      # @contento/platforms — platform publisher adapters (TG/IG/TikTok/YT/LI/VK)
-  shared/         # @contento/shared — shared Zod schemas and TS types
+  platforms/      # @contento/platforms — platform publisher adapters (TG/IG/TikTok/YT/LI; VK removed)
+  notifications/  # @contento/notifications — notification delivery (email/etc.)
+  shared/         # @contento/shared — shared Zod schemas, TS types, platform profiles
   ui/             # @contento/ui — shared React components
 
 workers/ (Python)
   scrapers-py     # Google Trends / YouTube / Reddit / RSS → publishes to Kafka
   analytics-py    # Consumes Kafka events → writes to ClickHouse
   mention-py      # Monitors brand mentions via RSS/Reddit → Postgres
-  ml-py           # LoRA fine-tuning worker
+  ml-py           # LoRA fine-tuning worker (training not implemented; LORA_MOCK_TRAINING for the mock path)
 
 infra/
   docker-compose.yml  # Full local stack
