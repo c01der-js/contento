@@ -3,8 +3,7 @@
 import { useAuth } from '@clerk/nextjs'
 import { useEffect, useRef, useState } from 'react'
 import { QaBadge } from '@/components/qa/QaBadge'
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+import { API_BASE } from '@/lib/api'
 
 interface VideoShot {
   id: string
@@ -102,7 +101,7 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
     if (videoJob?.status !== 'DONE' || !videoJob.outputUrl) { setVideoSrc(null); return }
     let active = true
     void getToken().then(t => {
-      if (active) setVideoSrc(`${API}/workspaces/${workspaceId}/video-jobs/${videoJob.id}/output?token=${encodeURIComponent(t ?? '')}`)
+      if (active) setVideoSrc(`${API_BASE}/workspaces/${workspaceId}/video-jobs/${videoJob.id}/output?token=${encodeURIComponent(t ?? '')}`)
     })
     return () => { active = false }
   }, [videoJob?.status, videoJob?.id, videoJob?.outputUrl, workspaceId, getToken])

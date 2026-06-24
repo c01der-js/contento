@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/nextjs'
 import { useParams } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch, API_BASE } from '@/lib/api'
 import { QaBadge } from '@/components/qa/QaBadge'
 
 interface ContentPlanItem {
@@ -34,10 +35,10 @@ interface Campaign {
 
 export default function ReviewCampaignPage() {
   const { getToken } = useAuth()
+  const apiFetch = useApiFetch()
   const { activeId: workspaceId } = useWorkspace()
   const params = useParams()
   const campaignId = params.id as string
-  const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [videoJobs, setVideoJobs] = useState<Record<string, VideoJob>>({})
@@ -53,9 +54,7 @@ export default function ReviewCampaignPage() {
     try {
       const token = await getToken()
       setVideoToken(token)
-      const res = await fetch(`${API}/workspaces/${workspaceId}/campaigns/${campaignId}`, {
-        headers: { authorization: `Bearer ${token}` },
-      })
+      const res = await apiFetch(`/workspaces/${workspaceId}/campaigns/${campaignId}`)
       if (!res.ok) throw new Error('Failed to load')
       const data = await res.json() as Campaign
       setCampaign(data)
@@ -64,15 +63,13 @@ export default function ReviewCampaignPage() {
       const jobs: Record<string, VideoJob> = {}
       await Promise.all(reviewItems.map(async item => {
         if (!item.videoJobId) return
-        const vRes = await fetch(`${API}/workspaces/${workspaceId}/video-jobs/${item.videoJobId}`, {
-          headers: { authorization: `Bearer ${token}` },
-        })
+        const vRes = await apiFetch(`/workspaces/${workspaceId}/video-jobs/${item.videoJobId}`)
         if (vRes.ok) jobs[item.videoJobId] = await vRes.json() as VideoJob
       }))
       setVideoJobs(jobs)
     } catch (e) { setError(e instanceof Error ? e.message : 'Error') }
     finally { setLoading(false) }
-  }, [workspaceId, campaignId, API, getToken])
+  }, [workspaceId, campaignId, apiFetch, getToken])
 
   useEffect(() => { void fetchCampaign() }, [fetchCampaign])
 
@@ -80,10 +77,8 @@ export default function ReviewCampaignPage() {
     if (!workspaceId) return
     setActionLoading(itemId)
     try {
-      const token = await getToken()
-      const res = await fetch(`${API}/workspaces/${workspaceId}/campaigns/${campaignId}/items/${itemId}/approve`, {
+      const res = await apiFetch(`/workspaces/${workspaceId}/campaigns/${campaignId}/items/${itemId}/approve`, {
         method: 'PUT',
-        headers: { authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error(await res.text())
       await fetchCampaign()
@@ -95,10 +90,8 @@ export default function ReviewCampaignPage() {
     if (!workspaceId || !rejectComment[itemId]) return
     setActionLoading(itemId)
     try {
-      const token = await getToken()
-      const res = await fetch(`${API}/workspaces/${workspaceId}/campaigns/${campaignId}/items/${itemId}/reject`, {
+      const res = await apiFetch(`/workspaces/${workspaceId}/campaigns/${campaignId}/items/${itemId}/reject`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', authorization: `Bearer ${token}` },
         body: JSON.stringify({ comment: rejectComment[itemId] }),
       })
       if (!res.ok) throw new Error(await res.text())
@@ -154,7 +147,7 @@ export default function ReviewCampaignPage() {
 
                 {videoJob?.outputUrl && videoToken ? (
                   <video
-                    src={`${API}/workspaces/${workspaceId}/video-jobs/${videoJob.id}/output?token=${encodeURIComponent(videoToken)}`}
+                    src={`${API_BASE}/workspaces/${workspaceId}/video-jobs/${videoJob.id}/output?token=${encodeURIComponent(videoToken)}`}
                     controls
                     className="w-full rounded-lg bg-black object-contain max-h-96"
                     style={{ aspectRatio: '9/16' }}

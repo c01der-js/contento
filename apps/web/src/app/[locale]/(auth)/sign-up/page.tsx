@@ -1,4 +1,5 @@
 import { SignUp } from '@clerk/nextjs'
+import { API_BASE } from '@/lib/api'
 
 interface Props {
   searchParams: Promise<{ token?: string }>
@@ -18,10 +19,9 @@ type ValidationResult =
 async function validateInvitation(token: string | undefined): Promise<ValidationResult> {
   if (!token) return { ok: false, reason: 'missing' }
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
   try {
     const res = await fetch(
-      `${apiBase}/workspaces/invitations/${encodeURIComponent(token)}/preview`,
+      `${API_BASE}/workspaces/invitations/${encodeURIComponent(token)}/preview`,
       { cache: 'no-store' },
     )
     if (res.status === 404) return { ok: false, reason: 'invalid' }

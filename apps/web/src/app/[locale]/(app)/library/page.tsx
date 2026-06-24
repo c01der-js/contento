@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/lib/auth'
+import { useApiFetch } from '@/lib/api'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -137,8 +137,7 @@ function SimilarPanel({
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function LibraryPage() {
-  const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
   const t = useTranslations('library')
   const tCommon = useTranslations('common')
   const searchParams = useSearchParams()
@@ -168,18 +167,6 @@ export default function LibraryPage() {
   const [activeSimilarId, setActiveSimilarId] = useState<string | null>(similarScriptId)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   // Debounce search query
   useEffect(() => {

@@ -1,9 +1,9 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
 import { useRouter } from '@/i18n/navigation'
 import { useEffect, useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch } from '@/lib/api'
 import { Link } from '@/i18n/navigation'
 
 interface ContentPlanItem {
@@ -41,23 +41,18 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export default function StudioPage() {
-  const { getToken } = useAuth()
+  const apiFetch = useApiFetch()
   const { activeId: workspaceId } = useWorkspace()
   const router = useRouter()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
-
   useEffect(() => {
     if (!workspaceId) return
     ;(async () => {
       try {
-        const token = await getToken()
-        const res = await fetch(`${API}/workspaces/${workspaceId}/campaigns`, {
-          headers: { authorization: `Bearer ${token}` },
-        })
+        const res = await apiFetch(`/workspaces/${workspaceId}/campaigns`)
         if (!res.ok) throw new Error('Failed to load campaigns')
         const data = await res.json() as { items: Campaign[] }
         setCampaigns(data.items)

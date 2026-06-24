@@ -1,10 +1,10 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
 import { useRouter } from '@/i18n/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch } from '@/lib/api'
 import { Button, Card, Badge, Spinner, EmptyState, ErrorBanner } from '@/components/ui'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -207,9 +207,8 @@ function TrendRow({
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function TrendsPage() {
-  const { getToken } = useAuth()
+  const apiFetch = useApiFetch()
   const router = useRouter()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
   const t = useTranslations('trends')
   const tCommon = useTranslations('common')
 
@@ -234,18 +233,6 @@ export default function TrendsPage() {
     { label: t('filterAnalyzed'), value: 'ANALYZED' },
     { label: t('filterArchived'), value: 'ARCHIVED' },
   ]
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   // Load trends when workspace or filter changes
   useEffect(() => {

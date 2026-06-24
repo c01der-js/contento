@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/nextjs'
 import { useParams } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch, API_BASE } from '@/lib/api'
 import { Link } from '@/i18n/navigation'
 import { Button, Input, Select } from '@/components/ui'
 
@@ -90,10 +91,10 @@ function formatDate(iso: string): string {
 
 export default function CampaignPage() {
   const { getToken } = useAuth()
+  const apiFetch = useApiFetch()
   const { activeId: workspaceId } = useWorkspace()
   const params = useParams()
   const campaignId = params.id as string
-  const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [loading, setLoading] = useState(true)
@@ -110,18 +111,6 @@ export default function CampaignPage() {
   const [savingItem, setSavingItem] = useState(false)
   const [videoToken, setVideoToken] = useState<string | null>(null)
   const [watchingId, setWatchingId] = useState<string | null>(null)
-
-  const apiFetch = useCallback(async (path: string, options?: RequestInit) => {
-    const token = await getToken()
-    return fetch(`${API}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }, [API, getToken])
 
   const fetchCampaign = useCallback(async () => {
     if (!workspaceId) return
@@ -415,7 +404,7 @@ export default function CampaignPage() {
                         </button>
                         {watchingId === item.id && videoToken && (
                           <video
-                            src={`${API}/workspaces/${workspaceId}/video-jobs/${item.videoJobId}/output?token=${encodeURIComponent(videoToken)}`}
+                            src={`${API_BASE}/workspaces/${workspaceId}/video-jobs/${item.videoJobId}/output?token=${encodeURIComponent(videoToken)}`}
                             controls
                             autoPlay
                             className="mt-2 rounded-lg bg-black w-full max-w-[240px]"

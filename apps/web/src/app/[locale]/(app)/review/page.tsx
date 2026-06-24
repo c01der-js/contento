@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
+import { useApiFetch } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useWorkspace } from '@/lib/workspace'
@@ -187,8 +187,7 @@ function ScriptCard({
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function ReviewPage() {
-  const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
   const t = useTranslations('review')
   const tCommon = useTranslations('common')
 
@@ -198,18 +197,6 @@ export default function ReviewPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [processingId, setProcessingId] = useState<string | null>(null)
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   // Load review queue
   useEffect(() => {

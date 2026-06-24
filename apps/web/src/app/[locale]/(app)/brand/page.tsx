@@ -1,8 +1,8 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
+import { useApiFetch } from '@/lib/api'
 import { Button, Card, Badge, Spinner, EmptyState, ErrorBanner, Input, Select } from '@/components/ui'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -149,8 +149,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function BrandPage() {
-  const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
 
   const { activeId: workspaceId, status } = useWorkspace()
   const workspaceError = status === 'no-workspaces' ? 'no-workspaces' : status === 'fetch-failed' ? 'fetch-failed' : null
@@ -161,18 +160,6 @@ export default function BrandPage() {
   const [previews, setPreviews] = useState<BrandPreviewItem[]>([])
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState('')
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   async function handlePreviewBrandVoice() {
     if (!workspaceId) return

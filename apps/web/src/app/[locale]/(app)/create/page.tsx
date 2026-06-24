@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
+import { useApiFetch } from '@/lib/api'
 import { Link } from '@/i18n/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -162,8 +162,7 @@ function StepIndicator({ step }: { step: 1 | 2 | 3 | 4 }) {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function CreatePage() {
-  const { getToken } = useAuth()
-  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const apiFetch = useApiFetch()
   const tCreatePage = useTranslations('create')
   const { activeId: workspaceId, status: workspaceStatus } = useWorkspace()
   const workspaceError = workspaceStatus === 'no-workspaces' ? 'no-workspaces'
@@ -186,18 +185,6 @@ export default function CreatePage() {
   const [renderJobStatus, setRenderJobStatus] = useState<string | null>(null)
   const [renderOutputUrl, setRenderOutputUrl] = useState<string | null>(null)
   const [isRendering, setIsRendering] = useState(false)
-
-  async function apiFetch(path: string, options?: RequestInit) {
-    const token = await getToken()
-    return fetch(`${apiBase}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
-      },
-    })
-  }
 
   useEffect(() => {
     if (!workspaceId) return
