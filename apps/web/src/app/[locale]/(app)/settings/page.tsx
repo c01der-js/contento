@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
+import { LogoutButton } from '@/components/logout-button'
 
 export default async function SettingsPage() {
   const t = await getTranslations('settings')
@@ -26,6 +27,9 @@ export default async function SettingsPage() {
           </Link>
         ))}
       </nav>
+      <div className="mt-8">
+        <LogoutButton />
+      </div>
     </div>
   )
 }
