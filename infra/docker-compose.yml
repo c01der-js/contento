@@ -284,10 +284,7 @@ services:
   video-worker:
     build:
       context: ..
-      dockerfile: Dockerfile
-      target: video-runner
-      args:
-        APP: video-worker
+      dockerfile: apps/video-worker/Dockerfile   # Debian/glibc — Remotion compositor needs it
     env_file: .env          # HF_KEY_ID / HF_KEY / HIGGSFIELD_* / ELEVENLABS_* from infra/.env
     environment:
       <<: *app-env          # cluster-internal DATABASE_URL / REDIS_URL override .env
