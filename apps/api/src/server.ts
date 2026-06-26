@@ -34,6 +34,8 @@ import { quickActionRoutes } from './routes/quick-actions.js'
 import { startAnalyticsIngester } from './workers/analytics-ingester.js'
 import { videoRoutes } from './routes/video.js'
 import { webhookRoutes } from './routes/webhooks.js'
+import { instagramWebhookRoutes } from './routes/instagram-webhooks.js'
+import { leadsRoutes } from './routes/leads.js'
 import { trendFeedConfigRoutes } from './routes/trend-feed-configs.js'
 import { companyPortraitRoutes } from './routes/company-portrait.js'
 import { avatarPersonaRoutes } from './routes/avatar-persona.js'
@@ -51,7 +53,11 @@ export async function createServer() {
 
   // Treat empty application/json bodies as undefined (avoids FST_ERR_CTP_EMPTY_JSON_BODY on
   // POST endpoints that intentionally take no body but the client always sends Content-Type).
-  app.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+    // Stash the raw body so webhook routes can verify provider HMAC signatures (e.g. Meta's
+    // x-hub-signature-256) over the exact bytes. Kept on its own property so the existing
+    // Higgsfield path (request.rawBody) is unaffected.
+    ;(req as unknown as { rawBodyString?: string }).rawBodyString = body as string
     const s = (body as string).trim()
     if (s === '') return done(null, undefined)
     try { done(null, JSON.parse(s)) } catch (e) { done(e as Error) }
@@ -104,7 +110,9 @@ export async function createServer() {
   await app.register(avatarPersonaRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(campaignRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(platformProfileRoutes, { prefix: '/workspaces/:workspaceId' })
+  await app.register(leadsRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(webhookRoutes)
+  await app.register(instagramWebhookRoutes)
   await app.register(realtimeRoutes)
 
   // Start background workers after server is ready.

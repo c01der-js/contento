@@ -45,6 +45,7 @@
     "review": "Проверка",
     "calendar": "Календарь",
     "analytics": "Аналитика",
+    "leads": "Лиды",
     "library": "Библиотека",
     "settings": "Настройки",
     "studio": "Студия"
@@ -193,5 +194,27 @@
     "members": "Участники",
     "trendSources": "Источники трендов",
     "platformProfiles": "Профили платформ"
+  },
+  "leads": {
+    "title": "Лиды",
+    "colName": "Имя",
+    "colPhone": "Телефон",
+    "colIntent": "Намерение",
+    "colStatus": "Статус",
+    "colDate": "Дата",
+    "statusNEW": "Новый",
+    "statusCONTACTED": "В контакте",
+    "statusCONVERTED": "Конвертирован",
+    "statusLOST": "Потерян",
+    "noLeads": "Лидов пока нет",
+    "noLeadsHint": "Лиды, захваченные Instagram-агентом продаж, появятся здесь.",
+    "intent": "Намерение",
+    "notes": "Заметки",
+    "changeStatus": "Изменить статус",
+    "conversation": "Переписка",
+    "noMessages": "Сообщений в этой переписке нет.",
+    "errorLoad": "Не удалось загрузить лиды. Обновите страницу.",
+    "errorLoadDetail": "Не удалось загрузить детали лида. Попробуйте ещё раз.",
+    "errorSaveStatus": "Не удалось сохранить статус. Попробуйте ещё раз."
   }
 }

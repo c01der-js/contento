@@ -5,6 +5,7 @@ import { TikTokPublisher } from './tiktok/publisher.js'
 import { YouTubePublisher } from './youtube/publisher.js'
 import { LinkedInPublisher } from './linkedin/publisher.js'
 import { createPublisher } from './factory.js'
+import { sendInstagramMessage } from './instagram/messaging.js'
 
 // Helper to build a minimal Response-like object
 function mockResponse(body: unknown, ok = true): Response {
@@ -305,6 +306,84 @@ describe('YouTubePublisher', () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ items: [] }))
     const publisher = new YouTubePublisher({ accessToken: 'tok', refreshToken: 'r', clientId: 'c', clientSecret: 's' })
     expect(await publisher.fetchMetrics('missing')).toBeNull()
+  })
+})
+
+describe('sendInstagramMessage', () => {
+  let fetchMock: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('happy path: sends RESPONSE type and returns messageId + recipientId', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({ message_id: 'mid.abc123', recipient_id: 'psid-42' })
+    )
+
+    const result = await sendInstagramMessage({
+      accessToken: 'tok',
+      recipientId: 'psid-42',
+      text: 'Hello!',
+    })
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toContain('/me/messages')
+    expect(url).toContain('access_token=tok')
+    const body = JSON.parse(init.body as string)
+    expect(body.recipient).toEqual({ id: 'psid-42' })
+    expect(body.message).toEqual({ text: 'Hello!' })
+    expect(body.messaging_type).toBe('RESPONSE')
+    expect(body.tag).toBeUndefined()
+    expect(result).toEqual({ messageId: 'mid.abc123', recipientId: 'psid-42' })
+  })
+
+  it('humanAgentTag: sets MESSAGE_TAG and HUMAN_AGENT tag', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({ message_id: 'mid.xyz', recipient_id: 'psid-99' })
+    )
+
+    await sendInstagramMessage({
+      accessToken: 'tok',
+      recipientId: 'psid-99',
+      text: 'Agent reply',
+      humanAgentTag: true,
+    })
+
+    const body = JSON.parse((fetchMock.mock.calls[0] as [string, { body: string }])[1].body)
+    expect(body.messaging_type).toBe('MESSAGE_TAG')
+    expect(body.tag).toBe('HUMAN_AGENT')
+  })
+
+  it('falls back to params.recipientId when Graph omits recipient_id', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse({ message_id: 'mid.fallback' }))
+
+    const result = await sendInstagramMessage({
+      accessToken: 'tok',
+      recipientId: 'fallback-psid',
+      text: 'Hi',
+    })
+
+    expect(result.recipientId).toBe('fallback-psid')
+  })
+
+  it('non-ok response: throws PublisherError', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      text: () => Promise.resolve('{"error":{"message":"Invalid OAuth token"}}'),
+      headers: { get: () => null },
+    } as unknown as Response)
+
+    await expect(
+      sendInstagramMessage({ accessToken: 'bad', recipientId: 'psid-1', text: 'Hi' })
+    ).rejects.toThrow('HTTP 400')
   })
 })
 

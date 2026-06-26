@@ -8,6 +8,7 @@ FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc turbo.json tsconfig.base.json ./
 COPY apps/api/package.json           apps/api/
+COPY apps/instagram-agent/package.json apps/instagram-agent/
 COPY apps/posting-service/package.json apps/posting-service/
 COPY apps/render-worker/package.json apps/render-worker/
 COPY apps/scheduler/package.json     apps/scheduler/

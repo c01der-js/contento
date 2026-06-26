@@ -1,5 +1,7 @@
 export { TelegramPublisher } from './telegram/publisher.js'
 export { InstagramPublisher } from './instagram/publisher.js'
+export { sendInstagramMessage } from './instagram/messaging.js'
+export type { SendInstagramMessageParams, SendInstagramMessageResult } from './instagram/messaging.js'
 export { TikTokPublisher } from './tiktok/publisher.js'
 export { YouTubePublisher } from './youtube/publisher.js'
 export { LinkedInPublisher } from './linkedin/publisher.js'

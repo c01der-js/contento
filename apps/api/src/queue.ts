@@ -57,3 +57,15 @@ export function getCampaignProducerQueue(): Queue {
   }
   return _campaignProducerQueue
 }
+
+let _instagramConnection: IORedis | null = null
+let _instagramQueue: Queue | null = null
+
+/** Inbound Instagram DM events (feature B2 — sales-funnel agent). Consumed by apps/instagram-agent. */
+export function getInstagramQueue(): Queue {
+  if (!_instagramQueue) {
+    _instagramConnection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null })
+    _instagramQueue = new Queue('instagram-dm', { connection: _instagramConnection })
+  }
+  return _instagramQueue
+}

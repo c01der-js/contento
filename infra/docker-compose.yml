@@ -185,6 +185,9 @@ services:
     environment:
       <<: *app-env
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Instagram messaging webhook (feature B2): verify token + app secret for signature checks
+      FB_APP_SECRET: ${FB_APP_SECRET:-}
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
     depends_on:
       <<: *depends-ready
       clickhouse:
@@ -303,6 +306,27 @@ services:
         condition: service_completed_successfully
     profiles:
       - video
+    restart: unless-stopped
+
+  # ── Instagram sales-funnel agent — feature B2 (autonomous DM → qualify → Telegram lead) ──
+  # Gated behind the 'inbox' profile: the default deploy does NOT start it. The agent only
+  # functions once the Meta app + `instagram_manage_messages` app-review + HTTPS domain are in
+  # place; until then it deploys dormant. Bring it up explicitly:
+  #   docker compose -f infra/docker-compose.yml --profile inbox up -d --build instagram-agent
+  instagram-agent:
+    build:
+      <<: *build-node
+      args:
+        APP: instagram-agent
+    env_file: .env          # TELEGRAM_BOT_TOKEN / SALES_TELEGRAM_CHAT_ID / WEB_BASE_URL
+    environment:
+      <<: *app-env          # cluster-internal DATABASE_URL / REDIS_URL override .env
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+    depends_on:
+      <<: *depends-ready
+    profiles:
+      - inbox
     restart: unless-stopped
 
   # ── optional Python workers (activate with --profile) ────────────────────────

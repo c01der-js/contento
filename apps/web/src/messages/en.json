@@ -45,6 +45,7 @@
     "review": "Review",
     "calendar": "Calendar",
     "analytics": "Analytics",
+    "leads": "Leads",
     "library": "Library",
     "settings": "Settings",
     "studio": "Studio"
@@ -193,5 +194,27 @@
     "members": "Members",
     "trendSources": "Trend Sources",
     "platformProfiles": "Platform Profiles"
+  },
+  "leads": {
+    "title": "Leads",
+    "colName": "Name",
+    "colPhone": "Phone",
+    "colIntent": "Intent",
+    "colStatus": "Status",
+    "colDate": "Date",
+    "statusNEW": "New",
+    "statusCONTACTED": "Contacted",
+    "statusCONVERTED": "Converted",
+    "statusLOST": "Lost",
+    "noLeads": "No leads yet",
+    "noLeadsHint": "Leads captured by the Instagram sales agent will appear here.",
+    "intent": "Intent",
+    "notes": "Notes",
+    "changeStatus": "Change status",
+    "conversation": "Conversation",
+    "noMessages": "No messages in this conversation.",
+    "errorLoad": "Failed to load leads. Please refresh.",
+    "errorLoadDetail": "Failed to load lead details. Please try again.",
+    "errorSaveStatus": "Failed to save status. Please try again."
   }
 }

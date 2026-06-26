@@ -115,6 +115,34 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@22.19.17)(lightningcss@1.32.0)(terser@5.48.0)
 
+  apps/instagram-agent:
+    dependencies:
+      '@contento/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@contento/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@contento/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
+      '@contento/platforms':
+        specifier: workspace:*
+        version: link:../../packages/platforms
+      bullmq:
+        specifier: ^5.0.0
+        version: 5.76.6
+      ioredis:
+        specifier: ^5.0.0
+        version: 5.10.1
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.19.17)(lightningcss@1.32.0)(terser@5.48.0)
+
   apps/posting-service:
     dependencies:
       '@aws-sdk/client-s3':
