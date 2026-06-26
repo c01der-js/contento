@@ -36,6 +36,7 @@ import { videoRoutes } from './routes/video.js'
 import { webhookRoutes } from './routes/webhooks.js'
 import { instagramWebhookRoutes } from './routes/instagram-webhooks.js'
 import { leadsRoutes } from './routes/leads.js'
+import { storyRoutes } from './routes/stories.js'
 import { trendFeedConfigRoutes } from './routes/trend-feed-configs.js'
 import { companyPortraitRoutes } from './routes/company-portrait.js'
 import { avatarPersonaRoutes } from './routes/avatar-persona.js'
@@ -111,6 +112,7 @@ export async function createServer() {
   await app.register(campaignRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(platformProfileRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(leadsRoutes, { prefix: '/workspaces/:workspaceId' })
+  await app.register(storyRoutes, { prefix: '/workspaces/:workspaceId' })
   await app.register(webhookRoutes)
   await app.register(instagramWebhookRoutes)
   await app.register(realtimeRoutes)

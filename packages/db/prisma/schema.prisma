@@ -215,6 +215,12 @@ enum ConversationChannel {
   INSTAGRAM_DM
 }
 
+enum StoryStatus {
+  NEW
+  USED
+  ARCHIVED
+}
+
 enum LeadStatus {
   NEW
   CONTACTED
@@ -274,6 +280,7 @@ model Workspace {
   platformProfiles PlatformProfile[]
   conversations    Conversation[]
   leads            Lead[]
+  stories          Story[]
 }
 
 model User {
@@ -499,6 +506,7 @@ model Script {
   id                 String                       @id @default(cuid())
   workspaceId        String
   ideaId             String?
+  storyId            String?
   hook               String
   body               String
   cta                String
@@ -523,6 +531,7 @@ model Script {
   updatedAt          DateTime                     @updatedAt
   workspace          Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   idea               Idea?                        @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  story              Story?                       @relation(fields: [storyId], references: [id], onDelete: SetNull)
   parent             Script?                      @relation("ScriptVariants", fields: [parentId], references: [id], onDelete: SetNull)
   children           Script[]                     @relation("ScriptVariants")
   renderJobs         RenderJob[]
@@ -537,6 +546,7 @@ model Script {
   @@unique([ideaId])
   @@index([workspaceId])
   @@index([parentId])
+  @@index([storyId])
 }
 
 model ScriptVersion {
@@ -1189,6 +1199,24 @@ model Lead {
   updatedAt      DateTime     @updatedAt
   workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, createdAt])
+}
+
+/// A real-life source story (pasted or scraped from a URL) mined into brand-aligned video
+/// scripts by the story-scriptwriter agent (feature B3 — Story Studio).
+model Story {
+  id          String      @id @default(cuid())
+  workspaceId String
+  title       String
+  sourceUrl   String?
+  rawText     String
+  status      StoryStatus @default(NEW)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  scripts     Script[]
 
   @@index([workspaceId, status])
   @@index([workspaceId, createdAt])

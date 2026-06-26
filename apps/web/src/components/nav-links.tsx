@@ -22,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/calendar', labelKey: 'calendar', icon: '□' },
   { href: '/analytics', labelKey: 'analytics', icon: '∿' },
   { href: '/leads', labelKey: 'leads', icon: '👤' },
+  { href: '/stories', labelKey: 'stories', icon: '📖' },
   { href: '/library', labelKey: 'library', icon: '⊟' },
 ]
 
