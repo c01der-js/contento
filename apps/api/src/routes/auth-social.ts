@@ -49,10 +49,10 @@ function buildAuthorizeUrl(platform: Platform, state: string): string {
 
   switch (platform) {
     case 'meta': {
-      const clientId = process.env.FB_APP_ID ?? ''
+      const clientId = process.env.IG_APP_ID ?? ''
       const redirectUri = process.env.FB_REDIRECT_URI ?? 'http://localhost:3001/oauth/meta/callback'
-      const scope = 'pages_manage_posts,instagram_basic,instagram_content_publish'
-      return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${enc(clientId)}&redirect_uri=${enc(redirectUri)}&scope=${enc(scope)}&state=${enc(state)}&response_type=code`
+      const scope = 'instagram_business_basic,instagram_business_manage_messages'
+      return `https://www.instagram.com/oauth/authorize?client_id=${enc(clientId)}&redirect_uri=${enc(redirectUri)}&scope=${enc(scope)}&state=${enc(state)}&response_type=code`
     }
     case 'tiktok': {
       const clientKey = process.env.TIKTOK_CLIENT_KEY ?? ''
@@ -108,14 +108,24 @@ async function exchangeCodeForTokens(
 ): Promise<TokenResponse> {
   switch (platform) {
     case 'meta': {
-      const url = new URL('https://graph.facebook.com/v18.0/oauth/access_token')
-      url.searchParams.set('client_id', process.env.FB_APP_ID ?? '')
-      url.searchParams.set('client_secret', process.env.FB_APP_SECRET ?? '')
-      url.searchParams.set('redirect_uri', process.env.FB_REDIRECT_URI ?? 'http://localhost:3001/oauth/meta/callback')
-      url.searchParams.set('code', code)
-      const res = await fetch(url.toString())
-      if (!res.ok) throw new Error(`Meta token exchange failed: ${res.status}`)
-      return res.json() as Promise<TokenResponse>
+      // Instagram Login: code -> short-lived token (api.instagram.com), then long-lived (graph.instagram.com)
+      const form = new URLSearchParams()
+      form.set('client_id', process.env.IG_APP_ID ?? '')
+      form.set('client_secret', process.env.IG_APP_SECRET ?? '')
+      form.set('grant_type', 'authorization_code')
+      form.set('redirect_uri', process.env.FB_REDIRECT_URI ?? 'http://localhost:3001/oauth/meta/callback')
+      form.set('code', code.replace(/#_$/, ''))   // Instagram sometimes appends "#_"
+      const shortRes = await fetch('https://api.instagram.com/oauth/access_token', { method: 'POST', body: form })
+      if (!shortRes.ok) throw new Error(`Instagram token exchange failed: ${shortRes.status} ${await shortRes.text()}`)
+      const shortData = await shortRes.json() as { access_token: string; user_id?: number | string; permissions?: string[] }
+      // long-lived (60 days)
+      const llUrl = new URL('https://graph.instagram.com/access_token')
+      llUrl.searchParams.set('grant_type', 'ig_exchange_token')
+      llUrl.searchParams.set('client_secret', process.env.IG_APP_SECRET ?? '')
+      llUrl.searchParams.set('access_token', shortData.access_token)
+      const llRes = await fetch(llUrl)
+      const llData = llRes.ok ? (await llRes.json() as { access_token?: string; expires_in?: number }) : {}
+      return { access_token: llData.access_token ?? shortData.access_token, expires_in: llData.expires_in ?? 5184000 }
     }
     case 'tiktok': {
       const res = await fetch('https://open-api.tiktok.com/oauth/access_token/', {
@@ -194,10 +204,9 @@ async function exchangeCodeForTokens(
 async function fetchProfile(platform: Platform, accessToken: string): Promise<ProfileInfo> {
   switch (platform) {
     case 'meta': {
-      const res = await fetch(`https://graph.facebook.com/v18.0/me?fields=name,id&access_token=${accessToken}`)
-      if (!res.ok) return { name: 'Meta Account', id: undefined }
-      const data = (await res.json()) as { name?: string; id?: string }
-      return { name: data.name ?? 'Meta Account', id: data.id }
+      const res = await fetch(`https://graph.instagram.com/me?fields=user_id,username&access_token=${encodeURIComponent(accessToken)}`)
+      const data = res.ok ? (await res.json() as { user_id?: string | number; username?: string; id?: string }) : {}
+      return { name: data.username ?? 'Instagram Account', id: data.user_id != null ? String(data.user_id) : (data.id ?? undefined) }
     }
     case 'tiktok': {
       const res = await fetch('https://open-api.tiktok.com/user/info/', {
@@ -264,19 +273,15 @@ async function refreshPlatformToken(
       }
     }
     case 'meta': {
-      // Facebook long-lived token exchange
-      const url = new URL('https://graph.facebook.com/v18.0/oauth/access_token')
-      url.searchParams.set('grant_type', 'fb_exchange_token')
-      url.searchParams.set('client_id', process.env.FB_APP_ID ?? '')
-      url.searchParams.set('client_secret', process.env.FB_APP_SECRET ?? '')
-      url.searchParams.set('fb_exchange_token', String(credentials['access_token'] ?? ''))
-      const res = await fetch(url.toString())
-      if (!res.ok) throw new Error(`Meta refresh failed: ${res.status}`)
-      const data = (await res.json()) as TokenResponse
+      const url = new URL('https://graph.instagram.com/refresh_access_token')
+      url.searchParams.set('grant_type', 'ig_refresh_token')
+      url.searchParams.set('access_token', String(credentials['access_token'] ?? ''))
+      const res = await fetch(url)
+      const data = res.ok ? (await res.json() as { access_token?: string; expires_in?: number }) : {}
       return {
-        access_token: data.access_token,
+        access_token: data.access_token ?? String(credentials['access_token'] ?? ''),
         refresh_token: undefined,
-        expires_at: Date.now() + (data.expires_in ?? 5184000) * 1000,
+        expires_at: Date.now() + ((data.expires_in ?? 5184000) * 1000),
       }
     }
     case 'tiktok': {
@@ -461,6 +466,7 @@ export const authSocialRoutes: FastifyPluginAsyncZod = async (app) => {
       access_token: tokens.access_token,
       ...(tokens.refresh_token ? { refresh_token: tokens.refresh_token } : {}),
       ...(expiresAt ? { expires_at: expiresAt } : {}),
+      ...(profile.id != null ? { userId: profile.id } : {}),
     }
     const credentials = credentialsObj as unknown as Prisma.InputJsonValue
 

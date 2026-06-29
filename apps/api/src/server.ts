@@ -74,6 +74,9 @@ export async function createServer() {
   await app.register(cors, {
     origin: process.env.CORS_ORIGIN ?? true,
     credentials: true,
+    // The default allowed methods omit PUT/PATCH/DELETE, so cross-origin mutating requests
+    // (Save / Delete from the browser) fail the CORS preflight with "Load failed". List them.
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   })
 
   await registerSwagger(app)
