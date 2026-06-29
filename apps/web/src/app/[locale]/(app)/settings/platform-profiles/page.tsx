@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch } from '@/lib/api'
-import { Button, Card, Input, Select, Spinner, ErrorBanner } from '@/components/ui/index'
+import { Button, Card, Input, Select, Spinner, ErrorBanner, EmptyState } from '@/components/ui/index'
 import { useTranslations } from 'next-intl'
 
 interface Profile {
@@ -143,10 +143,18 @@ export default function PlatformProfilesPage() {
 
       {error && <div className="mb-4"><ErrorBanner message={error} /></div>}
 
+      {!loading && profiles.length === 0 && (
+        <EmptyState
+          title="No platform profiles"
+          description="Platform profiles will appear here once your workspace finishes setting up."
+          icon="⚙️"
+        />
+      )}
+
       <div className="flex flex-col gap-6">
         {profiles.map((p) => (
           <Card key={p.platform}>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-medium">
                 {PLATFORM_LABEL[p.platform] ?? p.platform}
                 {p.customized
@@ -156,8 +164,28 @@ export default function PlatformProfilesPage() {
               {savedPlatform === p.platform && <span className="text-xs text-green-600">{t('savedMark')}</span>}
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {NUM_FIELDS.map((f) => (
+            {/* Duration group */}
+            <div className="mb-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Duration (sec)</p>
+              <div className="flex flex-wrap gap-3">
+                {NUM_FIELDS.slice(0, 3).map((f) => (
+                  <label key={f.key} className="text-xs text-gray-600 flex flex-col gap-1">
+                    {f.label}
+                    <Input
+                      type="number"
+                      step={f.step ?? 1}
+                      value={String(p[f.key] as number)}
+                      onChange={(e) => update(p.platform, { [f.key]: Number(e.target.value) } as Partial<Profile>)}
+                      className="w-28"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Other numeric fields + selects */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 mb-4">
+              {NUM_FIELDS.slice(3, 6).map((f) => (
                 <label key={f.key} className="text-xs text-gray-600 flex flex-col gap-1">
                   {f.label}
                   <Input
@@ -190,9 +218,29 @@ export default function PlatformProfilesPage() {
               </label>
             </div>
 
-            <p className={`mt-2 text-xs ${Math.abs(formatSum(p) - 1) > 0.011 ? 'text-red-500' : 'text-gray-400'}`}>
-              {t('formatMixSum')}: {formatSum(p)} ({t('formatMixMustBe')})
-            </p>
+            {/* Format mix group */}
+            <div className="mb-2">
+              <div className="flex items-center gap-3 mb-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Format Mix</p>
+                <span className={`text-xs ${Math.abs(formatSum(p) - 1) > 0.011 ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                  {t('formatMixSum')}: {formatSum(p)} ({t('formatMixMustBe')})
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {NUM_FIELDS.slice(6, 9).map((f) => (
+                  <label key={f.key} className="text-xs text-gray-600 flex flex-col gap-1">
+                    {f.label}
+                    <Input
+                      type="number"
+                      step={f.step ?? 1}
+                      value={String(p[f.key] as number)}
+                      onChange={(e) => update(p.platform, { [f.key]: Number(e.target.value) } as Partial<Profile>)}
+                      className="w-32"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
 
             <div className="mt-4 flex items-center gap-2">
               <Button onClick={() => save(p)} disabled={savingPlatform === p.platform}>

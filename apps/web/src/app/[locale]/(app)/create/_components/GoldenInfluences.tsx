@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import type { ApiFetch } from '@/lib/api'
+import { Spinner } from '@/components/ui'
 
 interface Influence {
   id: string
@@ -43,7 +44,16 @@ export function GoldenInfluences({
     }
   }, [workspaceId, scriptId, apiFetch])
 
-  if (!items || items.length === 0) return null
+  if (items === null) {
+    return (
+      <div className="border rounded p-3 flex items-center gap-2 text-xs text-gray-400">
+        <Spinner className="h-3 w-3" />
+        <span>{t('goldenInfluencesTitle')}</span>
+      </div>
+    )
+  }
+
+  if (items.length === 0) return null
 
   return (
     <div className="border rounded p-4 flex flex-col gap-2">
