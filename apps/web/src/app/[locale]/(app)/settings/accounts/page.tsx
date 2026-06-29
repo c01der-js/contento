@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch, API_BASE } from '@/lib/api'
+import { getAuthToken } from '@/lib/auth'
 import { Button, Card, Badge, Spinner, EmptyState, ErrorBanner, Input } from '@/components/ui'
 import { useTranslations } from 'next-intl'
 
@@ -136,7 +137,17 @@ function AccountsContent({
                     </Button>
                   ) : (
                     <a
-                      href={`${apiBase}/oauth/${platform}/authorize?workspaceId=${encodeURIComponent(workspaceId)}`}
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        // A full-page redirect can't carry the Authorization header, so pass the
+                        // JWT via the `?token=` query fallback the API auth plugin supports.
+                        // Read it fresh at click time (client-side cookie).
+                        const token = getAuthToken() ?? ''
+                        window.location.href =
+                          `${apiBase}/oauth/${platform}/authorize` +
+                          `?workspaceId=${encodeURIComponent(workspaceId)}&token=${encodeURIComponent(token)}`
+                      }}
                       className="inline-flex items-center justify-center text-xs px-2.5 py-1.5 h-7 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
                     >
                       {t('connect')}
