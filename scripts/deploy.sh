@@ -25,6 +25,14 @@ echo "==> Building + (re)starting the stack (infra/docker-compose.yml)…"
 # The 'migrate' one-shot (prisma migrate deploy) runs automatically as an app dependency.
 docker compose -f infra/docker-compose.yml up -d --build
 
+# Edge HTTPS proxy: bring up Caddy automatically once a public domain is configured
+# (WEB_DOMAIN set in infra/.env). Safe no-op otherwise — the default deploy stays on
+# http://<IP>:3000 / :3001 until you point DNS + set WEB_DOMAIN/API_DOMAIN.
+if grep -qE '^WEB_DOMAIN=.+' infra/.env; then
+  echo "==> WEB_DOMAIN is set — (re)starting the Caddy edge proxy (--profile proxy)…"
+  docker compose -f infra/docker-compose.yml --profile proxy up -d caddy
+fi
+
 echo "==> Pruning dangling images…"
 docker image prune -f
 
