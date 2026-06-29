@@ -75,7 +75,7 @@ export default function PlatformProfilesPage() {
 
   function update(platform: string, patch: Partial<Profile>) {
     setProfiles((prev) => prev.map((p) => (p.platform === platform ? { ...p, ...patch } : p)))
-    setSavedPlatform(null)
+    setSavedPlatform((prev) => (prev === platform ? null : prev))
   }
 
   function formatSum(p: Profile): number {

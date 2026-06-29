@@ -797,6 +797,11 @@
     "hideVideo": "▾ Hide video",
     "deleteVideoConfirm": "Delete this video from the plan?"
   },
+  "qa": {
+    "pass": "QA: passed",
+    "warn": "QA: warning",
+    "block": "QA: blocked"
+  },
   "analytics": {
     "title": "Analytics",
     "noWorkspace": "No workspace selected",
