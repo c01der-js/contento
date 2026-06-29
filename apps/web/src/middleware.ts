@@ -5,8 +5,9 @@ import { TOKEN_COOKIE } from './lib/auth'
 
 const intlMiddleware = createIntlMiddleware(routing)
 
-// Public (no auth needed): the localized sign-in / sign-up pages.
-const PUBLIC_PATH = /^\/[^/]+\/(sign-in|sign-up)(?:\/.*)?$/
+// Public (no auth needed): the localized sign-in / sign-up pages and the legal pages
+// (privacy / terms / data-deletion) — the latter must be reachable for Meta/Google app-review.
+const PUBLIC_PATH = /^\/[^/]+\/(sign-in|sign-up|privacy|terms|data-deletion)(?:\/.*)?$/
 
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl

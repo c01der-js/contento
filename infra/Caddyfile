@@ -1,0 +1,16 @@
+# Contento edge — reverse proxy + automatic HTTPS (Let's Encrypt / ZeroSSL).
+#
+# Brought up only with the 'proxy' profile, AFTER the WEB_DOMAIN/API_DOMAIN DNS A-records
+# point at this VPS and ports 80/443 are open on the firewall:
+#   docker compose -f infra/docker-compose.yml --profile proxy up -d caddy
+#
+# WEB_DOMAIN / API_DOMAIN are injected from infra/.env via the caddy service environment.
+# Optional: add a global `{ email {$ACME_EMAIL} }` block for Let's Encrypt expiry notices.
+
+{$WEB_DOMAIN} {
+	reverse_proxy web:3000
+}
+
+{$API_DOMAIN} {
+	reverse_proxy api:3001
+}

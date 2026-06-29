@@ -186,7 +186,9 @@ services:
       <<: *app-env
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       # Instagram messaging webhook (feature B2): verify token + app secret for signature checks
+      FB_APP_ID: ${FB_APP_ID:-}
       FB_APP_SECRET: ${FB_APP_SECRET:-}
+      FB_REDIRECT_URI: ${FB_REDIRECT_URI:-}
       META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
     depends_on:
       <<: *depends-ready
@@ -329,6 +331,29 @@ services:
       - inbox
     restart: unless-stopped
 
+  # ── edge: HTTPS reverse proxy (Caddy) — launch / feature B2, profile 'proxy' ──
+  # Auto-TLS for WEB_DOMAIN (→ web:3000) and API_DOMAIN (→ api:3001). NOT started by the
+  # default deploy. Bring up after the DNS A-records point here + ports 80/443 are open:
+  #   docker compose -f infra/docker-compose.yml --profile proxy up -d caddy
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN:-}
+      API_DOMAIN: ${API_DOMAIN:-}
+    depends_on:
+      - web
+      - api
+    profiles:
+      - proxy
+    restart: unless-stopped
+
   # ── optional Python workers (activate with --profile) ────────────────────────
 
   scrapers-py:
@@ -428,3 +453,5 @@ volumes:
   kafka_data:
   minio_data:
   clickhouse_data:
+  caddy_data:
+  caddy_config:
