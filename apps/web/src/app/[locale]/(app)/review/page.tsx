@@ -82,7 +82,7 @@ function ScriptCard({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-1">Hook</p>
+          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-1">{t('hookLabel')}</p>
           <p className="text-base font-medium text-gray-900 leading-snug">{script.hook}</p>
         </div>
         <div className="shrink-0 mt-1 flex items-center gap-2">
@@ -95,14 +95,14 @@ function ScriptCard({
 
       {/* Body excerpt */}
       <div>
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Body</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{t('bodyLabel')}</p>
         <p className="text-sm text-gray-600 whitespace-pre-wrap">{bodyExcerpt}</p>
       </div>
 
       {/* Caption */}
       {script.caption && (
         <div className="border border-gray-100 rounded-lg p-3 bg-gray-50">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Caption</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{t('captionLabel')}</p>
           <p className="text-sm text-gray-600">{script.caption}</p>
         </div>
       )}
@@ -110,13 +110,13 @@ function ScriptCard({
       {/* Brand check notes */}
       {script.brandCheckNotes && (
         <div className="border border-indigo-100 rounded-lg p-3 bg-indigo-50">
-          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-1">Brand Check Notes</p>
+          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-1">{t('brandCheckNotesLabel')}</p>
           <p className="text-sm text-indigo-800">{script.brandCheckNotes}</p>
         </div>
       )}
 
       {/* Meta */}
-      <p className="text-xs text-gray-400">Submitted {submittedAt}</p>
+      <p className="text-xs text-gray-400">{t('submitted')} {submittedAt}</p>
 
       {/* Actions */}
       {!rejectOpen && (
@@ -212,9 +212,9 @@ export default function ReviewPage() {
       .then((data) => setScripts(data))
       .catch((err: Error) => {
         if (err.message === 'forbidden') {
-          setError('You do not have permission to view the review queue.')
+          setError(t('permissionError'))
         } else {
-          setError('Failed to load the review queue. Please refresh.')
+          setError(t('loadError'))
         }
       })
       .finally(() => setLoading(false))
@@ -232,7 +232,7 @@ export default function ReviewPage() {
       if (!r.ok) throw new Error('Failed to approve')
       setScripts((prev) => prev.filter((s) => s.id !== scriptId))
     } catch {
-      setError('Failed to approve script. Please try again.')
+      setError(t('approveScriptError'))
     } finally {
       setProcessingId(null)
     }
@@ -252,7 +252,7 @@ export default function ReviewPage() {
       if (!r.ok) throw new Error('Failed to reject')
       setScripts((prev) => prev.filter((s) => s.id !== scriptId))
     } catch {
-      setError('Failed to reject script. Please try again.')
+      setError(t('rejectScriptError'))
     } finally {
       setProcessingId(null)
     }
@@ -263,7 +263,7 @@ export default function ReviewPage() {
       <div className="p-6">
         <EmptyState
           title={tCommon('noWorkspaces')}
-          description="Create a workspace to get started."
+          description={t('workspaceRequired')}
           icon="🏢"
         />
       </div>
@@ -298,7 +298,7 @@ export default function ReviewPage() {
       {!loading && !error && scripts.length === 0 && (
         <EmptyState
           title={t('noScripts')}
-          description="All scripts have been reviewed."
+          description={t('allReviewed')}
           icon="✅"
         />
       )}

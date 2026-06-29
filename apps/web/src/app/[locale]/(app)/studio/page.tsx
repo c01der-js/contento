@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch } from '@/lib/api'
 import { Link } from '@/i18n/navigation'
+import { useTranslations } from 'next-intl'
 
 interface ContentPlanItem {
   id: string
@@ -26,13 +27,6 @@ interface Campaign {
   contentPlan: { id: string; status: string; items: ContentPlanItem[] } | null
 }
 
-const GOAL_LABELS: Record<string, string> = {
-  SUBSCRIBERS: 'Subscribers',
-  SALES: 'Sales',
-  ENGAGEMENT: 'Engagement',
-  REACH: 'Reach',
-}
-
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-600',
   ACTIVE: 'bg-blue-100 text-blue-700',
@@ -41,12 +35,20 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export default function StudioPage() {
+  const t = useTranslations('studio')
   const apiFetch = useApiFetch()
   const { activeId: workspaceId } = useWorkspace()
   const router = useRouter()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const GOAL_LABELS: Record<string, string> = {
+    SUBSCRIBERS: t('goalSubscribers'),
+    SALES: t('goalSales'),
+    ENGAGEMENT: t('goalEngagement'),
+    REACH: t('goalReach'),
+  }
 
   useEffect(() => {
     if (!workspaceId) return
@@ -64,27 +66,27 @@ export default function StudioPage() {
     })()
   }, [workspaceId])
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">Loading...</div>
+  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">{t('loading')}</div>
 
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Studio</h1>
-          <p className="text-sm text-gray-500 mt-1">AI-powered video content factory</p>
+          <h1 className="text-2xl font-semibold text-gray-900">{t('title')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => router.push('/studio/onboarding')}
             className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
           >
-            Company Setup
+            {t('companySetup')}
           </button>
           <button
             onClick={() => router.push('/studio/campaigns/new')}
             className="px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
           >
-            New Campaign
+            {t('newCampaign')}
           </button>
         </div>
       </div>
@@ -95,21 +97,21 @@ export default function StudioPage() {
         <div className="text-center py-16 space-y-4">
           <div className="text-5xl">🎬</div>
           <div>
-            <p className="text-gray-700 font-medium">Company profile is set up!</p>
-            <p className="text-sm text-gray-400 mt-1">Now create your first campaign and let AI generate the content plan.</p>
+            <p className="text-gray-700 font-medium">{t('companyReady')}</p>
+            <p className="text-sm text-gray-400 mt-1">{t('createFirstDesc')}</p>
           </div>
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => router.push('/studio/onboarding')}
               className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
             >
-              Edit company setup
+              {t('editCompanySetup')}
             </button>
             <button
               onClick={() => router.push('/studio/campaigns/new')}
               className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
             >
-              Create first campaign →
+              {t('createFirstCampaign')}
             </button>
           </div>
         </div>
@@ -134,17 +136,17 @@ export default function StudioPage() {
                         {GOAL_LABELS[campaign.goal] ?? campaign.goal}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500">Goal: {campaign.targetAction}</p>
+                    <p className="text-sm text-gray-500">{t('goalLabel')}: {campaign.targetAction}</p>
                     <p className="text-xs text-gray-400">
                       {new Date(campaign.startsAt).toLocaleDateString()} — {new Date(campaign.endsAt).toLocaleDateString()}
                     </p>
                     {itemCount > 0 && (
-                      <p className="text-xs text-gray-500">{doneCount}/{itemCount} videos ready</p>
+                      <p className="text-xs text-gray-500">{t('videosReady', { done: doneCount, total: itemCount })}</p>
                     )}
                   </div>
                   <Link href={`/studio/campaigns/${campaign.id}`}>
                     <button className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
-                      View
+                      {t('view')}
                     </button>
                   </Link>
                 </div>

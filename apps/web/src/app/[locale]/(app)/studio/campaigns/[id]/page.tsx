@@ -7,6 +7,7 @@ import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch, API_BASE } from '@/lib/api'
 import { Link } from '@/i18n/navigation'
 import { Button, Input, Select } from '@/components/ui'
+import { useTranslations } from 'next-intl'
 
 interface ContentPlanItem {
   id: string
@@ -47,19 +48,6 @@ interface CampaignFormValues {
   endsAt: string
 }
 
-const ITEM_STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Pending',
-  SCRIPTING: 'Writing script...',
-  SCRIPTED: 'Script ready',
-  VIDEO_QUEUED: 'Queued',
-  VIDEO_GENERATING: 'Generating video...',
-  VIDEO_DONE: 'Video ready',
-  CLIENT_REVIEW: 'Awaiting approval',
-  APPROVED: 'Approved',
-  PUBLISHED: 'Published',
-  REJECTED: 'Rejected',
-}
-
 const ITEM_STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-gray-100 text-gray-600',
   SCRIPTING: 'bg-blue-100 text-blue-700',
@@ -90,10 +78,24 @@ function formatDate(iso: string): string {
 }
 
 export default function CampaignPage() {
+  const t = useTranslations('studio')
   const apiFetch = useApiFetch()
   const { activeId: workspaceId } = useWorkspace()
   const params = useParams()
   const campaignId = params.id as string
+
+  const ITEM_STATUS_LABELS: Record<string, string> = {
+    PENDING: t('statusPending'),
+    SCRIPTING: t('statusScripting'),
+    SCRIPTED: t('statusScripted'),
+    VIDEO_QUEUED: t('statusVideoQueued'),
+    VIDEO_GENERATING: t('statusVideoGenerating'),
+    VIDEO_DONE: t('statusVideoDone'),
+    CLIENT_REVIEW: t('statusClientReview'),
+    APPROVED: t('statusApproved'),
+    PUBLISHED: t('statusPublished'),
+    REJECTED: t('statusRejected'),
+  }
 
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [loading, setLoading] = useState(true)
@@ -229,7 +231,7 @@ export default function CampaignPage() {
 
   async function deleteItem(itemId: string) {
     if (!workspaceId) return
-    if (!window.confirm('Delete this video from the plan?')) return
+    if (!window.confirm(t('deleteVideoConfirm'))) return
     setError(null)
     try {
       const res = await apiFetch(`/workspaces/${workspaceId}/campaigns/${campaignId}/items/${itemId}`, {
@@ -240,8 +242,8 @@ export default function CampaignPage() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Error') }
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">Loading...</div>
-  if (!campaign) return <div className="p-6 text-gray-500">Campaign not found</div>
+  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">{t('loading')}</div>
+  if (!campaign) return <div className="p-6 text-gray-500">{t('campaignNotFound')}</div>
 
   const planStatus = campaign.contentPlan?.status
   const items = campaign.contentPlan?.items ?? []
@@ -256,7 +258,7 @@ export default function CampaignPage() {
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       {/* Back navigation */}
       <Link href="/studio" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
-        ← Back to Studio
+        {t('backToStudio')}
       </Link>
 
       <div className="flex items-start justify-between gap-4">
@@ -277,7 +279,7 @@ export default function CampaignPage() {
           <>
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">{campaign.name}</h1>
-              <p className="text-sm text-gray-500 mt-1">Goal: {campaign.targetAction}</p>
+              <p className="text-sm text-gray-500 mt-1">{t('campaignGoalDisplay')}: {campaign.targetAction}</p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {formatDate(campaign.startsAt)} — {formatDate(campaign.endsAt)}
               </p>
@@ -285,7 +287,7 @@ export default function CampaignPage() {
             <div className="flex gap-2 shrink-0 flex-wrap justify-end items-center">
               {canEditCampaign && (
                 <Button variant="secondary" size="sm" onClick={() => setEditingCampaign(true)}>
-                  Edit campaign
+                  {t('editCampaign')}
                 </Button>
               )}
               {canGenerate && (
@@ -294,7 +296,7 @@ export default function CampaignPage() {
                   disabled={generating}
                   className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                 >
-                  {generating ? 'Generating...' : items.length > 0 ? 'Regenerate plan' : 'Generate plan'}
+                  {generating ? t('generating') : items.length > 0 ? t('regeneratePlan') : t('generatePlan')}
                 </button>
               )}
               {canApprove && (
@@ -303,23 +305,23 @@ export default function CampaignPage() {
                   disabled={approving}
                   className="px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {approving ? 'Starting...' : 'Approve & Start →'}
+                  {approving ? t('starting') : t('approveStart')}
                 </button>
               )}
               {isProducing && (
                 <>
                   <span className="text-xs px-3 py-1.5 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg self-center flex items-center gap-1.5">
                     <span className="animate-pulse">●</span>
-                    Generating videos… {doneCount}/{items.length} ready
+                    {t('generatingVideos', { done: doneCount, total: items.length })}
                   </span>
                   <Button variant="danger" size="sm" loading={stopping} onClick={() => { void handleStop() }}>
-                    ■ Stop generation
+                    {t('stopGeneration')}
                   </Button>
                 </>
               )}
               {planStatus === 'COMPLETED' && (
                 <span className="text-xs px-3 py-1.5 bg-green-50 border border-green-200 text-green-700 rounded-lg self-center">
-                  ✓ All videos ready for review
+                  {t('allVideosReady')}
                 </span>
               )}
             </div>
@@ -331,24 +333,24 @@ export default function CampaignPage() {
 
       {items.length === 0 && !addingItem ? (
         <div className="bg-white border border-gray-200 rounded-xl p-8 text-center space-y-3">
-          <p className="text-gray-500">No content plan yet.</p>
+          <p className="text-gray-500">{t('noContentPlan')}</p>
           <div className="flex gap-2 justify-center">
             <button
               onClick={() => { void handleGeneratePlan() }}
               disabled={generating}
               className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
             >
-              {generating ? 'Generating...' : 'Generate content plan with AI'}
+              {generating ? t('generating') : t('generateWithAi')}
             </button>
             {canEdit && (
-              <Button variant="secondary" onClick={() => setAddingItem(true)}>+ Add video manually</Button>
+              <Button variant="secondary" onClick={() => setAddingItem(true)}>{t('addVideoManually')}</Button>
             )}
           </div>
         </div>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-medium text-gray-900">Content Plan ({items.length} videos)</h2>
+            <h2 className="font-medium text-gray-900">{t('contentPlan', { count: items.length })}</h2>
             {planStatus && (
               <span className={`text-xs px-2 py-1 rounded-full ${
                 planStatus === 'COMPLETED' ? 'bg-green-100 text-green-700' :
@@ -391,7 +393,7 @@ export default function CampaignPage() {
                       {formatDate(item.scheduledDate)} · {item.format}
                     </p>
                     {item.rejectComment && (
-                      <p className="text-xs text-red-500 mt-1">Rejected: {item.rejectComment}</p>
+                      <p className="text-xs text-red-500 mt-1">{t('rejectedLabel')}: {item.rejectComment}</p>
                     )}
                     {item.videoJobId && (
                       <div className="mt-2">
@@ -399,7 +401,7 @@ export default function CampaignPage() {
                           onClick={() => setWatchingId(watchingId === item.id ? null : item.id)}
                           className="text-xs text-indigo-600 hover:underline"
                         >
-                          {watchingId === item.id ? '▾ Скрыть видео' : '▶ Смотреть видео'}
+                          {watchingId === item.id ? t('hideVideo') : t('watchVideo')}
                         </button>
                         {watchingId === item.id && videoToken && (
                           <video
@@ -421,11 +423,11 @@ export default function CampaignPage() {
                           size="sm"
                           onClick={() => { setEditingItemId(item.id); setAddingItem(false) }}
                         >
-                          Edit
+                          {t('edit')}
                         </Button>
                       )}
                       <Button variant="ghost" size="sm" onClick={() => { void deleteItem(item.id) }}>
-                        Delete
+                        {t('delete')}
                       </Button>
                     </div>
                   )}
@@ -444,7 +446,7 @@ export default function CampaignPage() {
                 />
               </div>
             ) : (
-              <Button variant="secondary" onClick={() => setAddingItem(true)}>+ Add video</Button>
+              <Button variant="secondary" onClick={() => setAddingItem(true)}>{t('addVideo')}</Button>
             )
           )}
         </div>
@@ -464,6 +466,7 @@ function PlanItemForm({
   onCancel: () => void
   saving: boolean
 }) {
+  const t = useTranslations('studio')
   const [topic, setTopic] = useState(initial.topic)
   const [hook, setHook] = useState(initial.hook)
   const [format, setFormat] = useState(initial.format)
@@ -472,11 +475,11 @@ function PlanItemForm({
 
   return (
     <div className="space-y-2">
-      <Input value={topic} onChange={e => setTopic(e.target.value)} placeholder="Topic" />
+      <Input value={topic} onChange={e => setTopic(e.target.value)} placeholder={t('itemFormTopic')} />
       <textarea
         value={hook}
         onChange={e => setHook(e.target.value)}
-        placeholder="Hook"
+        placeholder={t('itemFormHook')}
         rows={2}
         className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm resize-none placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
       />
@@ -484,7 +487,7 @@ function PlanItemForm({
         <Input
           value={format}
           onChange={e => setFormat(e.target.value)}
-          placeholder="Format (e.g. reel)"
+          placeholder={t('itemFormFormat')}
           className="flex-1"
         />
         <input
@@ -495,14 +498,14 @@ function PlanItemForm({
         />
       </div>
       <div className="flex gap-2 justify-end">
-        <Button variant="secondary" size="sm" onClick={onCancel} disabled={saving}>Cancel</Button>
+        <Button variant="secondary" size="sm" onClick={onCancel} disabled={saving}>{t('cancel')}</Button>
         <Button
           size="sm"
           loading={saving}
           disabled={!valid}
           onClick={() => onSave({ topic: topic.trim(), hook: hook.trim(), format: format.trim(), scheduledDate: date })}
         >
-          Save
+          {t('save')}
         </Button>
       </div>
     </div>
@@ -520,6 +523,7 @@ function CampaignForm({
   onCancel: () => void
   saving: boolean
 }) {
+  const t = useTranslations('studio')
   const [name, setName] = useState(initial.name)
   const [goal, setGoal] = useState(initial.goal)
   const [targetAction, setTargetAction] = useState(initial.targetAction)
@@ -530,25 +534,25 @@ function CampaignForm({
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3 w-full">
       <div>
-        <label className="text-xs text-gray-500">Name</label>
+        <label className="text-xs text-gray-500">{t('campaignFormName')}</label>
         <Input value={name} onChange={e => setName(e.target.value)} />
       </div>
       <div>
-        <label className="text-xs text-gray-500">Goal</label>
+        <label className="text-xs text-gray-500">{t('campaignFormGoal')}</label>
         <Select value={goal} onChange={e => setGoal(e.target.value)} className="w-full">
-          <option value="SUBSCRIBERS">Subscribers</option>
-          <option value="SALES">Sales</option>
-          <option value="ENGAGEMENT">Engagement</option>
-          <option value="REACH">Reach</option>
+          <option value="SUBSCRIBERS">{t('goalSubscribers')}</option>
+          <option value="SALES">{t('goalSales')}</option>
+          <option value="ENGAGEMENT">{t('goalEngagement')}</option>
+          <option value="REACH">{t('goalReach')}</option>
         </Select>
       </div>
       <div>
-        <label className="text-xs text-gray-500">Target action</label>
+        <label className="text-xs text-gray-500">{t('campaignFormTargetAction')}</label>
         <Input value={targetAction} onChange={e => setTargetAction(e.target.value)} />
       </div>
       <div className="flex gap-2">
         <div className="flex-1">
-          <label className="text-xs text-gray-500">Starts</label>
+          <label className="text-xs text-gray-500">{t('campaignFormStarts')}</label>
           <input
             type="date"
             value={startsAt}
@@ -557,7 +561,7 @@ function CampaignForm({
           />
         </div>
         <div className="flex-1">
-          <label className="text-xs text-gray-500">Ends</label>
+          <label className="text-xs text-gray-500">{t('campaignFormEnds')}</label>
           <input
             type="date"
             value={endsAt}
@@ -567,14 +571,14 @@ function CampaignForm({
         </div>
       </div>
       <div className="flex gap-2 justify-end">
-        <Button variant="secondary" size="sm" onClick={onCancel} disabled={saving}>Cancel</Button>
+        <Button variant="secondary" size="sm" onClick={onCancel} disabled={saving}>{t('cancel')}</Button>
         <Button
           size="sm"
           loading={saving}
           disabled={!valid}
           onClick={() => onSave({ name: name.trim(), goal, targetAction: targetAction.trim(), startsAt, endsAt })}
         >
-          Save
+          {t('save')}
         </Button>
       </div>
     </div>

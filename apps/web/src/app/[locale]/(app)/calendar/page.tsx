@@ -15,6 +15,7 @@ import {
   StatusBadge,
   Input,
 } from '@/components/ui'
+import { useTranslations } from 'next-intl'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -112,6 +113,8 @@ function PubStatusBadge({ status }: { status: string }) {
 
 export default function CalendarPage() {
   const apiFetch = useApiFetch()
+  const t = useTranslations('calendar')
+  const tCommon = useTranslations('common')
 
   const { activeId: workspaceId, status } = useWorkspace()
   const workspaceError = status === 'no-workspaces' ? 'no-workspaces' : status === 'fetch-failed' ? 'fetch-failed' : null
@@ -120,8 +123,8 @@ export default function CalendarPage() {
     return (
       <div className="p-6">
         <EmptyState
-          title="No workspaces"
-          description="Create a workspace first."
+          title={tCommon('noWorkspaces')}
+          description={tCommon('noWorkspaces')}
           icon="🏢"
         />
       </div>
@@ -131,7 +134,7 @@ export default function CalendarPage() {
   if (workspaceError === 'fetch-failed') {
     return (
       <div className="p-6">
-        <ErrorBanner message="Failed to load workspace. Please refresh." />
+        <ErrorBanner message={tCommon('failedWorkspace')} />
       </div>
     )
   }
@@ -140,7 +143,7 @@ export default function CalendarPage() {
     return (
       <div className="flex items-center gap-3 p-6 text-sm text-gray-500">
         <Spinner />
-        <span>Loading…</span>
+        <span>{t('loading')}</span>
       </div>
     )
   }
@@ -153,6 +156,7 @@ export default function CalendarPage() {
 type ApiFetch = (path: string, options?: RequestInit) => Promise<Response>
 
 function QuickActionsPanel({ workspaceId, apiFetch }: { workspaceId: string; apiFetch: ApiFetch }) {
+  const t = useTranslations('calendar')
   const [urgentTopic, setUrgentTopic] = useState('')
   const [seriesTopic, setSeriesTopic] = useState('')
   const [seriesCount, setSeriesCount] = useState(5)
@@ -180,11 +184,11 @@ function QuickActionsPanel({ workspaceId, apiFetch }: { workspaceId: string; api
         body: JSON.stringify({ topic: urgentTopic, platforms: ['instagram'] }),
       })
       if (!r.ok) throw new Error()
-      setMessage({ text: 'Urgent post scheduled in 15 min!', ok: true })
+      setMessage({ text: t('urgentScheduled'), ok: true })
       setUrgentTopic('')
       setShowUrgent(false)
     } catch {
-      setMessage({ text: 'Failed to create urgent post.', ok: false })
+      setMessage({ text: t('urgentFailed'), ok: false })
     } finally {
       setLoading(null)
     }
@@ -201,11 +205,11 @@ function QuickActionsPanel({ workspaceId, apiFetch }: { workspaceId: string; api
       })
       if (!r.ok) throw new Error()
       const data = await r.json() as { scripts: { id: string }[] }
-      setMessage({ text: `Created ${data.scripts?.length ?? seriesCount} series scripts!`, ok: true })
+      setMessage({ text: t('seriesCreated', { count: data.scripts?.length ?? seriesCount }), ok: true })
       setSeriesTopic('')
       setShowSeries(false)
     } catch {
-      setMessage({ text: 'Failed to create series.', ok: false })
+      setMessage({ text: t('seriesFailed'), ok: false })
     } finally {
       setLoading(null)
     }
@@ -221,9 +225,9 @@ function QuickActionsPanel({ workspaceId, apiFetch }: { workspaceId: string; api
         body: JSON.stringify({ startDate }),
       })
       if (!r.ok) throw new Error()
-      setMessage({ text: 'Week scheduled!', ok: true })
+      setMessage({ text: t('weekScheduled'), ok: true })
     } catch {
-      setMessage({ text: 'Failed to schedule week.', ok: false })
+      setMessage({ text: t('weekFailed'), ok: false })
     } finally {
       setLoading(null)
     }
@@ -232,20 +236,20 @@ function QuickActionsPanel({ workspaceId, apiFetch }: { workspaceId: string; api
   return (
     <Card className="mb-5">
       <div className="flex flex-wrap gap-2 items-center mb-3">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quick Actions</span>
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('quickActions')}</span>
         <Button
           variant="secondary"
           size="sm"
           onClick={() => { setShowUrgent((v) => !v); setShowSeries(false) }}
         >
-          Urgent Post
+          {t('urgentPost')}
         </Button>
         <Button
           variant="secondary"
           size="sm"
           onClick={() => { setShowSeries((v) => !v); setShowUrgent(false) }}
         >
-          Series
+          {t('series')}
         </Button>
         <Button
           variant="primary"
@@ -254,11 +258,11 @@ function QuickActionsPanel({ workspaceId, apiFetch }: { workspaceId: string; api
           disabled={loading === 'week'}
           loading={loading === 'week'}
         >
-          Schedule Week
+          {t('scheduleWeek')}
         </Button>
         {bestTime && bestTime.length > 0 && (
           <span className="text-xs text-gray-500 ml-2">
-            Best time: {bestTime.slice(0, 2).map((b) => `${b.platform} ${b.hour}:00`).join(', ')}
+            {t('bestTime')}: {bestTime.slice(0, 2).map((b) => `${b.platform} ${b.hour}:00`).join(', ')}
           </span>
         )}
       </div>
@@ -268,7 +272,7 @@ function QuickActionsPanel({ workspaceId, apiFetch }: { workspaceId: string; api
           <Input
             value={urgentTopic}
             onChange={(e) => setUrgentTopic(e.target.value)}
-            placeholder="Topic for urgent post…"
+            placeholder={t('urgentTopicPlaceholder')}
             className="flex-1 max-w-xs"
             onKeyDown={(e) => e.key === 'Enter' && handleUrgent()}
           />
@@ -279,7 +283,7 @@ function QuickActionsPanel({ workspaceId, apiFetch }: { workspaceId: string; api
             disabled={loading === 'urgent' || !urgentTopic.trim()}
             loading={loading === 'urgent'}
           >
-            Create
+            {t('create')}
           </Button>
         </div>
       )}
@@ -289,7 +293,7 @@ function QuickActionsPanel({ workspaceId, apiFetch }: { workspaceId: string; api
           <Input
             value={seriesTopic}
             onChange={(e) => setSeriesTopic(e.target.value)}
-            placeholder="Series topic…"
+            placeholder={t('seriesTopicPlaceholder')}
             className="flex-1 max-w-xs"
             onKeyDown={(e) => e.key === 'Enter' && handleSeries()}
           />
@@ -308,7 +312,7 @@ function QuickActionsPanel({ workspaceId, apiFetch }: { workspaceId: string; api
             disabled={loading === 'series' || !seriesTopic.trim()}
             loading={loading === 'series'}
           >
-            Create
+            {t('create')}
           </Button>
         </div>
       )}
@@ -327,6 +331,7 @@ function CalendarContent({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('calendar')
   const [scripts, setScripts] = useState<Script[]>([])
   const [ideasMap, setIdeasMap] = useState<Record<string, Idea>>({})
   const [loading, setLoading] = useState(true)
@@ -366,7 +371,7 @@ function CalendarContent({
         }
         setIdeasMap(map)
       })
-      .catch(() => setError('Failed to load content. Please refresh.'))
+      .catch(() => setError(t('loadError')))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId])
@@ -456,6 +461,14 @@ function CalendarContent({
 
   const STATUS_FILTERS: ScriptStatus[] = ['ALL', 'DRAFT', 'BRAND_CHECKED', 'APPROVED', 'PUBLISHED']
 
+  const STATUS_FILTER_LABELS: Record<ScriptStatus, string> = {
+    ALL: t('filterAll'),
+    DRAFT: t('filterDraft'),
+    BRAND_CHECKED: t('filterBrandChecked'),
+    APPROVED: t('filterApproved'),
+    PUBLISHED: t('filterPublished'),
+  }
+
   const filtered = scripts.filter((s) => {
     if (statusFilter === 'ALL') return true
     if (statusFilter === 'PUBLISHED') {
@@ -494,9 +507,13 @@ function CalendarContent({
 
   const monthLabel = currentMonth.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
 
+  const DAY_ABBREVS = [
+    t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat'), t('sun'),
+  ]
+
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-4">Calendar</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 mb-4">{t('title')}</h1>
 
       <QuickActionsPanel workspaceId={workspaceId} apiFetch={apiFetch} />
 
@@ -508,7 +525,7 @@ function CalendarContent({
           size="sm"
           onClick={() => setView('list')}
         >
-          List
+          {t('viewList')}
         </Button>
         <Button
           type="button"
@@ -516,7 +533,7 @@ function CalendarContent({
           size="sm"
           onClick={() => setView('grid')}
         >
-          Grid
+          {t('viewGrid')}
         </Button>
       </div>
 
@@ -534,7 +551,7 @@ function CalendarContent({
                 : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400',
             ].join(' ')}
           >
-            {f === 'ALL' ? 'All' : f.replace('_', ' ')}
+            {STATUS_FILTER_LABELS[f]}
           </button>
         ))}
       </div>
@@ -542,7 +559,7 @@ function CalendarContent({
       {loading && (
         <div className="flex items-center gap-3 text-gray-500 text-sm">
           <Spinner />
-          <span>Loading…</span>
+          <span>{t('loading')}</span>
         </div>
       )}
 
@@ -557,11 +574,11 @@ function CalendarContent({
         <>
           {!loading && sorted.length === 0 && !error && (
             <EmptyState
-              title="No scripts found"
+              title={t('noScripts')}
               icon="📋"
               action={
                 <Link href="/create" className="text-sm text-indigo-600 hover:underline">
-                  Create one
+                  {t('createOne')}
                 </Link>
               }
             />
@@ -611,7 +628,7 @@ function CalendarContent({
                                 size="sm"
                                 onClick={() => togglePublications(script.id)}
                               >
-                                {isExpanded ? 'Hide' : 'Publications'}
+                                {isExpanded ? t('hide') : t('publications')}
                               </Button>
                             </div>
                           </div>
@@ -622,13 +639,13 @@ function CalendarContent({
                               {pubsLoading ? (
                                 <div className="flex items-center gap-2 text-gray-400 text-xs py-1">
                                   <Spinner className="h-3.5 w-3.5" />
-                                  <span>Loading publications…</span>
+                                  <span>{t('loadingPublications')}</span>
                                 </div>
                               ) : pubs.length === 0 ? (
                                 <p className="text-xs text-gray-400 py-1">
-                                  No publications yet.{' '}
+                                  {t('noPublications')}{' '}
                                   <Link href="/create" className="text-indigo-600 hover:underline">
-                                    Publish from Create
+                                    {t('publishFromCreate')}
                                   </Link>
                                   .
                                 </p>
@@ -642,12 +659,12 @@ function CalendarContent({
                                       <PubStatusBadge status={pub.status} />
                                       {pub.publishedAt && (
                                         <span className="text-gray-400">
-                                          Published {formatDate(pub.publishedAt)}
+                                          {t('publishedOn')} {formatDate(pub.publishedAt)}
                                         </span>
                                       )}
                                       {pub.scheduledAt && !pub.publishedAt && (
                                         <span className="text-gray-400">
-                                          Scheduled {formatDate(pub.scheduledAt)}
+                                          {t('scheduledOn')} {formatDate(pub.scheduledAt)}
                                         </span>
                                       )}
                                       {pub.errorMessage && (
@@ -701,13 +718,13 @@ function CalendarContent({
           {gridLoading && (
             <div className="flex items-center gap-3 text-gray-500 text-sm mb-4">
               <Spinner />
-              <span>Loading publications…</span>
+              <span>{t('loadingPublications')}</span>
             </div>
           )}
 
           {/* Day-of-week header */}
           <div className="grid grid-cols-7 gap-px mb-px">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+            {DAY_ABBREVS.map((d) => (
               <div
                 key={d}
                 className="text-xs font-semibold text-gray-400 text-center py-1 bg-gray-50"

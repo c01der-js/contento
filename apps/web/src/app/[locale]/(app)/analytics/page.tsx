@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch } from '@/lib/api'
 import { Button, Card, Spinner, EmptyState } from '@/components/ui'
+import { useTranslations } from 'next-intl'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,6 +73,7 @@ function DeltaBadge({ value }: { value: number }) {
 
 export default function AnalyticsPage() {
   const apiFetch = useApiFetch()
+  const t = useTranslations('analytics')
 
   const { activeId: workspaceId } = useWorkspace()
   const [period, setPeriod] = useState<Period>('30d')
@@ -79,7 +81,7 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Analytics</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('title')}</h1>
 
         <div className="flex gap-1 border border-gray-200 rounded-lg p-1 bg-gray-50">
           {(['7d', '30d', '90d'] as Period[]).map((p) => (
@@ -114,8 +116,8 @@ export default function AnalyticsPage() {
         </>
       ) : (
         <EmptyState
-          title="No workspace selected"
-          description="Select or create a workspace to view analytics."
+          title={t('noWorkspace')}
+          description={t('noWorkspaceDesc')}
           icon="📊"
         />
       )}
@@ -128,6 +130,7 @@ export default function AnalyticsPage() {
 type ApiFetch = (path: string) => Promise<Response>
 
 function SummarySection({ workspaceId, apiFetch }: { workspaceId: string; apiFetch: ApiFetch }) {
+  const t = useTranslations('analytics')
   const [data, setData] = useState<Summary | null>(null)
 
   useEffect(() => {
@@ -150,15 +153,16 @@ function SummarySection({ workspaceId, apiFetch }: { workspaceId: string; apiFet
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <StatCard label="Trends" value={data.trends} />
-      <StatCard label="Ideas" value={data.ideas} />
-      <StatCard label="Scripts" value={data.scripts} />
-      <StatCard label="Publications" value={data.publications} />
+      <StatCard label={t('statTrends')} value={data.trends} />
+      <StatCard label={t('statIdeas')} value={data.ideas} />
+      <StatCard label={t('statScripts')} value={data.scripts} />
+      <StatCard label={t('statPublications')} value={data.publications} />
     </div>
   )
 }
 
 function MetricsSection({ workspaceId, period, apiFetch }: { workspaceId: string; period: Period; apiFetch: ApiFetch }) {
+  const t = useTranslations('analytics')
   const [data, setData] = useState<MetricsResponse | null>(null)
 
   useEffect(() => {
@@ -173,14 +177,21 @@ function MetricsSection({ workspaceId, period, apiFetch }: { workspaceId: string
 
   const { current, delta } = data
 
+  const METRIC_LABELS: Record<'reach' | 'impressions' | 'likes' | 'er', string> = {
+    reach: t('reach'),
+    impressions: t('impressions'),
+    likes: t('likes'),
+    er: t('engagementRate'),
+  }
+
   return (
     <div>
-      <h2 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Engagement Metrics</h2>
+      <h2 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">{t('engagementMetrics')}</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {(['reach', 'impressions', 'likes', 'er'] as const).map((key) => (
           <Card key={key} className="flex flex-col gap-1">
             <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
-              {key === 'er' ? 'Engagement Rate' : key.charAt(0).toUpperCase() + key.slice(1)}
+              {METRIC_LABELS[key]}
             </p>
             <p className="text-xl font-semibold text-gray-900">
               {key === 'er' ? `${(current[key] * 100).toFixed(1)}%` : current[key].toLocaleString()}
@@ -194,6 +205,7 @@ function MetricsSection({ workspaceId, period, apiFetch }: { workspaceId: string
 }
 
 function PublicationsSection({ workspaceId, period, apiFetch }: { workspaceId: string; period: Period; apiFetch: ApiFetch }) {
+  const t = useTranslations('analytics')
   const [data, setData] = useState<PlatformCount[]>([])
 
   useEffect(() => {
@@ -208,9 +220,9 @@ function PublicationsSection({ workspaceId, period, apiFetch }: { workspaceId: s
 
   return (
     <Card>
-      <h2 className="text-sm font-semibold text-gray-800 mb-4">Publications by Platform</h2>
+      <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('publicationsByPlatform')}</h2>
       {data.length === 0 ? (
-        <p className="text-sm text-gray-400">No data for this period.</p>
+        <p className="text-sm text-gray-400">{t('noPlatformData')}</p>
       ) : (
         <div className="space-y-3">
           {data.map((row) => (
@@ -234,6 +246,7 @@ function PublicationsSection({ workspaceId, period, apiFetch }: { workspaceId: s
 }
 
 function FollowersSection({ workspaceId, range, apiFetch }: { workspaceId: string; range: Period; apiFetch: ApiFetch }) {
+  const t = useTranslations('analytics')
   const [snapshots, setSnapshots] = useState<FollowerSnapshot[]>([])
 
   useEffect(() => {
@@ -253,9 +266,9 @@ function FollowersSection({ workspaceId, range, apiFetch }: { workspaceId: strin
 
   return (
     <Card>
-      <h2 className="text-sm font-semibold text-gray-800 mb-4">Follower Growth</h2>
+      <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('followerGrowth')}</h2>
       {Object.keys(byPlatform).length === 0 ? (
-        <p className="text-sm text-gray-400">No follower data available.</p>
+        <p className="text-sm text-gray-400">{t('noFollowerData')}</p>
       ) : (
         <div className="space-y-3">
           {Object.entries(byPlatform).map(([platform, snaps]) => {
@@ -279,6 +292,7 @@ function FollowersSection({ workspaceId, range, apiFetch }: { workspaceId: strin
 }
 
 function PillarSection({ workspaceId, apiFetch }: { workspaceId: string; apiFetch: ApiFetch }) {
+  const t = useTranslations('analytics')
   const [data, setData] = useState<PillarStat[]>([])
 
   useEffect(() => {
@@ -291,9 +305,9 @@ function PillarSection({ workspaceId, apiFetch }: { workspaceId: string; apiFetc
 
   return (
     <Card>
-      <h2 className="text-sm font-semibold text-gray-800 mb-4">Publications by Pillar</h2>
+      <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('publicationsByPillar')}</h2>
       {data.length === 0 ? (
-        <p className="text-sm text-gray-400">No pillar data yet.</p>
+        <p className="text-sm text-gray-400">{t('noPillarData')}</p>
       ) : (
         <div className="space-y-2">
           {data.map((row) => (
@@ -309,6 +323,7 @@ function PillarSection({ workspaceId, apiFetch }: { workspaceId: string; apiFetc
 }
 
 function RecommendationsSection({ workspaceId, apiFetch }: { workspaceId: string; apiFetch: ApiFetch }) {
+  const t = useTranslations('analytics')
   const [recs, setRecs] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -324,7 +339,7 @@ function RecommendationsSection({ workspaceId, apiFetch }: { workspaceId: string
   return (
     <Card>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-800">AI Recommendations</h2>
+        <h2 className="text-sm font-semibold text-gray-800">{t('aiRecommendations')}</h2>
         <Button
           variant="primary"
           size="sm"
@@ -332,11 +347,11 @@ function RecommendationsSection({ workspaceId, apiFetch }: { workspaceId: string
           disabled={loading}
           loading={loading}
         >
-          {loading ? 'Generating…' : 'Generate'}
+          {loading ? t('generatingRecs') : t('generate')}
         </Button>
       </div>
       {recs.length === 0 ? (
-        <p className="text-sm text-gray-400">Click Generate to get AI-powered recommendations.</p>
+        <p className="text-sm text-gray-400">{t('noRecommendations')}</p>
       ) : (
         <ul className="space-y-2">
           {recs.map((rec, i) => (
@@ -352,6 +367,8 @@ function RecommendationsSection({ workspaceId, apiFetch }: { workspaceId: string
 }
 
 function ExportSection({ workspaceId, apiFetch }: { workspaceId: string; apiFetch: ApiFetch }) {
+  const t = useTranslations('analytics')
+
   async function handleExport(format: 'csv' | 'json') {
     const r = await apiFetch(`/workspaces/${workspaceId}/analytics/export?format=${format}`)
     const blob = await r.blob()
@@ -365,7 +382,7 @@ function ExportSection({ workspaceId, apiFetch }: { workspaceId: string; apiFetc
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-gray-600 font-medium">Export:</span>
+      <span className="text-sm text-gray-600 font-medium">{t('export')}:</span>
       <Button variant="secondary" size="sm" onClick={() => handleExport('csv')}>
         CSV
       </Button>

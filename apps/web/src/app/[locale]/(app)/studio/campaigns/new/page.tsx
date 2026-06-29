@@ -4,15 +4,9 @@ import { useRouter } from '@/i18n/navigation'
 import { useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch } from '@/lib/api'
+import { useTranslations } from 'next-intl'
 
 type Goal = 'SUBSCRIBERS' | 'SALES' | 'ENGAGEMENT' | 'REACH'
-
-const GOAL_OPTIONS: { value: Goal; label: string; description: string }[] = [
-  { value: 'SALES', label: 'Sales', description: 'Drive purchases, bookings, sign-ups' },
-  { value: 'SUBSCRIBERS', label: 'Subscribers', description: 'Grow followers across platforms' },
-  { value: 'ENGAGEMENT', label: 'Engagement', description: 'Maximize likes, comments, shares' },
-  { value: 'REACH', label: 'Reach', description: 'Brand awareness and visibility' },
-]
 
 // Mirrors @contento/shared TARGET_PLATFORMS (RU-speaking diaspora + CIS set).
 const PLATFORM_OPTIONS: { value: string; label: string }[] = [
@@ -23,9 +17,17 @@ const PLATFORM_OPTIONS: { value: string; label: string }[] = [
 ]
 
 export default function NewCampaignPage() {
+  const t = useTranslations('studio')
   const apiFetch = useApiFetch()
   const { activeId: workspaceId } = useWorkspace()
   const router = useRouter()
+
+  const GOAL_OPTIONS: { value: Goal; label: string; description: string }[] = [
+    { value: 'SALES', label: t('goalSales'), description: t('goalSalesDesc') },
+    { value: 'SUBSCRIBERS', label: t('goalSubscribers'), description: t('goalSubscribersDesc') },
+    { value: 'ENGAGEMENT', label: t('goalEngagement'), description: t('goalEngagementDesc') },
+    { value: 'REACH', label: t('goalReach'), description: t('goalReachDesc') },
+  ]
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,25 +61,25 @@ export default function NewCampaignPage() {
   return (
     <div className="max-w-xl mx-auto p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">New Campaign</h1>
-        <p className="text-sm text-gray-500 mt-1">AI will generate a full content plan based on your brand and goal</p>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('newCampaignTitle')}</h1>
+        <p className="text-sm text-gray-500 mt-1">{t('newCampaignSubtitle')}</p>
       </div>
 
       {error && <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
       <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Campaign name</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('campaignName')}</label>
           <input
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-            placeholder="e.g. July Product Launch"
+            placeholder={t('campaignNamePlaceholder')}
             value={form.name}
             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Campaign goal</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t('campaignGoal')}</label>
           <div className="grid grid-cols-2 gap-2">
             {GOAL_OPTIONS.map(opt => (
               <button
@@ -94,7 +96,7 @@ export default function NewCampaignPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Target platforms</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t('targetPlatforms')}</label>
           <div className="grid grid-cols-2 gap-2">
             {PLATFORM_OPTIONS.map(opt => {
               const selected = form.targetPlatforms.includes(opt.value)
@@ -116,23 +118,23 @@ export default function NewCampaignPage() {
               )
             })}
           </div>
-          <p className="text-xs text-gray-400 mt-1">Each platform gets its own tailored video.</p>
+          <p className="text-xs text-gray-400 mt-1">{t('platformsHint')}</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Target action</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('targetAction')}</label>
           <input
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-            placeholder="e.g. Book a free consultation call"
+            placeholder={t('targetActionPlaceholder')}
             value={form.targetAction}
             onChange={e => setForm(f => ({ ...f, targetAction: e.target.value }))}
           />
-          <p className="text-xs text-gray-400 mt-1">What should viewers do after watching?</p>
+          <p className="text-xs text-gray-400 mt-1">{t('targetActionHint')}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Start date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('startDate')}</label>
             <input
               type="date"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
@@ -141,7 +143,7 @@ export default function NewCampaignPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">End date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('endDate')}</label>
             <input
               type="date"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
@@ -156,14 +158,14 @@ export default function NewCampaignPage() {
             onClick={() => router.push('/studio')}
             className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
           >
-            Cancel
+            {t('cancel')}
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading || !form.name || !form.targetAction || form.targetPlatforms.length === 0}
             className="flex-1 py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
           >
-            {loading ? 'Creating...' : 'Create campaign ->'}
+            {loading ? t('creating') : t('createCampaign')}
           </button>
         </div>
       </div>

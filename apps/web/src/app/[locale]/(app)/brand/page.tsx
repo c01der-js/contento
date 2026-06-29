@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch } from '@/lib/api'
+import { useTranslations } from 'next-intl'
 import { Button, Card, Badge, Spinner, EmptyState, ErrorBanner, Input, Select } from '@/components/ui'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -149,22 +150,36 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function BrandPage() {
+  const t = useTranslations('brand')
   const apiFetch = useApiFetch()
 
   const { activeId: workspaceId, status } = useWorkspace()
   const workspaceError = status === 'no-workspaces' ? 'no-workspaces' : status === 'fetch-failed' ? 'fetch-failed' : null
   const [activeTab, setActiveTab] = useState<TabName>('Voice & Tone')
 
+  const TAB_LABELS: Record<TabName, string> = {
+    'Voice & Tone': t('tabVoice'),
+    'Pillars': t('tabPillars'),
+    'Vocabulary': t('tabVocabulary'),
+    'Personas': t('tabPersonas'),
+    'Visual Identity': t('tabVisual'),
+    'Competitors': t('tabCompetitors'),
+    'Golden Examples': t('tabGoldenExamples'),
+    'Anti-Examples': t('tabAntiExamples'),
+    'Taboo Topics': t('tabTaboo'),
+    'Goals': t('tabGoals'),
+  }
+
   // Brand preview modal state
   const [showPreview, setShowPreview] = useState(false)
   const [previews, setPreviews] = useState<BrandPreviewItem[]>([])
   const [previewLoading, setPreviewLoading] = useState(false)
-  const [previewError, setPreviewError] = useState('')
+  const [previewErrorMsg, setPreviewErrorMsg] = useState('')
 
   async function handlePreviewBrandVoice() {
     if (!workspaceId) return
     setPreviewLoading(true)
-    setPreviewError('')
+    setPreviewErrorMsg('')
     setPreviews([])
     try {
       const r = await apiFetch(`/workspaces/${workspaceId}/brand-preview`, { method: 'POST' })
@@ -173,7 +188,7 @@ export default function BrandPage() {
       setPreviews(data)
       setShowPreview(true)
     } catch {
-      setPreviewError('Failed to generate brand preview')
+      setPreviewErrorMsg(t('previewError'))
     } finally {
       setPreviewLoading(false)
     }
@@ -182,7 +197,7 @@ export default function BrandPage() {
   if (workspaceError === 'no-workspaces') {
     return (
       <div className="p-6">
-        <p className="text-sm text-gray-600">Create a workspace first.</p>
+        <p className="text-sm text-gray-600">{t('noWorkspace')}</p>
       </div>
     )
   }
@@ -190,7 +205,7 @@ export default function BrandPage() {
   if (workspaceError === 'fetch-failed') {
     return (
       <div className="p-6">
-        <ErrorBanner message="Failed to load workspace. Please refresh." />
+        <ErrorBanner message={t('workspaceFailed')} />
       </div>
     )
   }
@@ -199,7 +214,7 @@ export default function BrandPage() {
     return (
       <div className="p-6 flex items-center gap-3 text-sm text-gray-600">
         <Spinner />
-        <span>Loading…</span>
+        <span>{t('loading')}</span>
       </div>
     )
   }
@@ -208,16 +223,16 @@ export default function BrandPage() {
     <div>
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Brand Kit</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('title')}</h1>
         <div className="flex items-center gap-3">
-          {previewError && <ErrorBanner message={previewError} />}
+          {previewErrorMsg && <ErrorBanner message={previewErrorMsg} />}
           <Button
             variant="primary"
             onClick={handlePreviewBrandVoice}
             loading={previewLoading}
             className="bg-purple-600 border-purple-600 hover:bg-purple-700 hover:border-purple-700"
           >
-            {previewLoading ? 'Generating…' : 'Preview Brand Voice'}
+            {previewLoading ? t('generating') : t('previewVoice')}
           </Button>
         </div>
       </div>
@@ -235,7 +250,7 @@ export default function BrandPage() {
                 : 'text-gray-500 hover:text-gray-800 border-b-2 border-transparent',
             ].join(' ')}
           >
-            {tab}
+            {TAB_LABELS[tab]}
           </button>
         ))}
       </div>
@@ -277,7 +292,7 @@ export default function BrandPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 border border-gray-200">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Brand Voice Preview</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t('previewModalTitle')}</h2>
               <button
                 onClick={() => setShowPreview(false)}
                 className="text-gray-400 hover:text-gray-600 text-xl leading-none"
@@ -286,18 +301,18 @@ export default function BrandPage() {
               </button>
             </div>
             <p className="text-sm text-gray-600 mb-4">
-              3 sample content pieces generated using your brand settings.
+              {t('previewModalDesc')}
             </p>
             <div className="flex flex-col gap-4">
               {previews.map((item, i) => (
                 <Card key={i}>
                   <p className="text-xs text-gray-400 mb-2 font-semibold uppercase tracking-wide">
-                    Sample {i + 1}
+                    {t('previewSample')} {i + 1}
                   </p>
-                  <p className="font-semibold text-sm text-gray-900 mb-1">Hook: {item.hook}</p>
+                  <p className="font-semibold text-sm text-gray-900 mb-1">{t('previewHook')}: {item.hook}</p>
                   <p className="text-sm text-gray-600 mb-1">{item.body}</p>
-                  <p className="text-sm text-indigo-600 mb-1">CTA: {item.cta}</p>
-                  <p className="text-xs text-gray-400">Caption: {item.caption}</p>
+                  <p className="text-sm text-indigo-600 mb-1">{t('previewCta')}: {item.cta}</p>
+                  <p className="text-xs text-gray-400">{t('previewCaption')}: {item.caption}</p>
                 </Card>
               ))}
             </div>
@@ -321,6 +336,7 @@ function TonesTab({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('brand')
   const base = `/workspaces/${workspaceId}/brand/tones`
   const [items, setItems] = useState<BrandTone[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -340,7 +356,7 @@ function TonesTab({
     apiFetch(base)
       .then((r) => r.json())
       .then((d: BrandTone[]) => setItems(d))
-      .catch(() => setError('Failed to load tones'))
+      .catch(() => setError(t('tonesLoadError')))
       .finally(() => setIsLoading(false))
   }
 
@@ -379,7 +395,7 @@ function TonesTab({
       setManifesto('')
       load()
     } catch {
-      setError('Failed to add tone')
+      setError(t('toneAddError'))
     } finally {
       setAdding(false)
     }
@@ -389,9 +405,9 @@ function TonesTab({
     try {
       const r = await apiFetch(`${base}/${id}`, { method: 'DELETE' })
       if (!r.ok) throw new Error('Delete failed')
-      setItems((prev) => prev.filter((t) => t.id !== id))
+      setItems((prev) => prev.filter((item) => item.id !== id))
     } catch {
-      setError('Failed to delete')
+      setError(t('deleteError'))
     }
   }
 
@@ -400,7 +416,7 @@ function TonesTab({
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
           <Spinner />
-          <span>Loading…</span>
+          <span>{t('loading')}</span>
         </div>
       )}
       {error && <ErrorBanner message={error} />}
@@ -415,22 +431,22 @@ function TonesTab({
                 )}
                 {item.examples && item.examples.length > 0 && (
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Examples: {item.examples.join(', ')}
+                    {t('examplesDisplay')}: {item.examples.join(', ')}
                   </p>
                 )}
                 {item.adjectives && item.adjectives.length > 0 && (
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Adjectives: {item.adjectives.join(', ')}
+                    {t('adjectivesDisplay')}: {item.adjectives.join(', ')}
                   </p>
                 )}
                 {item.values && item.values.length > 0 && (
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Values: {item.values.join(', ')}
+                    {t('valuesDisplay')}: {item.values.join(', ')}
                   </p>
                 )}
                 {item.manifesto && (
                   <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
-                    Manifesto: {item.manifesto}
+                    {t('manifestoDisplay')}: {item.manifesto}
                   </p>
                 )}
               </div>
@@ -440,99 +456,99 @@ function TonesTab({
                 onClick={() => handleDelete(item.id)}
                 className="ml-4 shrink-0"
               >
-                Delete
+                {t('delete')}
               </Button>
             </Card>
           </li>
         ))}
         {!isLoading && items.length === 0 && (
-          <EmptyState title="No tones yet" description="Add a brand voice tone below." icon="🎙️" />
+          <EmptyState title={t('noTones')} description={t('noTonesDesc')} icon="🎙️" />
         )}
       </ul>
       <Card>
-        <p className="text-sm font-semibold text-gray-700 mb-4">Add Tone</p>
+        <p className="text-sm font-semibold text-gray-700 mb-4">{t('addTone')}</p>
         <form onSubmit={handleAdd} className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex flex-col gap-1">
-              <FieldLabel>Name *</FieldLabel>
+              <FieldLabel>{t('nameLabel')} *</FieldLabel>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-40"
-                placeholder="e.g. Friendly"
+                placeholder={t('toneNamePlaceholder')}
               />
             </div>
             <div className="flex flex-col gap-1">
-              <FieldLabel>Description</FieldLabel>
+              <FieldLabel>{t('descriptionLabel')}</FieldLabel>
               <Input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-48"
-                placeholder="Optional"
+                placeholder={t('optionalPlaceholder')}
               />
             </div>
             <div className="flex flex-col gap-1">
-              <FieldLabel>Examples (comma-separated)</FieldLabel>
+              <FieldLabel>{t('examplesLabel')}</FieldLabel>
               <Input
                 value={examples}
                 onChange={(e) => setExamples(e.target.value)}
                 className="w-56"
-                placeholder="e.g. example1, example2"
+                placeholder={t('examplesPlaceholder')}
               />
             </div>
           </div>
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex flex-col gap-1">
-              <FieldLabel>Adjectives (comma-separated)</FieldLabel>
+              <FieldLabel>{t('adjectivesLabel')}</FieldLabel>
               <Input
                 value={adjectives}
                 onChange={(e) => setAdjectives(e.target.value)}
                 className="w-56"
-                placeholder="e.g. bold, warm, direct"
+                placeholder={t('adjectivesPlaceholder')}
               />
             </div>
             <div className="flex flex-col gap-1">
-              <FieldLabel>Values (comma-separated)</FieldLabel>
+              <FieldLabel>{t('valuesLabel')}</FieldLabel>
               <Input
                 value={values}
                 onChange={(e) => setValues(e.target.value)}
                 className="w-56"
-                placeholder="e.g. integrity, growth"
+                placeholder={t('valuesPlaceholder')}
               />
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
             <div className="flex flex-col gap-1 flex-1 min-w-48">
-              <FieldLabel>Positive Examples (comma-separated)</FieldLabel>
+              <FieldLabel>{t('positiveExamplesLabel')}</FieldLabel>
               <textarea
                 value={examplesPositive}
                 onChange={(e) => setExamplesPositive(e.target.value)}
                 className="w-full h-16 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                placeholder="e.g. We empower creators…"
+                placeholder={t('positiveExamplesPlaceholder')}
               />
             </div>
             <div className="flex flex-col gap-1 flex-1 min-w-48">
-              <FieldLabel>Negative Examples (comma-separated)</FieldLabel>
+              <FieldLabel>{t('negativeExamplesLabel')}</FieldLabel>
               <textarea
                 value={examplesNegative}
                 onChange={(e) => setExamplesNegative(e.target.value)}
                 className="w-full h-16 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                placeholder="e.g. Synergy-driven solutions…"
+                placeholder={t('negativeExamplesPlaceholder')}
               />
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Manifesto</FieldLabel>
+            <FieldLabel>{t('manifestoLabel')}</FieldLabel>
             <textarea
               value={manifesto}
               onChange={(e) => setManifesto(e.target.value)}
               className="w-full h-20 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-              placeholder="Brand manifesto text…"
+              placeholder={t('manifestoPlaceholder')}
             />
           </div>
           <div>
             <Button type="submit" variant="primary" loading={adding}>
-              {adding ? 'Adding…' : 'Add Tone'}
+              {adding ? t('addingTone') : t('addToneButton')}
             </Button>
           </div>
         </form>
@@ -550,6 +566,7 @@ function PillarsTab({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('brand')
   const base = `/workspaces/${workspaceId}/brand/pillars`
   const [items, setItems] = useState<BrandPillar[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -564,7 +581,7 @@ function PillarsTab({
     apiFetch(base)
       .then((r) => r.json())
       .then((d: BrandPillar[]) => setItems(d))
-      .catch(() => setError('Failed to load pillars'))
+      .catch(() => setError(t('pillarsLoadError')))
       .finally(() => setIsLoading(false))
   }
 
@@ -593,7 +610,7 @@ function PillarsTab({
       setKeywords('')
       load()
     } catch {
-      setError('Failed to add pillar')
+      setError(t('pillarAddError'))
     } finally {
       setAdding(false)
     }
@@ -603,9 +620,9 @@ function PillarsTab({
     try {
       const r = await apiFetch(`${base}/${id}`, { method: 'DELETE' })
       if (!r.ok) throw new Error('Delete failed')
-      setItems((prev) => prev.filter((t) => t.id !== id))
+      setItems((prev) => prev.filter((item) => item.id !== id))
     } catch {
-      setError('Failed to delete')
+      setError(t('deleteError'))
     }
   }
 
@@ -614,7 +631,7 @@ function PillarsTab({
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
           <Spinner />
-          <span>Loading…</span>
+          <span>{t('loading')}</span>
         </div>
       )}
       {error && <ErrorBanner message={error} />}
@@ -629,7 +646,7 @@ function PillarsTab({
                 )}
                 {item.keywords && item.keywords.length > 0 && (
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Keywords: {item.keywords.join(', ')}
+                    {t('keywordsDisplay')}: {item.keywords.join(', ')}
                   </p>
                 )}
               </div>
@@ -639,47 +656,47 @@ function PillarsTab({
                 onClick={() => handleDelete(item.id)}
                 className="ml-4 shrink-0"
               >
-                Delete
+                {t('delete')}
               </Button>
             </Card>
           </li>
         ))}
         {!isLoading && items.length === 0 && (
-          <EmptyState title="No pillars yet" description="Add your brand pillars below." icon="🏛️" />
+          <EmptyState title={t('noPillars')} description={t('noPillarsDesc')} icon="🏛️" />
         )}
       </ul>
       <Card>
-        <p className="text-sm font-semibold text-gray-700 mb-4">Add Pillar</p>
+        <p className="text-sm font-semibold text-gray-700 mb-4">{t('addPillar')}</p>
         <form onSubmit={handleAdd} className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1">
-            <FieldLabel>Name *</FieldLabel>
+            <FieldLabel>{t('nameLabel')} *</FieldLabel>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-40"
-              placeholder="e.g. Innovation"
+              placeholder={t('pillarNamePlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Description</FieldLabel>
+            <FieldLabel>{t('descriptionLabel')}</FieldLabel>
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-48"
-              placeholder="Optional"
+              placeholder={t('optionalPlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Keywords (comma-separated)</FieldLabel>
+            <FieldLabel>{t('keywordsLabel')}</FieldLabel>
             <Input
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
               className="w-56"
-              placeholder="e.g. growth, impact"
+              placeholder={t('keywordsPlaceholder')}
             />
           </div>
           <Button type="submit" variant="primary" loading={adding}>
-            {adding ? 'Adding…' : 'Add'}
+            {adding ? t('adding') : t('addButton')}
           </Button>
         </form>
       </Card>
@@ -696,6 +713,7 @@ function VocabularyTab({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('brand')
   const base = `/workspaces/${workspaceId}/brand/vocabulary`
   const [items, setItems] = useState<BrandVocabulary[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -709,7 +727,7 @@ function VocabularyTab({
     apiFetch(base)
       .then((r) => r.json())
       .then((d: BrandVocabulary[]) => setItems(d))
-      .catch(() => setError('Failed to load vocabulary'))
+      .catch(() => setError(t('vocabularyLoadError')))
       .finally(() => setIsLoading(false))
   }
 
@@ -733,7 +751,7 @@ function VocabularyTab({
       setType('ALLOW')
       load()
     } catch {
-      setError('Failed to add word')
+      setError(t('wordAddError'))
     } finally {
       setAdding(false)
     }
@@ -743,9 +761,9 @@ function VocabularyTab({
     try {
       const r = await apiFetch(`${base}/${id}`, { method: 'DELETE' })
       if (!r.ok) throw new Error('Delete failed')
-      setItems((prev) => prev.filter((t) => t.id !== id))
+      setItems((prev) => prev.filter((item) => item.id !== id))
     } catch {
-      setError('Failed to delete')
+      setError(t('deleteError'))
     }
   }
 
@@ -754,7 +772,7 @@ function VocabularyTab({
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
           <Spinner />
-          <span>Loading…</span>
+          <span>{t('loading')}</span>
         </div>
       )}
       {error && <ErrorBanner message={error} />}
@@ -772,29 +790,29 @@ function VocabularyTab({
                 onClick={() => handleDelete(item.id)}
                 className="ml-4 shrink-0"
               >
-                Delete
+                {t('delete')}
               </Button>
             </Card>
           </li>
         ))}
         {!isLoading && items.length === 0 && (
-          <EmptyState title="No vocabulary entries" description="Add allowed and forbidden words below." icon="📖" />
+          <EmptyState title={t('noVocabulary')} description={t('noVocabularyDesc')} icon="📖" />
         )}
       </ul>
       <Card>
-        <p className="text-sm font-semibold text-gray-700 mb-4">Add Word</p>
+        <p className="text-sm font-semibold text-gray-700 mb-4">{t('addWord')}</p>
         <form onSubmit={handleAdd} className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1">
-            <FieldLabel>Word *</FieldLabel>
+            <FieldLabel>{t('wordLabel')} *</FieldLabel>
             <Input
               value={word}
               onChange={(e) => setWord(e.target.value)}
               className="w-40"
-              placeholder="e.g. synergy"
+              placeholder={t('wordPlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Type</FieldLabel>
+            <FieldLabel>{t('typeLabel')}</FieldLabel>
             <Select
               value={type}
               onChange={(e) => setType(e.target.value as 'ALLOW' | 'FORBID')}
@@ -804,7 +822,7 @@ function VocabularyTab({
             </Select>
           </div>
           <Button type="submit" variant="primary" loading={adding}>
-            {adding ? 'Adding…' : 'Add'}
+            {adding ? t('adding') : t('addButton')}
           </Button>
         </form>
       </Card>
@@ -821,6 +839,7 @@ function PersonasTab({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('brand')
   const base = `/workspaces/${workspaceId}/brand/personas`
   const [items, setItems] = useState<Persona[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -836,7 +855,7 @@ function PersonasTab({
     apiFetch(base)
       .then((r) => r.json())
       .then((d: Persona[]) => setItems(d))
-      .catch(() => setError('Failed to load personas'))
+      .catch(() => setError(t('personasLoadError')))
       .finally(() => setIsLoading(false))
   }
 
@@ -867,7 +886,7 @@ function PersonasTab({
       setDesires('')
       load()
     } catch {
-      setError('Failed to add persona')
+      setError(t('personaAddError'))
     } finally {
       setAdding(false)
     }
@@ -877,9 +896,9 @@ function PersonasTab({
     try {
       const r = await apiFetch(`${base}/${id}`, { method: 'DELETE' })
       if (!r.ok) throw new Error('Delete failed')
-      setItems((prev) => prev.filter((t) => t.id !== id))
+      setItems((prev) => prev.filter((item) => item.id !== id))
     } catch {
-      setError('Failed to delete')
+      setError(t('deleteError'))
     }
   }
 
@@ -888,7 +907,7 @@ function PersonasTab({
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
           <Spinner />
-          <span>Loading…</span>
+          <span>{t('loading')}</span>
         </div>
       )}
       {error && <ErrorBanner message={error} />}
@@ -903,12 +922,12 @@ function PersonasTab({
                 )}
                 {item.painPoints && item.painPoints.length > 0 && (
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Pain points: {item.painPoints.join(', ')}
+                    {t('painPointsDisplay')}: {item.painPoints.join(', ')}
                   </p>
                 )}
                 {item.desires && item.desires.length > 0 && (
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Desires: {item.desires.join(', ')}
+                    {t('desiresDisplay')}: {item.desires.join(', ')}
                   </p>
                 )}
               </div>
@@ -918,56 +937,56 @@ function PersonasTab({
                 onClick={() => handleDelete(item.id)}
                 className="ml-4 shrink-0"
               >
-                Delete
+                {t('delete')}
               </Button>
             </Card>
           </li>
         ))}
         {!isLoading && items.length === 0 && (
-          <EmptyState title="No personas yet" description="Add audience personas below." icon="👤" />
+          <EmptyState title={t('noPersonas')} description={t('noPersonasDesc')} icon="👤" />
         )}
       </ul>
       <Card>
-        <p className="text-sm font-semibold text-gray-700 mb-4">Add Persona</p>
+        <p className="text-sm font-semibold text-gray-700 mb-4">{t('addPersona')}</p>
         <form onSubmit={handleAdd} className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1">
-            <FieldLabel>Name *</FieldLabel>
+            <FieldLabel>{t('nameLabel')} *</FieldLabel>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-40"
-              placeholder="e.g. Startup Founder"
+              placeholder={t('personaNamePlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Description</FieldLabel>
+            <FieldLabel>{t('descriptionLabel')}</FieldLabel>
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-48"
-              placeholder="Optional"
+              placeholder={t('optionalPlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Pain Points (comma-separated)</FieldLabel>
+            <FieldLabel>{t('painPointsLabel')}</FieldLabel>
             <Input
               value={painPoints}
               onChange={(e) => setPainPoints(e.target.value)}
               className="w-56"
-              placeholder="e.g. time, budget"
+              placeholder={t('painPointsPlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Desires (comma-separated)</FieldLabel>
+            <FieldLabel>{t('desiresLabel')}</FieldLabel>
             <Input
               value={desires}
               onChange={(e) => setDesires(e.target.value)}
               className="w-56"
-              placeholder="e.g. growth, impact"
+              placeholder={t('desiresPlaceholder')}
             />
           </div>
           <Button type="submit" variant="primary" loading={adding}>
-            {adding ? 'Adding…' : 'Add'}
+            {adding ? t('adding') : t('addButton')}
           </Button>
         </form>
       </Card>
@@ -984,6 +1003,7 @@ function VisualIdentityTab({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('brand')
   const base = `/workspaces/${workspaceId}/brand/visual-identity`
   const [isLoading, setIsLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -998,7 +1018,7 @@ function VisualIdentityTab({
       .then((d: VisualIdentity | null) => {
         if (d) setFields(d)
       })
-      .catch(() => setError('Failed to load visual identity'))
+      .catch(() => setError(t('visualLoadError')))
       .finally(() => setIsLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -1020,7 +1040,7 @@ function VisualIdentityTab({
       if (!r.ok) throw new Error('Failed')
       setSuccess(true)
     } catch {
-      setError('Failed to save')
+      setError(t('visualSaveError'))
     } finally {
       setSaving(false)
     }
@@ -1030,7 +1050,7 @@ function VisualIdentityTab({
     return (
       <div className="flex items-center gap-2 text-sm text-gray-600">
         <Spinner />
-        <span>Loading…</span>
+        <span>{t('loading')}</span>
       </div>
     )
   }
@@ -1040,20 +1060,20 @@ function VisualIdentityTab({
       {error && <ErrorBanner message={error} />}
       {success && (
         <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-          Saved!
+          {t('saved')}
         </div>
       )}
 
       <Card>
-        <p className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide text-xs">Colors &amp; Fonts</p>
+        <p className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide text-xs">{t('colorsFontsSection')}</p>
         <div className="flex flex-col gap-3">
           {(
             [
-              ['primaryColor', 'Primary Color'],
-              ['secondaryColor', 'Secondary Color'],
-              ['accentColor', 'Accent Color'],
-              ['fontPrimary', 'Primary Font'],
-              ['fontSecondary', 'Secondary Font'],
+              ['primaryColor', t('primaryColor')],
+              ['secondaryColor', t('secondaryColor')],
+              ['accentColor', t('accentColor')],
+              ['fontPrimary', t('fontPrimary')],
+              ['fontSecondary', t('fontSecondary')],
             ] as [keyof VisualIdentity, string][]
           ).map(([key, label]) => (
             <div key={key} className="flex items-center gap-3">
@@ -1070,16 +1090,16 @@ function VisualIdentityTab({
       </Card>
 
       <Card>
-        <p className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide text-xs">Logo Variants</p>
+        <p className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide text-xs">{t('logoVariantsSection')}</p>
         <div className="flex flex-col gap-3">
           {(
             [
-              ['logoUrl', 'Logo URL (default)'],
-              ['logoFullUrl', 'Full Logo URL'],
-              ['logoIconUrl', 'Icon Logo URL'],
-              ['logoLightUrl', 'Light Logo URL'],
-              ['logoDarkUrl', 'Dark Logo URL'],
-              ['watermarkUrl', 'Watermark URL'],
+              ['logoUrl', t('logoDefault')],
+              ['logoFullUrl', t('logoFull')],
+              ['logoIconUrl', t('logoIcon')],
+              ['logoLightUrl', t('logoLight')],
+              ['logoDarkUrl', t('logoDark')],
+              ['watermarkUrl', t('watermark')],
             ] as [keyof VisualIdentity, string][]
           ).map(([key, label]) => (
             <div key={key} className="flex items-center gap-3">
@@ -1097,7 +1117,7 @@ function VisualIdentityTab({
 
       <div>
         <Button type="submit" variant="primary" loading={saving}>
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('saving') : t('save')}
         </Button>
       </div>
     </form>
@@ -1113,6 +1133,7 @@ function CompetitorsTab({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('brand')
   const base = `/workspaces/${workspaceId}/brand/competitors`
   const [items, setItems] = useState<Competitor[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1127,7 +1148,7 @@ function CompetitorsTab({
     apiFetch(base)
       .then((r) => r.json())
       .then((d: Competitor[]) => setItems(d))
-      .catch(() => setError('Failed to load competitors'))
+      .catch(() => setError(t('competitorsLoadError')))
       .finally(() => setIsLoading(false))
   }
 
@@ -1156,7 +1177,7 @@ function CompetitorsTab({
       setNotes('')
       load()
     } catch {
-      setError('Failed to add competitor')
+      setError(t('competitorAddError'))
     } finally {
       setAdding(false)
     }
@@ -1166,9 +1187,9 @@ function CompetitorsTab({
     try {
       const r = await apiFetch(`${base}/${id}`, { method: 'DELETE' })
       if (!r.ok) throw new Error('Delete failed')
-      setItems((prev) => prev.filter((t) => t.id !== id))
+      setItems((prev) => prev.filter((item) => item.id !== id))
     } catch {
-      setError('Failed to delete')
+      setError(t('deleteError'))
     }
   }
 
@@ -1177,7 +1198,7 @@ function CompetitorsTab({
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
           <Spinner />
-          <span>Loading…</span>
+          <span>{t('loading')}</span>
         </div>
       )}
       {error && <ErrorBanner message={error} />}
@@ -1207,29 +1228,29 @@ function CompetitorsTab({
                 onClick={() => handleDelete(item.id)}
                 className="ml-4 shrink-0"
               >
-                Delete
+                {t('delete')}
               </Button>
             </Card>
           </li>
         ))}
         {!isLoading && items.length === 0 && (
-          <EmptyState title="No competitors tracked" description="Add competitors to monitor below." icon="🏁" />
+          <EmptyState title={t('noCompetitors')} description={t('noCompetitorsDesc')} icon="🏁" />
         )}
       </ul>
       <Card>
-        <p className="text-sm font-semibold text-gray-700 mb-4">Add Competitor</p>
+        <p className="text-sm font-semibold text-gray-700 mb-4">{t('addCompetitor')}</p>
         <form onSubmit={handleAdd} className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1">
-            <FieldLabel>Name *</FieldLabel>
+            <FieldLabel>{t('nameLabel')} *</FieldLabel>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-40"
-              placeholder="e.g. Acme Corp"
+              placeholder={t('competitorNamePlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>URL</FieldLabel>
+            <FieldLabel>{t('urlLabel')}</FieldLabel>
             <Input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -1238,16 +1259,16 @@ function CompetitorsTab({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Notes</FieldLabel>
+            <FieldLabel>{t('notesLabel')}</FieldLabel>
             <Input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="w-56"
-              placeholder="Optional"
+              placeholder={t('optionalPlaceholder')}
             />
           </div>
           <Button type="submit" variant="primary" loading={adding}>
-            {adding ? 'Adding…' : 'Add'}
+            {adding ? t('adding') : t('addButton')}
           </Button>
         </form>
       </Card>
@@ -1264,6 +1285,7 @@ function GoldenExamplesTab({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('brand')
   const base = `/workspaces/${workspaceId}/brand/golden-examples`
   const [items, setItems] = useState<GoldenExample[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1279,7 +1301,7 @@ function GoldenExamplesTab({
     apiFetch(base)
       .then((r) => r.json())
       .then((d: GoldenExample[]) => setItems(d))
-      .catch(() => setError('Failed to load golden examples'))
+      .catch(() => setError(t('goldenExamplesLoadError')))
       .finally(() => setIsLoading(false))
   }
 
@@ -1310,7 +1332,7 @@ function GoldenExamplesTab({
       setPlatform('')
       load()
     } catch {
-      setError('Failed to add golden example')
+      setError(t('goldenExampleAddError'))
     } finally {
       setAdding(false)
     }
@@ -1320,9 +1342,9 @@ function GoldenExamplesTab({
     try {
       const r = await apiFetch(`${base}/${id}`, { method: 'DELETE' })
       if (!r.ok) throw new Error('Delete failed')
-      setItems((prev) => prev.filter((t) => t.id !== id))
+      setItems((prev) => prev.filter((item) => item.id !== id))
     } catch {
-      setError('Failed to delete')
+      setError(t('deleteError'))
     }
   }
 
@@ -1331,7 +1353,7 @@ function GoldenExamplesTab({
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
           <Spinner />
-          <span>Loading…</span>
+          <span>{t('loading')}</span>
         </div>
       )}
       {error && <ErrorBanner message={error} />}
@@ -1352,38 +1374,38 @@ function GoldenExamplesTab({
                 onClick={() => handleDelete(item.id)}
                 className="ml-4 shrink-0"
               >
-                Delete
+                {t('delete')}
               </Button>
             </Card>
           </li>
         ))}
         {!isLoading && items.length === 0 && (
-          <EmptyState title="No golden examples" description="Add great content examples below." icon="⭐" />
+          <EmptyState title={t('noGoldenExamples')} description={t('noGoldenExamplesDesc')} icon="⭐" />
         )}
       </ul>
       <Card>
-        <p className="text-sm font-semibold text-gray-700 mb-4">Add Golden Example</p>
+        <p className="text-sm font-semibold text-gray-700 mb-4">{t('addGoldenExample')}</p>
         <form onSubmit={handleAdd} className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1">
-            <FieldLabel>Title *</FieldLabel>
+            <FieldLabel>{t('titleLabel')} *</FieldLabel>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-40"
-              placeholder="e.g. Launch Reel"
+              placeholder={t('goldenTitlePlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Content *</FieldLabel>
+            <FieldLabel>{t('contentLabel')} *</FieldLabel>
             <Input
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="w-56"
-              placeholder="Content text…"
+              placeholder={t('goldenContentPlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Format</FieldLabel>
+            <FieldLabel>{t('formatLabel')}</FieldLabel>
             <Select
               value={format}
               onChange={(e) => setFormat(e.target.value)}
@@ -1396,16 +1418,16 @@ function GoldenExamplesTab({
             </Select>
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Platform *</FieldLabel>
+            <FieldLabel>{t('platformLabel')} *</FieldLabel>
             <Input
               value={platform}
               onChange={(e) => setPlatform(e.target.value)}
               className="w-32"
-              placeholder="e.g. Instagram"
+              placeholder={t('platformNamePlaceholder')}
             />
           </div>
           <Button type="submit" variant="primary" loading={adding}>
-            {adding ? 'Adding…' : 'Add'}
+            {adding ? t('adding') : t('addButton')}
           </Button>
         </form>
       </Card>
@@ -1422,6 +1444,7 @@ function AntiExamplesTab({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('brand')
   const base = `/workspaces/${workspaceId}/brand/anti-examples`
   const [items, setItems] = useState<AntiExample[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1438,7 +1461,7 @@ function AntiExamplesTab({
     apiFetch(base)
       .then((r) => r.json())
       .then((d: AntiExample[]) => setItems(d))
-      .catch(() => setError('Failed to load anti-examples'))
+      .catch(() => setError(t('antiExamplesLoadError')))
       .finally(() => setIsLoading(false))
   }
 
@@ -1471,7 +1494,7 @@ function AntiExamplesTab({
       setReason('')
       load()
     } catch {
-      setError('Failed to add anti-example')
+      setError(t('antiExampleAddError'))
     } finally {
       setAdding(false)
     }
@@ -1481,21 +1504,21 @@ function AntiExamplesTab({
     try {
       const r = await apiFetch(`${base}/${id}`, { method: 'DELETE' })
       if (!r.ok) throw new Error('Delete failed')
-      setItems((prev) => prev.filter((t) => t.id !== id))
+      setItems((prev) => prev.filter((item) => item.id !== id))
     } catch {
-      setError('Failed to delete')
+      setError(t('deleteError'))
     }
   }
 
   return (
     <div>
       <p className="text-sm text-gray-600 mb-4">
-        Anti-examples are content pieces that violate your brand guidelines. Use them to train the AI on what to avoid.
+        {t('antiExamplesDesc')}
       </p>
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
           <Spinner />
-          <span>Loading…</span>
+          <span>{t('loading')}</span>
         </div>
       )}
       {error && <ErrorBanner message={error} />}
@@ -1512,7 +1535,7 @@ function AntiExamplesTab({
                 )}
                 <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">{item.content}</p>
                 {item.reason && (
-                  <p className="text-xs text-orange-600 mt-0.5">Reason: {item.reason}</p>
+                  <p className="text-xs text-orange-600 mt-0.5">{t('reasonDisplay')}: {item.reason}</p>
                 )}
               </div>
               <Button
@@ -1521,68 +1544,68 @@ function AntiExamplesTab({
                 onClick={() => handleDelete(item.id)}
                 className="ml-4 shrink-0"
               >
-                Delete
+                {t('delete')}
               </Button>
             </Card>
           </li>
         ))}
         {!isLoading && items.length === 0 && (
-          <EmptyState title="No anti-examples" description="Add content to avoid below." icon="🚫" />
+          <EmptyState title={t('noAntiExamples')} description={t('noAntiExamplesDesc')} icon="🚫" />
         )}
       </ul>
       <Card>
-        <p className="text-sm font-semibold text-gray-700 mb-4">Add Anti-Example</p>
+        <p className="text-sm font-semibold text-gray-700 mb-4">{t('addAntiExample')}</p>
         <form onSubmit={handleAdd} className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex flex-col gap-1">
-              <FieldLabel>Title *</FieldLabel>
+              <FieldLabel>{t('titleLabel')} *</FieldLabel>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-40"
-                placeholder="e.g. Cringy promo"
-              />
+              className="w-40"
+              placeholder={t('antiTitlePlaceholder')}
+            />
             </div>
             <div className="flex flex-col gap-1">
-              <FieldLabel>Format</FieldLabel>
+              <FieldLabel>{t('formatLabel')}</FieldLabel>
               <Input
                 value={format}
                 onChange={(e) => setFormat(e.target.value)}
-                className="w-32"
-                placeholder="e.g. reel"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <FieldLabel>Platform</FieldLabel>
-              <Input
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value)}
-                className="w-32"
-                placeholder="e.g. TikTok"
-              />
+              className="w-32"
+              placeholder={t('formatPlaceholder')}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <FieldLabel>{t('platformLabel')}</FieldLabel>
+            <Input
+              value={platform}
+              onChange={(e) => setPlatform(e.target.value)}
+              className="w-32"
+              placeholder={t('platformNamePlaceholder')}
+            />
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Content *</FieldLabel>
+            <FieldLabel>{t('contentLabel')} *</FieldLabel>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="w-full h-16 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-              placeholder="Paste the bad example content here…"
+              placeholder={t('contentPlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Reason (why is this bad?)</FieldLabel>
+            <FieldLabel>{t('reasonLabel')}</FieldLabel>
             <Input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="w-full"
-              placeholder="e.g. Uses forbidden words, off-brand tone"
+              placeholder={t('reasonPlaceholder')}
             />
           </div>
           <div>
             <Button type="submit" variant="danger" loading={adding}>
-              {adding ? 'Adding…' : 'Add Anti-Example'}
+              {adding ? t('adding') : t('addAntiExample')}
             </Button>
           </div>
         </form>
@@ -1600,6 +1623,7 @@ function TabooTopicsTab({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('brand')
   const base = `/workspaces/${workspaceId}/brand/taboo-topics`
   const [items, setItems] = useState<TabooTopic[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1613,7 +1637,7 @@ function TabooTopicsTab({
     apiFetch(base)
       .then((r) => r.json())
       .then((d: TabooTopic[]) => setItems(d))
-      .catch(() => setError('Failed to load taboo topics'))
+      .catch(() => setError(t('tabooLoadError')))
       .finally(() => setIsLoading(false))
   }
 
@@ -1640,7 +1664,7 @@ function TabooTopicsTab({
       setReason('')
       load()
     } catch {
-      setError('Failed to add taboo topic')
+      setError(t('tabooAddError'))
     } finally {
       setAdding(false)
     }
@@ -1650,21 +1674,21 @@ function TabooTopicsTab({
     try {
       const r = await apiFetch(`${base}/${id}`, { method: 'DELETE' })
       if (!r.ok) throw new Error('Delete failed')
-      setItems((prev) => prev.filter((t) => t.id !== id))
+      setItems((prev) => prev.filter((item) => item.id !== id))
     } catch {
-      setError('Failed to delete')
+      setError(t('deleteError'))
     }
   }
 
   return (
     <div>
       <p className="text-sm text-gray-600 mb-4">
-        Taboo topics are subjects the AI will avoid in all generated content.
+        {t('tabooDesc')}
       </p>
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
           <Spinner />
-          <span>Loading…</span>
+          <span>{t('loading')}</span>
         </div>
       )}
       {error && <ErrorBanner message={error} />}
@@ -1692,33 +1716,33 @@ function TabooTopicsTab({
           </span>
         ))}
         {items.length === 0 && !isLoading && (
-          <p className="text-sm text-gray-400">No taboo topics yet.</p>
+          <p className="text-sm text-gray-400">{t('noTabooTopics')}</p>
         )}
       </div>
 
       <Card>
-        <p className="text-sm font-semibold text-gray-700 mb-4">Add Taboo Topic</p>
+        <p className="text-sm font-semibold text-gray-700 mb-4">{t('addTabooTopic')}</p>
         <form onSubmit={handleAdd} className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1">
-            <FieldLabel>Topic *</FieldLabel>
+            <FieldLabel>{t('topicLabel')} *</FieldLabel>
             <Input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               className="w-40"
-              placeholder="e.g. Politics"
+              placeholder={t('topicPlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Reason (optional)</FieldLabel>
+            <FieldLabel>{t('reasonOptional')}</FieldLabel>
             <Input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="w-56"
-              placeholder="e.g. Legally sensitive"
+              placeholder={t('tabooReasonPlaceholder')}
             />
           </div>
           <Button type="submit" variant="primary" loading={adding} className="bg-orange-500 border-orange-500 hover:bg-orange-600 hover:border-orange-600">
-            {adding ? 'Adding…' : 'Add Topic'}
+            {adding ? t('adding') : t('addTabooTopic')}
           </Button>
         </form>
       </Card>
@@ -1735,6 +1759,7 @@ function GoalsTab({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('brand')
   const base = `/workspaces/${workspaceId}/goals`
   const [items, setItems] = useState<Goal[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1749,7 +1774,7 @@ function GoalsTab({
     apiFetch(base)
       .then((r) => r.json())
       .then((d: Goal[]) => setItems(d))
-      .catch(() => setError('Failed to load goals'))
+      .catch(() => setError(t('goalsLoadError')))
       .finally(() => setIsLoading(false))
   }
 
@@ -1776,7 +1801,7 @@ function GoalsTab({
       setDeadline('')
       load()
     } catch {
-      setError('Failed to add goal')
+      setError(t('goalAddError'))
     } finally {
       setAdding(false)
     }
@@ -1786,21 +1811,21 @@ function GoalsTab({
     try {
       const r = await apiFetch(`${base}/${id}`, { method: 'DELETE' })
       if (!r.ok) throw new Error('Delete failed')
-      setItems((prev) => prev.filter((t) => t.id !== id))
+      setItems((prev) => prev.filter((item) => item.id !== id))
     } catch {
-      setError('Failed to delete')
+      setError(t('deleteError'))
     }
   }
 
   return (
     <div>
       <p className="text-sm text-gray-600 mb-4">
-        Track workspace goals such as subscriber targets, sales, engagement, or reach.
+        {t('goalsDesc')}
       </p>
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
           <Spinner />
-          <span>Loading…</span>
+          <span>{t('loading')}</span>
         </div>
       )}
       {error && <ErrorBanner message={error} />}
@@ -1811,14 +1836,14 @@ function GoalsTab({
               <div>
                 <Badge color="indigo">{item.type}</Badge>
                 {item.targetValue != null && (
-                  <span className="text-sm text-gray-600 ml-2">Target: {item.targetValue}</span>
+                  <span className="text-sm text-gray-600 ml-2">{t('goalTarget')}: {item.targetValue}</span>
                 )}
                 {item.currentValue != null && (
-                  <span className="text-sm text-gray-400 ml-2">Current: {item.currentValue}</span>
+                  <span className="text-sm text-gray-400 ml-2">{t('goalCurrent')}: {item.currentValue}</span>
                 )}
                 {item.deadline && (
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Deadline: {new Date(item.deadline).toLocaleDateString()}
+                    {t('goalDeadline')}: {new Date(item.deadline).toLocaleDateString()}
                   </p>
                 )}
               </div>
@@ -1828,33 +1853,33 @@ function GoalsTab({
                 onClick={() => handleDelete(item.id)}
                 className="ml-4 shrink-0"
               >
-                Delete
+                {t('delete')}
               </Button>
             </Card>
           </li>
         ))}
         {!isLoading && items.length === 0 && (
-          <EmptyState title="No goals set" description="Add workspace goals below." icon="🎯" />
+          <EmptyState title={t('noGoals')} description={t('noGoalsDesc')} icon="🎯" />
         )}
       </ul>
       <Card>
-        <p className="text-sm font-semibold text-gray-700 mb-4">Add Goal</p>
+        <p className="text-sm font-semibold text-gray-700 mb-4">{t('addGoal')}</p>
         <form onSubmit={handleAdd} className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1">
-            <FieldLabel>Type *</FieldLabel>
+            <FieldLabel>{t('goalTypeLabel')} *</FieldLabel>
             <Select
               value={type}
               onChange={(e) => setType(e.target.value as Goal['type'])}
             >
-              {GOAL_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              {GOAL_TYPES.map((goalType) => (
+                <option key={goalType} value={goalType}>
+                  {goalType}
                 </option>
               ))}
             </Select>
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Target Value</FieldLabel>
+            <FieldLabel>{t('targetValueLabel')}</FieldLabel>
             <Input
               type="number"
               value={targetValue}
@@ -1864,7 +1889,7 @@ function GoalsTab({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel>Deadline</FieldLabel>
+            <FieldLabel>{t('deadlineLabel')}</FieldLabel>
             <Input
               type="date"
               value={deadline}
@@ -1873,7 +1898,7 @@ function GoalsTab({
             />
           </div>
           <Button type="submit" variant="primary" loading={adding}>
-            {adding ? 'Adding…' : 'Add Goal'}
+            {adding ? t('adding') : t('addGoal')}
           </Button>
         </form>
       </Card>

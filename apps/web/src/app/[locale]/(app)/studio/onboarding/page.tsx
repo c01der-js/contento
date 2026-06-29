@@ -4,6 +4,7 @@ import { useRouter } from '@/i18n/navigation'
 import { useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch } from '@/lib/api'
+import { useTranslations } from 'next-intl'
 
 type Step = 'company' | 'portrait' | 'avatar' | 'generate-avatar'
 
@@ -32,14 +33,10 @@ interface Portrait {
   contentAngles: string[]
 }
 
-const STEPS = [
-  { key: 'company' as Step, label: 'Company Data' },
-  { key: 'portrait' as Step, label: 'AI Portrait' },
-  { key: 'avatar' as Step, label: 'Avatar Setup' },
-  { key: 'generate-avatar' as Step, label: 'Generate Avatar' },
-]
+const STEP_KEYS: Step[] = ['company', 'portrait', 'avatar', 'generate-avatar']
 
 export default function OnboardingPage() {
+  const t = useTranslations('studio')
   const apiFetch = useApiFetch()
   const { activeId: workspaceId } = useWorkspace()
   const router = useRouter()
@@ -55,7 +52,14 @@ export default function OnboardingPage() {
     description: '', style: 'professional', gender: 'neutral',
   })
 
-  const stepIndex = STEPS.findIndex(s => s.key === step)
+  const STEP_LABELS: Record<Step, string> = {
+    'company': t('stepCompanyData'),
+    'portrait': t('stepAiPortrait'),
+    'avatar': t('stepAvatarSetup'),
+    'generate-avatar': t('stepGenerateAvatar'),
+  }
+
+  const stepIndex = STEP_KEYS.indexOf(step)
 
   async function handleGeneratePortrait() {
     if (!workspaceId) return
@@ -105,24 +109,40 @@ export default function OnboardingPage() {
     finally { setLoading(false) }
   }
 
+  const companyFields = [
+    { key: 'companyName', label: t('companyName'), placeholder: 'Acme Corp' },
+    { key: 'niche', label: t('niche'), placeholder: 'B2B SaaS for HR teams' },
+    { key: 'website', label: t('website'), placeholder: 'https://acme.com' },
+    { key: 'usp', label: t('usp'), placeholder: 'We automate employee onboarding in 1 day' },
+    { key: 'targetAudience', label: t('targetAudience'), placeholder: 'HR managers at 50-500 person companies' },
+    { key: 'competitors', label: t('competitors'), placeholder: 'BambooHR, Workday' },
+  ]
+
+  const portraitFields = [
+    { label: t('portraitNiche'), value: portrait?.niche },
+    { label: t('portraitDescription'), value: portrait?.description },
+    { label: t('portraitUsp'), value: portrait?.usp },
+    { label: t('portraitTargetAudience'), value: portrait?.targetAudience },
+  ]
+
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Company Setup</h1>
-        <p className="text-sm text-gray-500 mt-1">Set up your brand profile for AI content generation</p>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('onboardingTitle')}</h1>
+        <p className="text-sm text-gray-500 mt-1">{t('onboardingSubtitle')}</p>
       </div>
 
       {/* Step indicator */}
       <div className="flex items-center gap-2">
-        {STEPS.map((s, i) => (
-          <div key={s.key} className="flex items-center gap-2">
+        {STEP_KEYS.map((s, i) => (
+          <div key={s} className="flex items-center gap-2">
             <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors
-              ${step === s.key ? 'bg-indigo-600 text-white' :
+              ${step === s ? 'bg-indigo-600 text-white' :
                 stepIndex > i ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
               {stepIndex > i ? '✓' : i + 1}
             </div>
-            <span className="text-xs text-gray-500 hidden sm:block">{s.label}</span>
-            {i < STEPS.length - 1 && <div className="h-px w-6 bg-gray-200" />}
+            <span className="text-xs text-gray-500 hidden sm:block">{STEP_LABELS[s]}</span>
+            {i < STEP_KEYS.length - 1 && <div className="h-px w-6 bg-gray-200" />}
           </div>
         ))}
       </div>
@@ -132,15 +152,8 @@ export default function OnboardingPage() {
       {/* Step 1: Company data */}
       {step === 'company' && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-          <h2 className="font-medium text-gray-900">Tell us about your company</h2>
-          {[
-            { key: 'companyName', label: 'Company name', placeholder: 'Acme Corp' },
-            { key: 'niche', label: 'Niche / industry', placeholder: 'B2B SaaS for HR teams' },
-            { key: 'website', label: 'Website (optional)', placeholder: 'https://acme.com' },
-            { key: 'usp', label: 'Unique selling proposition', placeholder: 'We automate employee onboarding in 1 day' },
-            { key: 'targetAudience', label: 'Target audience', placeholder: 'HR managers at 50-500 person companies' },
-            { key: 'competitors', label: 'Competitors (comma-separated)', placeholder: 'BambooHR, Workday' },
-          ].map(field => (
+          <h2 className="font-medium text-gray-900">{t('tellAboutCompany')}</h2>
+          {companyFields.map(field => (
             <div key={field.key}>
               <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
               <input
@@ -152,11 +165,11 @@ export default function OnboardingPage() {
             </div>
           ))}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('description')}</label>
             <textarea
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
               rows={3}
-              placeholder="Briefly describe what your company does and why it matters..."
+              placeholder={t('descriptionPlaceholder')}
               value={companyForm.description}
               onChange={e => setCompanyForm(f => ({ ...f, description: e.target.value }))}
             />
@@ -166,7 +179,7 @@ export default function OnboardingPage() {
             disabled={loading || !companyForm.companyName || !companyForm.niche || !companyForm.description || !companyForm.usp || !companyForm.targetAudience}
             className="w-full py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Analyzing...' : 'Analyze with AI ->'}
+            {loading ? t('analyzing') : t('analyzeWithAi')}
           </button>
         </div>
       )}
@@ -174,22 +187,17 @@ export default function OnboardingPage() {
       {/* Step 2: Portrait review */}
       {step === 'portrait' && portrait && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-          <h2 className="font-medium text-gray-900">Your Brand Portrait</h2>
-          <p className="text-sm text-gray-500">AI has analyzed your company. Review and continue.</p>
+          <h2 className="font-medium text-gray-900">{t('brandPortraitTitle')}</h2>
+          <p className="text-sm text-gray-500">{t('aiAnalyzedCompany')}</p>
           <div className="space-y-3 bg-gray-50 rounded-lg p-4">
-            {[
-              { label: 'Niche', value: portrait.niche },
-              { label: 'Description', value: portrait.description },
-              { label: 'USP', value: portrait.usp },
-              { label: 'Target audience', value: portrait.targetAudience },
-            ].map(item => (
+            {portraitFields.map(item => (
               <div key={item.label}>
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{item.label}</span>
                 <p className="text-sm mt-0.5 text-gray-800">{item.value}</p>
               </div>
             ))}
             <div>
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Content angles</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('portraitAngles')}</span>
               <ul className="mt-1 space-y-1">
                 {portrait.contentAngles.map((a, i) => (
                   <li key={i} className="text-sm flex gap-2 text-gray-800"><span className="text-indigo-500">-&gt;</span>{a}</li>
@@ -199,10 +207,10 @@ export default function OnboardingPage() {
           </div>
           <div className="flex gap-3">
             <button onClick={() => setStep('company')} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
-              Back
+              {t('back')}
             </button>
             <button onClick={() => setStep('avatar')} className="flex-1 py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">
-              Looks good -&gt;
+              {t('looksGood')}
             </button>
           </div>
         </div>
@@ -211,21 +219,21 @@ export default function OnboardingPage() {
       {/* Step 3: Avatar setup */}
       {step === 'avatar' && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-          <h2 className="font-medium text-gray-900">Brand Avatar</h2>
-          <p className="text-sm text-gray-500">Define the AI persona that will appear in your videos.</p>
+          <h2 className="font-medium text-gray-900">{t('brandAvatarTitle')}</h2>
+          <p className="text-sm text-gray-500">{t('brandAvatarDesc')}</p>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Appearance description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('appearanceDesc')}</label>
             <textarea
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
               rows={3}
-              placeholder="e.g. Mid-30s, short dark hair, confident look, wearing a smart casual blazer"
+              placeholder={t('appearancePlaceholder')}
               value={avatarForm.description}
               onChange={e => setAvatarForm(f => ({ ...f, description: e.target.value }))}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Style</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('styleLabel')}</label>
               <select
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 value={avatarForm.style}
@@ -237,7 +245,7 @@ export default function OnboardingPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('genderLabel')}</label>
               <select
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 value={avatarForm.gender}
@@ -251,14 +259,14 @@ export default function OnboardingPage() {
           </div>
           <div className="flex gap-3">
             <button onClick={() => setStep('portrait')} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
-              Back
+              {t('back')}
             </button>
             <button
               onClick={handleSaveAvatar}
               disabled={loading || !avatarForm.description}
               className="flex-1 py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
             >
-              {loading ? 'Saving...' : 'Save avatar ->'}
+              {loading ? t('savingAvatar') : t('saveAvatar')}
             </button>
           </div>
         </div>
@@ -268,23 +276,23 @@ export default function OnboardingPage() {
       {step === 'generate-avatar' && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 text-center space-y-4">
           <div className="text-4xl">*</div>
-          <h2 className="font-medium text-gray-900">Generate avatar image</h2>
+          <h2 className="font-medium text-gray-900">{t('generateAvatarTitle')}</h2>
           <p className="text-sm text-gray-500 max-w-sm mx-auto">
-            We will create a reference portrait for your brand avatar using AI. This takes about 1-2 minutes.
+            {t('generateAvatarDesc')}
           </p>
           <div className="flex gap-3">
             <button
               onClick={() => router.push('/studio')}
               className="flex-1 py-2 px-4 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
             >
-              Skip for now
+              {t('skipForNow')}
             </button>
             <button
               onClick={handleGenerateAvatarImage}
               disabled={loading}
               className="flex-1 py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
             >
-              {loading ? 'Generating...' : 'Generate image'}
+              {loading ? t('generatingAvatar') : t('generateImage')}
             </button>
           </div>
         </div>

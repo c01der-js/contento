@@ -49,11 +49,11 @@ const SOURCE_BADGE_COLORS: Record<string, 'default' | 'blue' | 'red' | 'orange' 
   competitor: 'green',
 }
 
-const LIFECYCLE_LABELS: Record<string, string> = {
-  RISING: 'Rising',
-  PEAK: 'Peak',
-  DECLINING: 'Declining',
-  FLAT: 'Flat',
+const LIFECYCLE_LABEL_KEYS: Record<string, 'lifecycleRising' | 'lifecyclePeak' | 'lifecycleDeclining' | 'lifecycleFlat'> = {
+  RISING: 'lifecycleRising',
+  PEAK: 'lifecyclePeak',
+  DECLINING: 'lifecycleDeclining',
+  FLAT: 'lifecycleFlat',
 }
 
 const LIFECYCLE_BADGE_COLORS: Record<string, 'green' | 'yellow' | 'red' | 'default'> = {
@@ -97,6 +97,7 @@ function TrendRow({
   feedbackSignal: FeedbackSignal | null
 }) {
   const t = useTranslations('common')
+  const tTrends = useTranslations('trends')
 
   return (
     <Card className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
@@ -114,7 +115,7 @@ function TrendRow({
           )}
           {trend.lifecycle && (
             <Badge color={LIFECYCLE_BADGE_COLORS[trend.lifecycle] ?? 'default'}>
-              {LIFECYCLE_LABELS[trend.lifecycle] ?? trend.lifecycle}
+              {LIFECYCLE_LABEL_KEYS[trend.lifecycle] ? tTrends(LIFECYCLE_LABEL_KEYS[trend.lifecycle]) : trend.lifecycle}
             </Badge>
           )}
         </div>
@@ -251,9 +252,9 @@ export default function TrendsPage() {
       .then((data) => setTrends(data))
       .catch((err: Error) => {
         if (err.message === 'forbidden') {
-          setError('You do not have permission to view trends.')
+          setError(t('permissionError'))
         } else {
-          setError('Failed to load trends. Please refresh.')
+          setError(t('loadError'))
         }
       })
       .finally(() => setLoading(false))
@@ -273,7 +274,7 @@ export default function TrendsPage() {
       const updated = (await r.json()) as Trend
       setTrends((prev) => prev.map((t) => (t.id === trendId ? updated : t)))
     } catch {
-      setError('Failed to analyze trend. Please try again.')
+      setError(t('analyzeError'))
     } finally {
       setAnalyzingId(null)
     }
@@ -291,7 +292,7 @@ export default function TrendsPage() {
       if (!r.ok) throw new Error('Failed to archive')
       setTrends((prev) => prev.filter((t) => t.id !== trendId))
     } catch {
-      setError('Failed to archive trend. Please try again.')
+      setError(t('archiveError'))
     } finally {
       setArchivingId(null)
     }
@@ -362,9 +363,9 @@ export default function TrendsPage() {
     try {
       const r = await apiFetch(`/workspaces/${workspaceId}/trends/${trendId}/quick/react`, { method: 'POST' })
       if (!r.ok) throw new Error('failed')
-      setQuickReactMessage('Scheduled in 15 min!')
+      setQuickReactMessage(t('quickReactSuccess'))
     } catch {
-      setQuickReactMessage('Quick React failed. Try again.')
+      setQuickReactMessage(t('quickReactError'))
     } finally {
       setQuickReactingId(null)
     }

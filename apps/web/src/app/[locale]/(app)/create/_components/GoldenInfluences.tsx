@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import type { ApiFetch } from '@/lib/api'
 
 interface Influence {
@@ -24,6 +25,7 @@ export function GoldenInfluences({
   scriptId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('create')
   const [items, setItems] = useState<Influence[] | null>(null)
 
   useEffect(() => {
@@ -46,17 +48,16 @@ export function GoldenInfluences({
   return (
     <div className="border rounded p-4 flex flex-col gap-2">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-        Learned from these top examples
+        {t('goldenInfluencesTitle')}
       </p>
       <p className="text-xs text-gray-400">
-        The feedback loop weights these high-performing brand examples into idea & script
-        generation for content like this.
+        {t('goldenInfluencesDesc')}
       </p>
       <ul className="flex flex-col gap-2">
         {items.map((it) => (
           <li key={it.id} className="text-sm">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-medium truncate">{it.title || '(untitled example)'}</span>
+              <span className="font-medium truncate">{it.title || t('goldenInfluencesUntitled')}</span>
               <span className="text-xs text-indigo-600 shrink-0">{Math.round(it.similarity * 100)}% match</span>
             </div>
             {it.snippet && <p className="text-xs text-gray-500">{it.snippet}</p>}

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch, API_BASE } from '@/lib/api'
 import { Button, Card, Badge, Spinner, Input, Select, EmptyState, ErrorBanner } from '@/components/ui'
+import { useTranslations } from 'next-intl'
 
 type MemberRole = 'OWNER' | 'ADMIN' | 'EDITOR' | 'APPROVER' | 'VIEWER'
 
@@ -27,6 +28,8 @@ interface Invitation {
 const ROLES: Exclude<MemberRole, 'OWNER'>[] = ['ADMIN', 'EDITOR', 'APPROVER', 'VIEWER']
 
 export default function MembersPage() {
+  const t = useTranslations('settings')
+  const tCommon = useTranslations('common')
   const apiFetch = useApiFetch()
   const searchParams = useSearchParams()
 
@@ -54,7 +57,7 @@ export default function MembersPage() {
         setInvitations(Array.isArray(inv) ? inv : [])
         setError(null)
       })
-      .catch(() => setError('Failed to load members'))
+      .catch(() => setError(t('membersLoadError')))
       .finally(() => setLoading(false))
   }
 
@@ -72,18 +75,18 @@ export default function MembersPage() {
     })
     if (!res.ok) {
       const body = await res.json().catch(() => ({})) as { error?: string }
-      setError(body.error ?? 'Failed to update role')
+      setError(body.error ?? t('roleUpdateError'))
       return
     }
     setMembers(prev => prev.map(m => m.userId === userId ? { ...m, role } : m))
   }
 
   async function removeMember(userId: string) {
-    if (!workspaceId || !confirm('Remove this member?')) return
+    if (!workspaceId || !confirm(t('removeMemberConfirm'))) return
     const res = await apiFetch(`/workspaces/${workspaceId}/members/${userId}`, { method: 'DELETE' })
     if (!res.ok) {
       const body = await res.json().catch(() => ({})) as { error?: string }
-      setError(body.error ?? 'Failed to remove member')
+      setError(body.error ?? t('memberRemoveError'))
       return
     }
     setMembers(prev => prev.filter(m => m.userId !== userId))
@@ -101,7 +104,7 @@ export default function MembersPage() {
     })
     const body = await res.json().catch(() => ({})) as { token?: string; error?: string }
     if (!res.ok) {
-      setError(body.error ?? 'Failed to send invitation')
+      setError(body.error ?? t('inviteSendError'))
     } else {
       const acceptUrl = `${API_BASE}/workspaces/invitations/${body.token}/accept`
       setInviteResult(`Invite token: ${body.token} | Accept URL: ${acceptUrl}`)
@@ -114,21 +117,21 @@ export default function MembersPage() {
   async function cancelInvitation(invId: string) {
     if (!workspaceId) return
     const res = await apiFetch(`/workspaces/${workspaceId}/invitations/${invId}`, { method: 'DELETE' })
-    if (!res.ok) { setError('Failed to cancel invitation'); return }
+    if (!res.ok) { setError(t('inviteCancelError')); return }
     setInvitations(prev => prev.filter(i => i.id !== invId))
   }
 
   if (workspaceError === 'no-workspaces') {
     return (
       <div className="p-6">
-        <EmptyState title="Create a workspace first." icon="🏢" />
+        <EmptyState title={t('noWorkspace')} icon="🏢" />
       </div>
     )
   }
   if (workspaceError === 'fetch-failed') {
     return (
       <div className="p-6">
-        <ErrorBanner message="Failed to load workspace. Please refresh." />
+        <ErrorBanner message={t('workspaceFailed')} />
       </div>
     )
   }
@@ -136,7 +139,7 @@ export default function MembersPage() {
     return (
       <div className="p-6 flex items-center gap-3 text-gray-400 text-sm">
         <Spinner />
-        <span>Loading…</span>
+        <span>{tCommon('loading')}</span>
       </div>
     )
   }
@@ -145,23 +148,23 @@ export default function MembersPage() {
 
   return (
     <div className="max-w-2xl space-y-8">
-      <h1 className="text-2xl font-semibold text-gray-900">Members</h1>
+      <h1 className="text-2xl font-semibold text-gray-900">{t('membersTitle')}</h1>
 
       {error && <ErrorBanner message={error} />}
 
       {/* Member list */}
       <Card padding={false}>
         <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">Team Members</h2>
+          <h2 className="text-sm font-semibold text-gray-700">{t('teamMembers')}</h2>
         </div>
         {loading ? (
           <div className="flex items-center gap-3 text-gray-500 text-sm px-5 py-6">
             <Spinner />
-            <span>Loading…</span>
+            <span>{tCommon('loading')}</span>
           </div>
         ) : members.length === 0 ? (
           <div className="px-5 py-6">
-            <p className="text-sm text-gray-400">No members yet.</p>
+            <p className="text-sm text-gray-400">{t('noMembers')}</p>
           </div>
         ) : (
           <ul className="divide-y divide-gray-100">
@@ -188,7 +191,7 @@ export default function MembersPage() {
                         size="sm"
                         onClick={() => removeMember(member.userId)}
                       >
-                        Remove
+                        {t('remove')}
                       </Button>
                     </>
                   )}
@@ -201,7 +204,7 @@ export default function MembersPage() {
 
       {/* Invite form */}
       <Card>
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">Invite Member</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-4">{t('inviteMember')}</h2>
         <form onSubmit={sendInvite} className="flex flex-col gap-3">
           <div className="flex gap-2">
             <Input
@@ -224,7 +227,7 @@ export default function MembersPage() {
               disabled={inviting}
               loading={inviting}
             >
-              Invite
+              {t('invite')}
             </Button>
           </div>
           {inviteResult && (
@@ -237,7 +240,7 @@ export default function MembersPage() {
       {pendingInvitations.length > 0 && (
         <Card padding={false}>
           <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-700">Pending Invitations</h2>
+            <h2 className="text-sm font-semibold text-gray-700">{t('pendingInvitations')}</h2>
           </div>
           <ul className="divide-y divide-gray-100">
             {pendingInvitations.map(inv => (
@@ -246,7 +249,7 @@ export default function MembersPage() {
                   <p className="text-sm font-medium text-gray-900 truncate">{inv.email}</p>
                   <p className="text-xs text-gray-400">
                     <Badge color="default" className="mr-1">{inv.role}</Badge>
-                    expires {new Date(inv.expiresAt).toLocaleDateString()}
+                    {t('expires')} {new Date(inv.expiresAt).toLocaleDateString()}
                   </p>
                 </div>
                 <Button
@@ -254,7 +257,7 @@ export default function MembersPage() {
                   size="sm"
                   onClick={() => cancelInvitation(inv.id)}
                 >
-                  Cancel
+                  {tCommon('cancel')}
                 </Button>
               </li>
             ))}

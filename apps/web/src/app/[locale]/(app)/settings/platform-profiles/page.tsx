@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch } from '@/lib/api'
 import { Button, Card, Input, Select, Spinner, ErrorBanner } from '@/components/ui/index'
+import { useTranslations } from 'next-intl'
 
 interface Profile {
   platform: string
@@ -28,21 +29,23 @@ const PLATFORM_LABEL: Record<string, string> = {
   telegram: 'Telegram',
 }
 
-const NUM_FIELDS: { key: keyof Profile; label: string; step?: number }[] = [
-  { key: 'targetDurationMinSec', label: 'Duration min (s)' },
-  { key: 'targetDurationIdealSec', label: 'Duration ideal (s)' },
-  { key: 'targetDurationMaxSec', label: 'Duration max (s)' },
-  { key: 'hookWindowSec', label: 'Hook window (s)' },
-  { key: 'hashtagCount', label: 'Hashtag count' },
-  { key: 'captionMaxLen', label: 'Caption max length' },
-  { key: 'formatAvatar', label: 'Format: avatar', step: 0.1 },
-  { key: 'formatBroll', label: 'Format: b-roll', step: 0.1 },
-  { key: 'formatScreencast', label: 'Format: screencast', step: 0.1 },
-]
-
 export default function PlatformProfilesPage() {
+  const t = useTranslations('settings')
+  const tCommon = useTranslations('common')
   const { activeId: workspaceId } = useWorkspace()
   const apiFetch = useApiFetch()
+
+  const NUM_FIELDS: { key: keyof Profile; label: string; step?: number }[] = [
+    { key: 'targetDurationMinSec', label: t('durationMin') },
+    { key: 'targetDurationIdealSec', label: t('durationIdeal') },
+    { key: 'targetDurationMaxSec', label: t('durationMax') },
+    { key: 'hookWindowSec', label: t('hookWindow') },
+    { key: 'hashtagCount', label: t('hashtagCount') },
+    { key: 'captionMaxLen', label: t('captionMaxLen') },
+    { key: 'formatAvatar', label: t('formatAvatar'), step: 0.1 },
+    { key: 'formatBroll', label: t('formatBroll'), step: 0.1 },
+    { key: 'formatScreencast', label: t('formatScreencast'), step: 0.1 },
+  ]
 
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
@@ -129,15 +132,13 @@ export default function PlatformProfilesPage() {
     }
   }
 
-  if (loading) return <div className="flex items-center gap-2 text-sm text-gray-500"><Spinner /> Loading…</div>
+  if (loading) return <div className="flex items-center gap-2 text-sm text-gray-500"><Spinner /> {tCommon('loading')}</div>
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-semibold mb-2">Platform Profiles</h1>
+      <h1 className="text-2xl font-semibold mb-2">{t('platformProfilesTitle')}</h1>
       <p className="text-sm text-gray-500 mb-6">
-        Per-platform generation settings (video length, caption style, hook window, format mix).
-        Defaults come from platform research; overrides here are used by idea, script and video
-        generation for this workspace.
+        {t('platformProfilesDesc')}
       </p>
 
       {error && <div className="mb-4"><ErrorBanner message={error} /></div>}
@@ -149,10 +150,10 @@ export default function PlatformProfilesPage() {
               <h2 className="text-lg font-medium">
                 {PLATFORM_LABEL[p.platform] ?? p.platform}
                 {p.customized
-                  ? <span className="ml-2 text-xs rounded bg-indigo-100 text-indigo-700 px-2 py-0.5">customized</span>
-                  : <span className="ml-2 text-xs rounded bg-gray-100 text-gray-500 px-2 py-0.5">default</span>}
+                  ? <span className="ml-2 text-xs rounded bg-indigo-100 text-indigo-700 px-2 py-0.5">{t('customized')}</span>
+                  : <span className="ml-2 text-xs rounded bg-gray-100 text-gray-500 px-2 py-0.5">{t('default')}</span>}
               </h2>
-              {savedPlatform === p.platform && <span className="text-xs text-green-600">Saved ✓</span>}
+              {savedPlatform === p.platform && <span className="text-xs text-green-600">{t('savedMark')}</span>}
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -168,7 +169,7 @@ export default function PlatformProfilesPage() {
                 </label>
               ))}
               <label className="text-xs text-gray-600 flex flex-col gap-1">
-                Caption style
+                {t('captionStyle')}
                 <Select
                   value={p.captionStyle}
                   onChange={(e) => update(p.platform, { captionStyle: e.target.value as Profile['captionStyle'] })}
@@ -178,7 +179,7 @@ export default function PlatformProfilesPage() {
                 </Select>
               </label>
               <label className="text-xs text-gray-600 flex flex-col gap-1">
-                Native sound
+                {t('nativeSound')}
                 <Select
                   value={p.nativeSoundImportance}
                   onChange={(e) => update(p.platform, { nativeSoundImportance: e.target.value as Profile['nativeSoundImportance'] })}
@@ -190,16 +191,16 @@ export default function PlatformProfilesPage() {
             </div>
 
             <p className={`mt-2 text-xs ${Math.abs(formatSum(p) - 1) > 0.011 ? 'text-red-500' : 'text-gray-400'}`}>
-              Format mix sum: {formatSum(p)} (must be 1.0)
+              {t('formatMixSum')}: {formatSum(p)} ({t('formatMixMustBe')})
             </p>
 
             <div className="mt-4 flex items-center gap-2">
               <Button onClick={() => save(p)} disabled={savingPlatform === p.platform}>
-                {savingPlatform === p.platform && <Spinner />} Save
+                {savingPlatform === p.platform && <Spinner />} {tCommon('save')}
               </Button>
               {p.customized && (
                 <Button variant="secondary" onClick={() => reset(p.platform)} disabled={savingPlatform === p.platform}>
-                  Reset to default
+                  {t('resetToDefault')}
                 </Button>
               )}
             </div>

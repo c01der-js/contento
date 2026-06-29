@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch } from '@/lib/api'
 import { Button, Card, Badge, Spinner, EmptyState, ErrorBanner, Input } from '@/components/ui'
+import { useTranslations } from 'next-intl'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -24,12 +25,6 @@ interface Task {
   updatedAt: string
 }
 
-const STATUS_LABELS: Record<TaskStatus, string> = {
-  TODO: 'To Do',
-  IN_PROGRESS: 'In Progress',
-  DONE: 'Done',
-}
-
 const STATUS_BADGE_COLOR: Record<TaskStatus, 'default' | 'blue' | 'green'> = {
   TODO: 'default',
   IN_PROGRESS: 'blue',
@@ -39,19 +34,21 @@ const STATUS_BADGE_COLOR: Record<TaskStatus, 'default' | 'blue' | 'green'> = {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function TasksPage() {
+  const t = useTranslations('settings')
+  const tCommon = useTranslations('common')
   const apiFetch = useApiFetch()
 
   const { activeId: workspaceId, status } = useWorkspace()
   const workspaceError = status === 'no-workspaces' ? 'no-workspaces' : status === 'fetch-failed' ? 'fetch-failed' : null
 
   if (workspaceError === 'no-workspaces') {
-    return <EmptyState title="No workspace found" description="Create a workspace first." />
+    return <EmptyState title={t('noWorkspace')} description={t('noWorkspaceDesc')} />
   }
   if (workspaceError === 'fetch-failed') {
-    return <div className="p-6"><ErrorBanner message="Failed to load workspace. Please refresh." /></div>
+    return <div className="p-6"><ErrorBanner message={t('workspaceFailed')} /></div>
   }
   if (!workspaceId) {
-    return <div className="p-6 flex items-center gap-2 text-gray-400 text-sm"><Spinner /><span>Loading…</span></div>
+    return <div className="p-6 flex items-center gap-2 text-gray-400 text-sm"><Spinner /><span>{tCommon('loading')}</span></div>
   }
 
   return <TasksContent workspaceId={workspaceId} apiFetch={apiFetch} />
@@ -68,6 +65,15 @@ function TasksContent({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('settings')
+  const tCommon = useTranslations('common')
+
+  const STATUS_LABELS: Record<TaskStatus, string> = {
+    TODO: t('statusTodo'),
+    IN_PROGRESS: t('statusInProgress'),
+    DONE: t('statusDone'),
+  }
+
   const [tasks, setTasks] = useState<Task[]>([])
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL')
   const [isLoading, setIsLoading] = useState(true)
@@ -93,7 +99,7 @@ function TasksContent({
       const data: Task[] = await r.json()
       setTasks(Array.isArray(data) ? data : [])
     } catch {
-      setError('Failed to load tasks.')
+      setError(t('tasksLoadError'))
     } finally {
       setIsLoading(false)
     }
@@ -113,7 +119,7 @@ function TasksContent({
       if (!r.ok) throw new Error('Failed to update')
       setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: 'DONE' as TaskStatus } : t))
     } catch {
-      setError('Failed to mark task as done.')
+      setError(t('markDoneError'))
     }
   }
 
@@ -138,7 +144,7 @@ function TasksContent({
       setNewAssigneeId('')
       setNewDueDate('')
     } catch {
-      setCreateError('Failed to create task.')
+      setCreateError(t('taskCreateError'))
     } finally {
       setIsCreating(false)
     }
@@ -150,28 +156,28 @@ function TasksContent({
       if (!r.ok) throw new Error('Failed to delete')
       setTasks((prev) => prev.filter((t) => t.id !== taskId))
     } catch {
-      setError('Failed to delete task.')
+      setError(t('taskDeleteError'))
     }
   }
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-semibold mb-6">My Tasks</h1>
+      <h1 className="text-2xl font-semibold mb-6">{t('myTasks')}</h1>
 
       {/* Quick-add form */}
       <Card className="mb-6">
-        <h2 className="text-sm font-medium text-gray-700 mb-3">Add Task</h2>
+        <h2 className="text-sm font-medium text-gray-700 mb-3">{t('addTask')}</h2>
         {createError && <div className="mb-3"><ErrorBanner message={createError} /></div>}
         <form onSubmit={handleCreate} className="flex flex-col gap-2">
           <Input
-            placeholder="Task title *"
+            placeholder={t('taskTitlePlaceholder') + ' *'}
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             required
           />
           <div className="flex gap-2">
             <Input
-              placeholder="Assignee ID (optional)"
+              placeholder={t('assigneePlaceholder')}
               value={newAssigneeId}
               onChange={(e) => setNewAssigneeId(e.target.value)}
               className="flex-1"
@@ -183,7 +189,7 @@ function TasksContent({
               className="h-9 rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
             />
             <Button type="submit" loading={isCreating} disabled={!newTitle.trim()} className="shrink-0">
-              Add
+              {t('add')}
             </Button>
           </div>
         </form>
@@ -201,7 +207,7 @@ function TasksContent({
                 : 'text-gray-600 border-gray-300 hover:border-gray-400'
             }`}
           >
-            {s === 'ALL' ? 'All' : STATUS_LABELS[s]}
+            {s === 'ALL' ? t('filterAll') : STATUS_LABELS[s]}
           </button>
         ))}
       </div>
@@ -209,9 +215,9 @@ function TasksContent({
       {error && <div className="mb-3"><ErrorBanner message={error} /></div>}
 
       {isLoading ? (
-        <div className="flex items-center gap-2 text-gray-400 text-sm"><Spinner /><span>Loading tasks…</span></div>
+        <div className="flex items-center gap-2 text-gray-400 text-sm"><Spinner /><span>{t('loadingTasks')}</span></div>
       ) : tasks.length === 0 ? (
-        <EmptyState title="No tasks found" description="Add your first task above." icon="✓" />
+        <EmptyState title={t('noTasks')} description={t('noTasksDesc')} icon="✓" />
       ) : (
         <div className="flex flex-col gap-2">
           {tasks.map((task) => (
@@ -231,18 +237,18 @@ function TasksContent({
                   )}
                   {task.dueDate && (
                     <p className="text-xs text-gray-400 mt-0.5">
-                      Due: {new Date(task.dueDate).toLocaleDateString()}
+                      {t('dueDate')}: {new Date(task.dueDate).toLocaleDateString()}
                     </p>
                   )}
                 </div>
                 <div className="flex gap-2 shrink-0">
                   {task.status !== 'DONE' && (
                     <Button size="sm" variant="secondary" onClick={() => handleMarkDone(task.id)}>
-                      Done
+                      {t('markDone')}
                     </Button>
                   )}
                   <Button size="sm" variant="danger" onClick={() => handleDelete(task.id)}>
-                    Delete
+                    {tCommon('delete')}
                   </Button>
                 </div>
               </div>

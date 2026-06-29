@@ -5,9 +5,9 @@ import { useSearchParams } from 'next/navigation'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch, API_BASE } from '@/lib/api'
 import { Button, Card, Badge, Spinner, EmptyState, ErrorBanner, Input } from '@/components/ui'
+import { useTranslations } from 'next-intl'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-
 
 interface SocialAccount {
   id: string
@@ -29,19 +29,21 @@ const PLATFORM_LABELS: Record<OAuthPlatform, string> = {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function AccountsPage() {
+  const t = useTranslations('settings')
+  const tCommon = useTranslations('common')
   const apiFetch = useApiFetch()
 
   const { activeId: workspaceId, status } = useWorkspace()
   const workspaceError = status === 'no-workspaces' ? 'no-workspaces' : status === 'fetch-failed' ? 'fetch-failed' : null
 
   if (workspaceError === 'no-workspaces') {
-    return <EmptyState title="No workspace found" description="Create a workspace first." />
+    return <EmptyState title={t('noWorkspace')} description={t('noWorkspaceDesc')} />
   }
   if (workspaceError === 'fetch-failed') {
-    return <div className="p-6"><ErrorBanner message="Failed to load workspace. Please refresh." /></div>
+    return <div className="p-6"><ErrorBanner message={t('workspaceFailed')} /></div>
   }
   if (!workspaceId) {
-    return <div className="p-6 flex items-center gap-2 text-gray-400 text-sm"><Spinner /><span>Loading…</span></div>
+    return <div className="p-6 flex items-center gap-2 text-gray-400 text-sm"><Spinner /><span>{tCommon('loading')}</span></div>
   }
 
   return <AccountsContent workspaceId={workspaceId} apiFetch={apiFetch} apiBase={API_BASE} />
@@ -60,6 +62,8 @@ function AccountsContent({
   apiFetch: ApiFetch
   apiBase: string
 }) {
+  const t = useTranslations('settings')
+  const tCommon = useTranslations('common')
   const searchParams = useSearchParams()
   const connectedPlatform = searchParams.get('connected')
   const oauthError = searchParams.get('error')
@@ -74,7 +78,7 @@ function AccountsContent({
     apiFetch(base)
       .then((r) => r.json())
       .then((data: SocialAccount[]) => setAccounts(Array.isArray(data) ? data : []))
-      .catch(() => setError('Failed to load accounts'))
+      .catch(() => setError(t('loadAccountsError')))
       .finally(() => setIsLoading(false))
   }
 
@@ -89,7 +93,7 @@ function AccountsContent({
       if (!r.ok) throw new Error('Delete failed')
       setAccounts((prev) => prev.filter((a) => a.id !== accountId))
     } catch {
-      setError('Failed to delete account')
+      setError(t('deleteAccountError'))
     }
   }
 
@@ -99,20 +103,20 @@ function AccountsContent({
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-semibold mb-6">Connected Accounts</h1>
+      <h1 className="text-2xl font-semibold mb-6">{t('accountsTitle')}</h1>
 
       {connectedPlatform && (
         <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          Successfully connected {PLATFORM_LABELS[connectedPlatform as OAuthPlatform] ?? connectedPlatform}.
+          {t('successConnected', { platform: PLATFORM_LABELS[connectedPlatform as OAuthPlatform] ?? connectedPlatform })}
         </div>
       )}
-      {oauthError && <div className="mb-4"><ErrorBanner message={`OAuth error: ${oauthError}`} /></div>}
-      {isLoading && <div className="flex items-center gap-2 text-gray-400 text-sm mb-4"><Spinner /><span>Loading…</span></div>}
+      {oauthError && <div className="mb-4"><ErrorBanner message={`${t('oauthError')}: ${oauthError}`} /></div>}
+      {isLoading && <div className="flex items-center gap-2 text-gray-400 text-sm mb-4"><Spinner /><span>{tCommon('loading')}</span></div>}
       {error && <div className="mb-3"><ErrorBanner message={error} /></div>}
 
       {/* OAuth platforms with Connect / Disconnect */}
       <section className="mb-8">
-        <h2 className="text-base font-medium mb-3 text-gray-700">Social Platforms</h2>
+        <h2 className="text-base font-medium mb-3 text-gray-700">{t('socialPlatforms')}</h2>
         <div className="flex flex-col gap-3">
           {OAUTH_PLATFORMS.map((platform) => {
             const connected = getConnectedAccount(platform)
@@ -123,19 +127,19 @@ function AccountsContent({
                     <Badge color="default">{platform.toUpperCase()}</Badge>
                     <span className="text-sm text-gray-800">{PLATFORM_LABELS[platform]}</span>
                     {connected && (
-                      <Badge color="green">Connected: {connected.name}</Badge>
+                      <Badge color="green">{t('connected')}: {connected.name}</Badge>
                     )}
                   </div>
                   {connected ? (
                     <Button variant="danger" size="sm" onClick={() => handleDelete(connected.id)}>
-                      Disconnect
+                      {t('disconnect')}
                     </Button>
                   ) : (
                     <a
                       href={`${apiBase}/oauth/${platform}/authorize?workspaceId=${encodeURIComponent(workspaceId)}`}
                       className="inline-flex items-center justify-center text-xs px-2.5 py-1.5 h-7 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
                     >
-                      Connect
+                      {t('connect')}
                     </a>
                   )}
                 </div>
@@ -147,7 +151,7 @@ function AccountsContent({
 
       {/* Telegram — manual bot token entry */}
       <section className="mb-6">
-        <h2 className="text-base font-medium mb-3 text-gray-700">Telegram</h2>
+        <h2 className="text-base font-medium mb-3 text-gray-700">{t('telegramLabel')}</h2>
         <TelegramForm
           connected={getConnectedAccount('telegram')}
           onDelete={handleDelete}
@@ -160,7 +164,7 @@ function AccountsContent({
       {/* Legacy manual-token accounts (VK, Instagram direct) */}
       {!isLoading && accounts.filter((a) => !['meta', 'tiktok', 'youtube', 'x', 'linkedin', 'telegram'].includes(a.platform)).length > 0 && (
         <section>
-          <h2 className="text-base font-medium mb-3 text-gray-700">Other Accounts</h2>
+          <h2 className="text-base font-medium mb-3 text-gray-700">{t('otherAccounts')}</h2>
           <div className="flex flex-col gap-3">
             {accounts
               .filter((a) => !['meta', 'tiktok', 'youtube', 'x', 'linkedin', 'telegram'].includes(a.platform))
@@ -172,7 +176,7 @@ function AccountsContent({
                       <span className="text-sm text-gray-800">{account.name}</span>
                     </div>
                     <Button variant="danger" size="sm" onClick={() => handleDelete(account.id)}>
-                      Disconnect
+                      {t('disconnect')}
                     </Button>
                   </div>
                 </Card>
@@ -199,6 +203,7 @@ function TelegramForm({
   base: string
   onSuccess: () => void
 }) {
+  const t = useTranslations('settings')
   const [botToken, setBotToken] = useState('')
   const [channelId, setChannelId] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -211,10 +216,10 @@ function TelegramForm({
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <Badge color="default">TELEGRAM</Badge>
-            <Badge color="green">Connected: {connected.name}</Badge>
+            <Badge color="green">{t('connected')}: {connected.name}</Badge>
           </div>
           <Button variant="danger" size="sm" onClick={() => onDelete(connected.id)}>
-            Disconnect
+            {t('disconnect')}
           </Button>
         </div>
       </Card>
@@ -241,7 +246,7 @@ function TelegramForm({
       setDisplayName('')
       onSuccess()
     } catch {
-      setConnectError('Failed to connect Telegram account.')
+      setConnectError(t('telegramConnectError'))
     } finally {
       setConnecting(false)
     }
@@ -252,7 +257,7 @@ function TelegramForm({
       {connectError && <div className="mb-3"><ErrorBanner message={connectError} /></div>}
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500">Bot Token *</label>
+          <label className="text-xs text-gray-500">{t('botToken')} *</label>
           <Input
             value={botToken}
             onChange={(e) => setBotToken(e.target.value)}
@@ -261,7 +266,7 @@ function TelegramForm({
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500">Channel ID *</label>
+          <label className="text-xs text-gray-500">{t('channelId')} *</label>
           <Input
             value={channelId}
             onChange={(e) => setChannelId(e.target.value)}
@@ -270,7 +275,7 @@ function TelegramForm({
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500">Display Name *</label>
+          <label className="text-xs text-gray-500">{t('displayName')} *</label>
           <Input
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
@@ -280,7 +285,7 @@ function TelegramForm({
         </div>
         <div>
           <Button type="submit" loading={connecting}>
-            Connect
+            {t('connect')}
           </Button>
         </div>
       </form>

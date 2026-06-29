@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch, API_BASE } from '@/lib/api'
 import { QaBadge } from '@/components/qa/QaBadge'
+import { useTranslations } from 'next-intl'
 
 interface ContentPlanItem {
   id: string
@@ -38,6 +39,8 @@ export default function ReviewCampaignPage() {
   const { activeId: workspaceId } = useWorkspace()
   const params = useParams()
   const campaignId = params.id as string
+  const t = useTranslations('review')
+  const tCommon = useTranslations('common')
 
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [videoJobs, setVideoJobs] = useState<Record<string, VideoJob>>({})
@@ -65,9 +68,9 @@ export default function ReviewCampaignPage() {
         if (vRes.ok) jobs[item.videoJobId] = await vRes.json() as VideoJob
       }))
       setVideoJobs(jobs)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Error') }
+    } catch (e) { setError(e instanceof Error ? e.message : tCommon('error')) }
     finally { setLoading(false) }
-  }, [workspaceId, campaignId, apiFetch])
+  }, [workspaceId, campaignId, apiFetch, tCommon])
 
   useEffect(() => { void fetchCampaign() }, [fetchCampaign])
 
@@ -80,7 +83,7 @@ export default function ReviewCampaignPage() {
       })
       if (!res.ok) throw new Error(await res.text())
       await fetchCampaign()
-    } catch (e) { setError(e instanceof Error ? e.message : 'Error') }
+    } catch (e) { setError(e instanceof Error ? e.message : tCommon('error')) }
     finally { setActionLoading(null) }
   }
 
@@ -95,12 +98,12 @@ export default function ReviewCampaignPage() {
       if (!res.ok) throw new Error(await res.text())
       setRejectOpen(null)
       await fetchCampaign()
-    } catch (e) { setError(e instanceof Error ? e.message : 'Error') }
+    } catch (e) { setError(e instanceof Error ? e.message : tCommon('error')) }
     finally { setActionLoading(null) }
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">Loading...</div>
-  if (!campaign) return <div className="p-6 text-gray-500">Campaign not found</div>
+  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">{tCommon('loading')}</div>
+  if (!campaign) return <div className="p-6 text-gray-500">{t('campaignNotFound')}</div>
 
   const reviewItems = campaign.contentPlan?.items.filter(i => i.status === 'CLIENT_REVIEW') ?? []
   const otherItems = campaign.contentPlan?.items.filter(i => i.status !== 'CLIENT_REVIEW') ?? []
@@ -109,21 +112,21 @@ export default function ReviewCampaignPage() {
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">{campaign.name}</h1>
-        <p className="text-sm text-gray-500 mt-1">Review and approve videos before publishing</p>
+        <p className="text-sm text-gray-500 mt-1">{t('reviewSubtitle')}</p>
       </div>
 
       {error && <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
       {reviewItems.length === 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
-          <p className="text-gray-500">No videos awaiting your review.</p>
-          <p className="text-xs text-gray-400 mt-2">Check back when new videos are ready.</p>
+          <p className="text-gray-500">{t('noVideosAwaiting')}</p>
+          <p className="text-xs text-gray-400 mt-2">{t('checkBackLater')}</p>
         </div>
       )}
 
       {reviewItems.length > 0 && (
         <div className="space-y-4">
-          <h2 className="font-medium text-gray-900">Awaiting your approval ({reviewItems.length})</h2>
+          <h2 className="font-medium text-gray-900">{t('awaitingApproval')} ({reviewItems.length})</h2>
           {reviewItems.map(item => {
             const videoJob = item.videoJobId ? videoJobs[item.videoJobId] : null
             const isActing = actionLoading === item.id
@@ -138,7 +141,7 @@ export default function ReviewCampaignPage() {
                     <p className="text-xs text-gray-400 mt-1">{new Date(item.scheduledDate).toLocaleDateString()}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded-full">Needs review</span>
+                    <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded-full">{t('needsReview')}</span>
                     <QaBadge status={item.qaStatus} findings={item.qaFindings} />
                   </div>
                 </div>
@@ -152,7 +155,7 @@ export default function ReviewCampaignPage() {
                   />
                 ) : (
                   <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <p className="text-sm text-gray-400">Video loading...</p>
+                    <p className="text-sm text-gray-400">{t('videoLoading')}</p>
                   </div>
                 )}
 
@@ -163,15 +166,15 @@ export default function ReviewCampaignPage() {
                       disabled={isActing}
                       className="flex-1 py-2 px-4 text-sm border-2 border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50"
                     >
-                      Reject
+                      {tCommon('reject')}
                     </button>
                     <button
                       onClick={() => { void handleApprove(item.id) }}
                       disabled={isActing || item.qaStatus === 'BLOCK'}
-                      title={item.qaStatus === 'BLOCK' ? 'QA заблокировал этот ролик — отклоните или перегенерируйте' : undefined}
+                      title={item.qaStatus === 'BLOCK' ? t('qaBlockTooltip') : undefined}
                       className="flex-1 py-2 px-4 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                     >
-                      {isActing ? 'Processing...' : 'Approve & Schedule'}
+                      {isActing ? t('processing') : t('approveSchedule')}
                     </button>
                   </div>
                 ) : (
@@ -179,7 +182,7 @@ export default function ReviewCampaignPage() {
                     <textarea
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-400 outline-none"
                       rows={2}
-                      placeholder="What needs to be changed?"
+                      placeholder={t('whatToChange')}
                       value={rejectComment[item.id] ?? ''}
                       onChange={e => setRejectComment(r => ({ ...r, [item.id]: e.target.value }))}
                     />
@@ -188,14 +191,14 @@ export default function ReviewCampaignPage() {
                         onClick={() => setRejectOpen(null)}
                         className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
                       >
-                        Cancel
+                        {tCommon('cancel')}
                       </button>
                       <button
                         onClick={() => { void handleReject(item.id) }}
                         disabled={isActing || !rejectComment[item.id]}
                         className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
                       >
-                        {isActing ? 'Sending...' : 'Send rejection'}
+                        {isActing ? t('sending') : t('sendRejection')}
                       </button>
                     </div>
                   </div>
@@ -208,7 +211,7 @@ export default function ReviewCampaignPage() {
 
       {otherItems.length > 0 && (
         <div className="space-y-2">
-          <h2 className="font-medium text-gray-700 text-sm">Other videos</h2>
+          <h2 className="font-medium text-gray-700 text-sm">{t('otherVideos')}</h2>
           {otherItems.map(item => (
             <div key={item.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
               <span className="text-sm text-gray-700">{item.topic}</span>

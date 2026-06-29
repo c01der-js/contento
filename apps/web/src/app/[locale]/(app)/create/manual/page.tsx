@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { useApiFetch } from '@/lib/api'
 import { useWorkspace } from '@/lib/workspace'
 import { Link, useRouter } from '@/i18n/navigation'
+import { useTranslations } from 'next-intl'
 import { Button, Spinner, EmptyState, ErrorBanner, Input } from '@/components/ui'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ function HashtagInput({
   value: string[]
   onChange: (tags: string[]) => void
 }) {
+  const t = useTranslations('create')
   const [inputVal, setInputVal] = useState('')
 
   function commit() {
@@ -93,7 +95,7 @@ function HashtagInput({
         onChange={(e) => setInputVal(e.target.value)}
         onKeyDown={handleKey}
         onBlur={commit}
-        placeholder={value.length === 0 ? 'e.g. marketing, growth' : ''}
+        placeholder={value.length === 0 ? t('hashtagsPlaceholder') : ''}
         className="flex-1 min-w-[120px] text-sm outline-none bg-transparent"
       />
     </div>
@@ -103,6 +105,8 @@ function HashtagInput({
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function ManualPage() {
+  const t = useTranslations('create')
+  const tCommon = useTranslations('common')
   const apiFetch = useApiFetch()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -241,13 +245,13 @@ export default function ManualPage() {
   // ── early returns ────────────────────────────────────────────────────────────
 
   if (workspaceError === 'no-workspaces') {
-    return <EmptyState title="No workspace found" description="Create a workspace first." />
+    return <EmptyState title={t('noWorkspaceTitle')} description={t('noWorkspaceDesc')} />
   }
   if (workspaceError === 'fetch-failed') {
-    return <div className="p-6"><ErrorBanner message="Failed to load workspace. Please refresh." /></div>
+    return <div className="p-6"><ErrorBanner message={t('workspaceFailed')} /></div>
   }
   if (!workspaceId) {
-    return <div className="p-6 flex items-center gap-2 text-gray-400 text-sm"><Spinner /><span>Loading…</span></div>
+    return <div className="p-6 flex items-center gap-2 text-gray-400 text-sm"><Spinner /><span>{tCommon('loading')}</span></div>
   }
 
   const selectedAssets = assets.filter((a) => selectedAssetIds.includes(a.id))
@@ -264,31 +268,31 @@ export default function ManualPage() {
           href="/create"
           className="text-sm text-gray-500 hover:text-gray-700"
         >
-          ← Create Content
+          {t('backToCreate')}
         </Link>
         <span className="text-gray-300">/</span>
-        <h1 className="text-2xl font-semibold">Manual Post</h1>
+        <h1 className="text-2xl font-semibold">{t('manualTitle')}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-8">
         {/* ── Section 1: Content Editor ───────────────────────────────────── */}
         <section className="flex flex-col gap-4">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            Content
+            {t('contentSection')}
           </h2>
 
           {/* Hook */}
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">
-                Hook <span className="text-red-500">*</span>
+                {t('hookLabel')} <span className="text-red-500">*</span>
               </label>
               <CharCounter value={hook} max={150} />
             </div>
             <Input
               value={hook}
               onChange={(e) => setHook(e.target.value)}
-              placeholder="The one thing no one tells you about…"
+              placeholder={t('hookInputPlaceholder')}
               required
             />
           </div>
@@ -297,7 +301,7 @@ export default function ManualPage() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">
-                Body <span className="text-red-500">*</span>
+                {t('bodyLabel')} <span className="text-red-500">*</span>
               </label>
               <CharCounter value={body} max={2200} />
             </div>
@@ -306,7 +310,7 @@ export default function ManualPage() {
               onChange={(e) => setBody(e.target.value)}
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm resize-none placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               rows={6}
-              placeholder="Write your main content here…"
+              placeholder={t('bodyPlaceholder')}
               required
             />
           </div>
@@ -315,30 +319,30 @@ export default function ManualPage() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">
-                Call to Action <span className="text-red-500">*</span>
+                {t('callToActionLabel')} <span className="text-red-500">*</span>
               </label>
               <CharCounter value={cta} max={100} />
             </div>
             <Input
               value={cta}
               onChange={(e) => setCta(e.target.value)}
-              placeholder="e.g. Follow for more tips!"
+              placeholder={t('ctaPlaceholder')}
               required
             />
           </div>
 
           {/* Hashtags */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Hashtags</label>
+            <label className="text-sm font-medium text-gray-700">{t('hashtagsLabel')}</label>
             <HashtagInput value={hashtags} onChange={setHashtags} />
-            <p className="text-xs text-gray-400">Press Enter or comma to add. Backspace to remove last.</p>
+            <p className="text-xs text-gray-400">{t('hashtagsHint')}</p>
           </div>
         </section>
 
         {/* ── Section 2: Per-platform captions ────────────────────────────── */}
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            Platform Captions
+            {t('platformCaptionsSection')}
           </h2>
           <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
             <input
@@ -347,7 +351,7 @@ export default function ManualPage() {
               onChange={(e) => setCustomizeCaptions(e.target.checked)}
               className="rounded"
             />
-            Customize captions per platform
+            {t('customizeCaptions')}
           </label>
 
           {customizeCaptions && (
@@ -367,7 +371,7 @@ export default function ManualPage() {
                     onChange={(e) => setter(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm resize-none placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                     rows={3}
-                    placeholder={`Caption for ${label}…`}
+                    placeholder={t('captionForPlatformPlaceholder', { platform: label })}
                   />
                 </div>
               ))}
@@ -378,7 +382,7 @@ export default function ManualPage() {
         {/* ── Section 3: Media Assets ──────────────────────────────────────── */}
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            Media Assets
+            {t('mediaAssetsSection')}
           </h2>
 
           {selectedAssets.length > 0 && (
@@ -402,32 +406,32 @@ export default function ManualPage() {
           )}
 
           <Button type="button" variant="secondary" size="sm" onClick={openAssetPicker}>
-            Attach Assets
+            {t('attachAssets')}
           </Button>
 
           {/* Asset picker overlay */}
           {showAssetPicker && (
             <div className="border rounded p-4 flex flex-col gap-3 bg-white shadow-sm">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-700">Select Assets</p>
+                <p className="text-sm font-medium text-gray-700">{t('selectAssets')}</p>
                 <button
                   type="button"
                   onClick={() => setShowAssetPicker(false)}
                   className="text-xs text-gray-400 hover:text-gray-600"
                 >
-                  Close
+                  {t('close')}
                 </button>
               </div>
 
               {assetsLoading && (
                 <div className="flex items-center gap-2 text-gray-400 text-sm">
                   <Spinner />
-                  <span>Loading assets…</span>
+                  <span>{t('loadingAssets')}</span>
                 </div>
               )}
 
               {!assetsLoading && assets.length === 0 && (
-                <p className="text-sm text-gray-400">No assets found in this workspace.</p>
+                <p className="text-sm text-gray-400">{t('noAssetsInWorkspace')}</p>
               )}
 
               {!assetsLoading && assets.length > 0 && (
@@ -456,21 +460,21 @@ export default function ManualPage() {
         {/* ── Section 4: Platform Selection ───────────────────────────────── */}
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            Platforms
+            {t('platformsSection')}
           </h2>
 
           {accountsLoading && (
             <div className="flex items-center gap-2 text-gray-400 text-sm">
               <Spinner />
-              <span>Loading accounts…</span>
+              <span>{t('loadingAccounts')}</span>
             </div>
           )}
 
           {!accountsLoading && socialAccounts.length === 0 && (
             <p className="text-sm text-gray-500">
-              No accounts connected.{' '}
+              {t('noAccounts')}{' '}
               <Link href="/settings/accounts" className="text-indigo-600 hover:underline">
-                Connect one in Settings.
+                {t('connectAccounts')}
               </Link>
             </p>
           )}
@@ -499,7 +503,7 @@ export default function ManualPage() {
         {/* ── Section 5: Schedule & Options ───────────────────────────────── */}
         <section className="flex flex-col gap-4">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            Schedule
+            {t('scheduleSection')}
           </h2>
 
           <div className="flex gap-3">
@@ -515,7 +519,7 @@ export default function ManualPage() {
                     : 'text-gray-600 border-gray-300 hover:bg-gray-50',
                 ].join(' ')}
               >
-                {mode === 'draft' ? 'Save Draft' : 'Schedule'}
+                {mode === 'draft' ? t('saveDraft') : t('schedule')}
               </button>
             ))}
           </div>
@@ -523,7 +527,7 @@ export default function ManualPage() {
           {publishMode === 'schedule' && (
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">
-                Scheduled date &amp; time
+                {t('scheduledDateTime')}
               </label>
               <input
                 type="datetime-local"
@@ -541,7 +545,7 @@ export default function ManualPage() {
               onChange={(e) => setRunBrandCheck(e.target.checked)}
               className="rounded"
             />
-            Run Brand Check
+            {t('runBrandCheck')}
           </label>
         </section>
 
@@ -557,16 +561,16 @@ export default function ManualPage() {
             loading={submitting}
           >
             {submitting
-              ? 'Saving…'
+              ? t('saving')
               : publishMode === 'schedule'
-                ? 'Schedule'
-                : 'Save Draft'}
+                ? t('schedule')
+                : t('saveDraft')}
           </Button>
           <Link
             href="/create"
             className="text-sm text-gray-500 hover:text-gray-700"
           >
-            Cancel
+            {tCommon('cancel')}
           </Link>
         </div>
       </form>

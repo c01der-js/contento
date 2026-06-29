@@ -208,7 +208,7 @@ export default function LibraryPage() {
         setPublications(data.publications)
         setNextCursor(data.nextCursor)
       })
-      .catch(() => setError('Failed to load library. Please refresh.'))
+      .catch(() => setError(t('loadError')))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId, debouncedQuery, platform, from, to, minER])
@@ -225,7 +225,7 @@ export default function LibraryPage() {
       setPublications((prev) => [...prev, ...data.publications])
       setNextCursor(data.nextCursor)
     } catch {
-      setError('Failed to load more. Please try again.')
+      setError(t('loadMoreError'))
     } finally {
       setLoadingMore(false)
     }
@@ -372,7 +372,7 @@ export default function LibraryPage() {
         <div className="max-w-4xl">
           <EmptyState
             title={t('noResults')}
-            description="Try adjusting your filters or search query."
+            description={t('filterHint')}
             icon="📭"
           />
         </div>

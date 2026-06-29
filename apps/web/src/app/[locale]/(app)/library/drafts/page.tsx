@@ -81,7 +81,7 @@ export default function DraftsPage() {
         return r.json() as Promise<Script[]>
       })
       .then((data) => setScripts(Array.isArray(data) ? data : []))
-      .catch(() => setError('Failed to load drafts. Please refresh.'))
+      .catch(() => setError(t('draftsLoadError')))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId])
@@ -127,7 +127,7 @@ export default function DraftsPage() {
         <div className="max-w-2xl">
           <EmptyState
             title={t('noDrafts')}
-            description="Scripts in DRAFT or IN_REVIEW status will appear here."
+            description={t('draftsDesc')}
             icon="📝"
           />
         </div>

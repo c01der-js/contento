@@ -2,6 +2,7 @@
 
 import { getAuthToken } from '@/lib/auth'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { QaBadge } from '@/components/qa/QaBadge'
 import { API_BASE } from '@/lib/api'
 
@@ -43,18 +44,19 @@ const TERMINAL_STATUSES = new Set(['DONE', 'FAILED'])
 const POLL_INTERVAL_MS = 4000
 
 const VOICE_LANGUAGES = [
-  { code: 'ru', label: 'Русский' },
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Español' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'fr', label: 'Français' },
-  { code: 'pt', label: 'Português' },
-  { code: 'zh', label: '中文' },
-  { code: 'ja', label: '日本語' },
-  { code: 'ko', label: '한국어' },
-]
+  { code: 'ru', labelKey: 'langRu' },
+  { code: 'en', labelKey: 'langEn' },
+  { code: 'es', labelKey: 'langEs' },
+  { code: 'de', labelKey: 'langDe' },
+  { code: 'fr', labelKey: 'langFr' },
+  { code: 'pt', labelKey: 'langPt' },
+  { code: 'zh', labelKey: 'langZh' },
+  { code: 'ja', labelKey: 'langJa' },
+  { code: 'ko', labelKey: 'langKo' },
+] as const
 
 export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
+  const t = useTranslations('video')
   const [videoJob, setVideoJob] = useState<VideoJob | null>(null)
   const [isStarting, setIsStarting] = useState(false)
   const [language, setLanguage] = useState('ru')
@@ -98,8 +100,8 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
   // passing the token as a query param since <video> can't send headers.
   useEffect(() => {
     if (videoJob?.status !== 'DONE' || !videoJob.outputUrl) { setVideoSrc(null); return }
-    const t = getAuthToken()
-    setVideoSrc(`${API_BASE}/workspaces/${workspaceId}/video-jobs/${videoJob.id}/output?token=${encodeURIComponent(t ?? '')}`)
+    const tk = getAuthToken()
+    setVideoSrc(`${API_BASE}/workspaces/${workspaceId}/video-jobs/${videoJob.id}/output?token=${encodeURIComponent(tk ?? '')}`)
   }, [videoJob?.status, videoJob?.id, videoJob?.outputUrl, workspaceId])
 
   async function handleGenerate() {
@@ -130,10 +132,20 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
   const isFailed = videoJob?.status === 'FAILED'
   const isActive = videoJob && !isDone && !isFailed
 
+  const statusHint = (status: VideoJob['status']): string => {
+    switch (status) {
+      case 'PENDING': return t('hintPending')
+      case 'STORYBOARDING': return t('hintStoryboarding')
+      case 'RENDERING_SHOTS': return t('hintRenderingShots')
+      case 'STITCHING': return t('hintStitching')
+      default: return ''
+    }
+  }
+
   return (
     <div className="border rounded p-4 flex flex-col gap-3">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-        Short-Form Video
+        {t('sectionTitle')}
       </p>
 
       {/* Language select + Launch button */}
@@ -146,7 +158,7 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
             className="text-sm border rounded px-2 py-1.5 bg-white disabled:opacity-50"
           >
             {VOICE_LANGUAGES.map(l => (
-              <option key={l.code} value={l.code}>{l.label}</option>
+              <option key={l.code} value={l.code}>{t(l.labelKey)}</option>
             ))}
           </select>
           <button
@@ -155,7 +167,7 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 disabled:opacity-50"
           >
             {isStarting && <Spinner />}
-            {isStarting ? 'Starting…' : 'Generate Video'}
+            {isStarting ? t('starting') : t('generateButton')}
           </button>
         </div>
       )}
@@ -171,7 +183,7 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
             {isActive && <Spinner />}
             {!isDone && !isFailed && (
               <span className="text-xs text-gray-400">
-                {statusLabel(videoJob.status)}
+                {statusHint(videoJob.status)}
               </span>
             )}
           </div>
@@ -212,7 +224,7 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
                 rel="noopener noreferrer"
                 className="text-xs text-indigo-600 hover:underline w-fit"
               >
-                Download MP4
+                {t('downloadMp4')}
               </a>
             </div>
           )}
@@ -227,7 +239,7 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
                 className="text-sm border rounded px-2 py-1.5 bg-white disabled:opacity-50"
               >
                 {VOICE_LANGUAGES.map(l => (
-                  <option key={l.code} value={l.code}>{l.label}</option>
+                  <option key={l.code} value={l.code}>{t(l.labelKey)}</option>
                 ))}
               </select>
               <button
@@ -236,7 +248,7 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
                 className="flex items-center gap-2 px-3 py-1.5 border text-sm rounded hover:bg-gray-50 disabled:opacity-50"
               >
                 {isStarting && <Spinner />}
-                Regenerate
+                {t('regenerateButton')}
               </button>
             </div>
           )}
@@ -247,6 +259,7 @@ export function VideoJobPanel({ workspaceId, scriptId, apiFetch }: Props) {
 }
 
 function ShotChip({ shot }: { shot: VideoShot }) {
+  const t = useTranslations('video')
   const [showTooltip, setShowTooltip] = useState(false)
 
   const chipClass = {
@@ -263,7 +276,7 @@ function ShotChip({ shot }: { shot: VideoShot }) {
         onMouseEnter={() => shot.status === 'FAILED' && setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >
-        Shot {shot.index + 1}
+        {t('shot')} {shot.index + 1}
         {shot.status === 'FAILED' && ' ✗'}
         {shot.status === 'DONE' && ' ✓'}
       </span>
@@ -277,30 +290,24 @@ function ShotChip({ shot }: { shot: VideoShot }) {
 }
 
 function StatusBadge({ status }: { status: VideoJob['status'] }) {
-  const cfg: Record<VideoJob['status'], { label: string; cls: string }> = {
-    PENDING:        { label: 'Queued',           cls: 'bg-gray-100 text-gray-600' },
-    STORYBOARDING:  { label: 'Storyboarding',    cls: 'bg-purple-100 text-purple-700' },
-    RENDERING_SHOTS:{ label: 'Rendering shots',  cls: 'bg-blue-100 text-blue-700' },
-    STITCHING:      { label: 'Stitching',        cls: 'bg-yellow-100 text-yellow-700' },
-    DONE:           { label: 'Done',             cls: 'bg-green-100 text-green-700' },
-    FAILED:         { label: 'Failed',           cls: 'bg-red-100 text-red-600' },
+  const t = useTranslations('video')
+  const STATUS_CLASSES: Record<VideoJob['status'], string> = {
+    PENDING:         'bg-gray-100 text-gray-600',
+    STORYBOARDING:   'bg-purple-100 text-purple-700',
+    RENDERING_SHOTS: 'bg-blue-100 text-blue-700',
+    STITCHING:       'bg-yellow-100 text-yellow-700',
+    DONE:            'bg-green-100 text-green-700',
+    FAILED:          'bg-red-100 text-red-600',
   }
-  const { label, cls } = cfg[status]
+  const label = status === 'PENDING' ? t('statusPending')
+    : status === 'STORYBOARDING' ? t('statusStoryboarding')
+    : status === 'RENDERING_SHOTS' ? t('statusRenderingShots')
+    : status === 'STITCHING' ? t('statusStitching')
+    : status === 'DONE' ? t('statusDone')
+    : t('statusFailed')
   return (
-    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${cls}`}>{label}</span>
+    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${STATUS_CLASSES[status]}`}>{label}</span>
   )
-}
-
-function statusLabel(status: VideoJob['status']): string {
-  const labels: Record<VideoJob['status'], string> = {
-    PENDING: 'Waiting for worker…',
-    STORYBOARDING: 'Generating shot list with AI…',
-    RENDERING_SHOTS: 'Rendering clips via Higgsfield…',
-    STITCHING: 'Stitching final video…',
-    DONE: '',
-    FAILED: '',
-  }
-  return labels[status]
 }
 
 function Spinner() {

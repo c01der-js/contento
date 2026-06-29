@@ -61,6 +61,7 @@ function AssetCard({
   onDelete: (id: string) => void
   deleting: boolean
 }) {
+  const t = useTranslations('library')
   const isImage = asset.mimeType?.startsWith('image/') ?? false
   const isAudio = asset.mimeType?.startsWith('audio/') ?? false
   const isVideo = asset.mimeType?.startsWith('video/') ?? false
@@ -111,7 +112,7 @@ function AssetCard({
             disabled={deleting}
             loading={deleting}
           >
-            Delete
+            {t('delete')}
           </Button>
         </div>
       </div>
@@ -164,7 +165,7 @@ export default function AssetsPage() {
         setAssets(data.assets)
         setNextCursor(data.nextCursor)
       })
-      .catch(() => setError('Failed to load assets. Please refresh.'))
+      .catch(() => setError(t('assetsLoadError')))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId, kindFilter])
@@ -181,7 +182,7 @@ export default function AssetsPage() {
       setAssets((prev) => [...prev, ...data.assets])
       setNextCursor(data.nextCursor)
     } catch {
-      setError('Failed to load more.')
+      setError(t('assetsLoadMoreError'))
     } finally {
       setLoadingMore(false)
     }
@@ -197,7 +198,7 @@ export default function AssetsPage() {
       if (!r.ok) throw new Error('delete-failed')
       setAssets((prev) => prev.filter((a) => a.id !== assetId))
     } catch {
-      setError('Failed to delete asset.')
+      setError(t('assetDeleteError'))
     } finally {
       setDeletingId(null)
     }
@@ -228,7 +229,7 @@ export default function AssetsPage() {
       const asset = (await r.json()) as Asset
       setAssets((prev) => [asset, ...prev])
     } catch {
-      setError('Failed to upload asset.')
+      setError(t('assetUploadError'))
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -312,7 +313,7 @@ export default function AssetsPage() {
       {!loading && !error && assets.length === 0 && (
         <EmptyState
           title={t('noAssets')}
-          description="Upload images, videos, audio or documents to get started."
+          description={t('assetsDesc')}
           icon="🗂️"
           action={
             <Button

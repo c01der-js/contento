@@ -165,6 +165,7 @@ function StepIndicator({ step }: { step: 1 | 2 | 3 | 4 }) {
 export default function CreatePage() {
   const apiFetch = useApiFetch()
   const tCreatePage = useTranslations('create')
+  const tCommon = useTranslations('common')
   const { activeId: workspaceId, status: workspaceStatus } = useWorkspace()
   const workspaceError = workspaceStatus === 'no-workspaces' ? 'no-workspaces'
     : workspaceStatus === 'fetch-failed' ? 'fetch-failed'
@@ -212,7 +213,7 @@ export default function CreatePage() {
   if (workspaceError === 'no-workspaces') {
     return (
       <div className="p-6">
-        <EmptyState title="No workspace found" description="Create a workspace first." icon="🏢" />
+        <EmptyState title={tCreatePage('noWorkspaceTitle')} description={tCreatePage('noWorkspaceDesc')} icon="🏢" />
       </div>
     )
   }
@@ -220,7 +221,7 @@ export default function CreatePage() {
   if (workspaceError === 'fetch-failed') {
     return (
       <div className="p-6">
-        <ErrorBanner message="Failed to load workspace. Please refresh." />
+        <ErrorBanner message={tCreatePage('workspaceFailed')} />
       </div>
     )
   }
@@ -229,7 +230,7 @@ export default function CreatePage() {
     return (
       <div className="p-6 flex items-center gap-2 text-gray-400 text-sm">
         <Spinner />
-        <span>Loading…</span>
+        <span>{tCommon('loading')}</span>
       </div>
     )
   }
@@ -352,6 +353,7 @@ function Step1EnterTrend({
   apiFetch: ApiFetch
   onSuccess: (trendId: string) => void
 }) {
+  const t = useTranslations('create')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [url, setUrl] = useState('')
@@ -377,7 +379,7 @@ function Step1EnterTrend({
       const data = await r.json() as { id: string }
       onSuccess(data.id)
     } catch {
-      setError('Failed to create trend. Please try again.')
+      setError(t('trendError'))
     } finally {
       setLoading(false)
     }
@@ -385,33 +387,33 @@ function Step1EnterTrend({
 
   return (
     <Card className="max-w-lg">
-      <h2 className="text-base font-semibold text-gray-900 mb-5">Choose a Topic</h2>
+      <h2 className="text-base font-semibold text-gray-900 mb-5">{t('chooseTopic')}</h2>
       {error && <ErrorBanner message={error} />}
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-sm text-gray-700 font-medium">
-            Title <span className="text-red-500">*</span>
+            {t('titleLabel')} <span className="text-red-500">*</span>
           </label>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. AI tools for creators"
+            placeholder={t('trendTitlePlaceholder')}
             required
             minLength={1}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm text-gray-700 font-medium">Description</label>
+          <label className="text-sm text-gray-700 font-medium">{t('descriptionLabel')}</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 resize-none"
             rows={3}
-            placeholder="Optional description…"
+            placeholder={t('optionalDescPlaceholder')}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm text-gray-700 font-medium">URL</label>
+          <label className="text-sm text-gray-700 font-medium">{t('urlLabel')}</label>
           <Input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -426,7 +428,7 @@ function Step1EnterTrend({
             loading={loading}
             disabled={loading || !title.trim()}
           >
-            {loading ? 'Creating…' : 'Next: Generate Ideas'}
+            {loading ? t('creating') : t('nextGenerateIdeas')}
           </Button>
         </div>
       </form>
@@ -449,6 +451,7 @@ function Step2PickIdea({
   onBack: () => void
   onSuccess: (ideaId: string) => void
 }) {
+  const t = useTranslations('create')
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -465,7 +468,7 @@ function Step2PickIdea({
         return r.json() as Promise<Idea[]>
       })
       .then((data) => setIdeas(data))
-      .catch(() => setError('Failed to generate ideas. Please go back and try again.'))
+      .catch(() => setError(t('ideaGenerateError')))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trendId])
@@ -479,19 +482,19 @@ function Step2PickIdea({
       if (!r.ok) throw new Error('Failed to select idea')
       onSuccess(idea.id)
     } catch {
-      setError('Failed to select idea. Please try again.')
+      setError(t('ideaSelectError'))
       setSelecting(null)
     }
   }
 
   return (
     <div className="max-w-2xl">
-      <h2 className="text-base font-semibold text-gray-900 mb-5">Pick an Idea</h2>
+      <h2 className="text-base font-semibold text-gray-900 mb-5">{t('pickAnIdea')}</h2>
 
       {loading && (
         <div className="flex items-center gap-3 text-gray-500 text-sm mb-4">
           <Spinner />
-          <span>Generating ideas…</span>
+          <span>{t('generatingIdeas')}</span>
         </div>
       )}
 
@@ -532,7 +535,7 @@ function Step2PickIdea({
       )}
 
       <Button variant="secondary" onClick={onBack} disabled={!!selecting}>
-        ← Back
+        {t('back')}
       </Button>
     </div>
   )
@@ -656,6 +659,7 @@ function Step3ReviewScript({
   onIsRendering: (v: boolean) => void
   onApplyAutoFixes: (fixes: { hook?: string; body?: string; cta?: string; caption?: string }) => void
 }) {
+  const t = useTranslations('create')
   const [generating, setGenerating] = useState(!script)
   const [error, setError] = useState('')
   const [brandChecking, setBrandChecking] = useState(false)
@@ -677,7 +681,7 @@ function Step3ReviewScript({
       .then((data) => {
         onScript(data.id, data)
       })
-      .catch(() => setError('Failed to generate script. Please go back and try again.'))
+      .catch(() => setError(t('scriptGenerateError')))
       .finally(() => setGenerating(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ideaId])
@@ -701,7 +705,7 @@ function Step3ReviewScript({
       } else if (job.status === 'FAILED') {
         clearInterval(poll)
         onIsRendering(false)
-        setRenderJobError('Render failed. Try again.')
+        setRenderJobError(t('renderFailed'))
       }
     }, 2000)
     return () => clearInterval(poll)
@@ -721,7 +725,7 @@ function Step3ReviewScript({
       const data = await r.json() as BrandCheckResult
       onBrandCheck(data)
     } catch {
-      setBrandCheckError('Failed to run brand check. Please try again.')
+      setBrandCheckError(t('brandCheckError'))
     } finally {
       setBrandChecking(false)
     }
@@ -746,7 +750,7 @@ function Step3ReviewScript({
       onRenderJobId(data.id)
       onIsRendering(true)
     } catch {
-      setRenderJobError('Failed to start render. Try again.')
+      setRenderJobError(t('renderStartFailed'))
     }
   }
 
@@ -754,12 +758,12 @@ function Step3ReviewScript({
 
   return (
     <div className="max-w-2xl">
-      <h2 className="text-base font-semibold text-gray-900 mb-5">Review Script</h2>
+      <h2 className="text-base font-semibold text-gray-900 mb-5">{t('reviewScriptTitle')}</h2>
 
       {generating && (
         <div className="flex items-center gap-3 text-gray-500 text-sm mb-4">
           <Spinner />
-          <span>Generating script…</span>
+          <span>{t('generatingScript')}</span>
         </div>
       )}
 
@@ -771,7 +775,7 @@ function Step3ReviewScript({
           {script.hook && (
             <Card className="bg-indigo-50 border-indigo-100">
               <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide mb-1.5">
-                Hook
+                {t('hookLabel')}
               </p>
               <p className="text-lg font-medium text-gray-900">{script.hook}</p>
             </Card>
@@ -781,7 +785,7 @@ function Step3ReviewScript({
           {script.body && (
             <Card>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
-                Body
+                {t('bodyLabel')}
               </p>
               <p className="text-sm text-gray-700 whitespace-pre-wrap">{script.body}</p>
             </Card>
@@ -791,7 +795,7 @@ function Step3ReviewScript({
           {script.cta && (
             <Card>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
-                CTA
+                {t('ctaLabel')}
               </p>
               <p className="text-sm text-gray-700 italic">{script.cta}</p>
             </Card>
@@ -801,7 +805,7 @@ function Step3ReviewScript({
           {script.caption && (
             <Card>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
-                Caption
+                {t('captionLabel')}
               </p>
               <p className="text-sm text-gray-700">{script.caption}</p>
             </Card>
@@ -811,7 +815,7 @@ function Step3ReviewScript({
           {script.hashtags && script.hashtags.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                Hashtags
+                {t('hashtagsLabel')}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {script.hashtags.map((tag) => (
@@ -824,7 +828,7 @@ function Step3ReviewScript({
           {/* Template Picker */}
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-              Template
+              {t('templateLabel')}
             </p>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {TEMPLATES.map((tpl) => (
@@ -857,7 +861,7 @@ function Step3ReviewScript({
           {/* Visual Preview */}
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-              Visual Preview
+              {t('visualPreviewLabel')}
             </p>
             <div style={{ width: 400, height: 400, overflow: 'hidden' }}>
               {renderOutputUrl ? (
@@ -882,11 +886,11 @@ function Step3ReviewScript({
               {isRendering ? (
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <Spinner />
-                  <span>Generating…</span>
+                  <span>{t('generating')}</span>
                 </div>
               ) : (
                 <Button variant="secondary" onClick={handleGenerateVisual} disabled={!scriptId}>
-                  {renderOutputUrl ? 'Regenerate' : 'Generate Visual'}
+                  {renderOutputUrl ? t('regenerate') : t('generateVisual')}
                 </Button>
               )}
               {renderJobError && <ErrorBanner message={renderJobError} />}
@@ -928,9 +932,9 @@ function Step3ReviewScript({
                   {brandCheck.overallScore}/100
                 </span>
                 {brandApproved ? (
-                  <span className="text-green-600 text-sm font-medium">✓ Brand approved</span>
+                  <span className="text-green-600 text-sm font-medium">{t('brandApproved')}</span>
                 ) : (
-                  <span className="text-yellow-600 text-sm font-medium">⚠ Needs revision</span>
+                  <span className="text-yellow-600 text-sm font-medium">{t('needsRevision')}</span>
                 )}
               </div>
 
@@ -944,7 +948,7 @@ function Step3ReviewScript({
                 Object.keys(brandCheck.autoFixes).length > 0 && (
                   <div className="mt-3 border border-indigo-200 rounded-lg p-3 bg-indigo-50 flex flex-col gap-2">
                     <p className="text-xs font-semibold text-indigo-700">
-                      Auto-fix suggestions available
+                      {t('autoFixAvailable')}
                     </p>
                     <Button
                       variant="primary"
@@ -955,7 +959,7 @@ function Step3ReviewScript({
                         }
                       }}
                     >
-                      Apply Fixes
+                      {t('applyFixes')}
                     </Button>
                   </div>
                 )}
@@ -967,21 +971,21 @@ function Step3ReviewScript({
           {/* Actions */}
           <div className="flex items-center gap-3 flex-wrap">
             <Button variant="secondary" onClick={handleBrandCheck} loading={brandChecking} disabled={brandChecking}>
-              {brandChecking ? 'Checking…' : 'Check Brand'}
+              {brandChecking ? t('checking') : t('checkBrand')}
             </Button>
             <Button
               variant="primary"
               onClick={onApprove}
               disabled={!brandApproved}
             >
-              Approve Script
+              {t('approveScript')}
             </Button>
           </div>
         </div>
       )}
 
       <Button variant="ghost" onClick={onBack} disabled={generating}>
-        ← Back
+        {t('back')}
       </Button>
     </div>
   )
@@ -1476,6 +1480,8 @@ function HooksLibrary({
   workspaceId: string
   apiFetch: ApiFetch
 }) {
+  const t = useTranslations('create')
+  const tCommon = useTranslations('common')
   const base = `/workspaces/${workspaceId}/hooks`
   const [hooks, setHooks] = useState<Hook[]>([])
   const [loading, setLoading] = useState(true)
@@ -1491,7 +1497,7 @@ function HooksLibrary({
     apiFetch(base)
       .then((r) => r.json() as Promise<Hook[]>)
       .then((data) => setHooks(data))
-      .catch(() => setError('Failed to load hooks'))
+      .catch(() => setError(t('hookLoadError')))
       .finally(() => setLoading(false))
   }
 
@@ -1518,7 +1524,7 @@ function HooksLibrary({
       setHookFormat('')
       load()
     } catch {
-      setSaveError('Failed to save hook. Please try again.')
+      setSaveError(t('hookSaveError'))
     } finally {
       setSaving(false)
     }
@@ -1531,7 +1537,7 @@ function HooksLibrary({
       if (!r.ok) throw new Error('Delete failed')
       setHooks((prev) => prev.filter((h) => h.id !== id))
     } catch {
-      setError('Failed to delete hook')
+      setError(t('hookDeleteError'))
     } finally {
       setDeletingId(null)
     }
@@ -1539,19 +1545,19 @@ function HooksLibrary({
 
   return (
     <div className="max-w-2xl">
-      <h2 className="text-base font-semibold text-gray-900 mb-5">Hooks Library</h2>
+      <h2 className="text-base font-semibold text-gray-900 mb-5">{t('hooksLibraryTitle')}</h2>
 
       {loading && (
         <div className="flex items-center gap-3 text-gray-500 text-sm mb-4">
           <Spinner />
-          <span>Loading hooks…</span>
+          <span>{t('loadingHooks')}</span>
         </div>
       )}
 
       {error && <div className="mb-4"><ErrorBanner message={error} /></div>}
 
       {!loading && hooks.length === 0 && (
-        <EmptyState title="No hooks saved yet" description="Add your first hook below." icon="🪝" />
+        <EmptyState title={t('noHooksSaved')} description={t('addFirstHook')} icon="🪝" />
       )}
 
       <ul className="flex flex-col gap-2 mb-6">
@@ -1581,7 +1587,7 @@ function HooksLibrary({
                     {typeof hook.publicationCount === 'number' &&
                       hook.publicationCount > 0 && (
                         <span className="text-xs text-gray-500">
-                          used in {hook.publicationCount} pub{hook.publicationCount === 1 ? '' : 's'}
+                          {t('usedInPubs', { count: hook.publicationCount })}
                         </span>
                       )}
                   </div>
@@ -1593,7 +1599,7 @@ function HooksLibrary({
                     onClick={() => handleDelete(hook.id)}
                     disabled={deletingId === hook.id}
                   >
-                    {deletingId === hook.id ? '…' : 'Delete'}
+                    {deletingId === hook.id ? '…' : tCommon('delete')}
                   </Button>
                 </div>
               </Card>
@@ -1603,25 +1609,25 @@ function HooksLibrary({
       </ul>
 
       <Card>
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Save a Hook</h3>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('saveAHook')}</h3>
         {saveError && <div className="mb-3"><ErrorBanner message={saveError} /></div>}
         <form onSubmit={handleSave} className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-500 font-medium">Hook text *</label>
+            <label className="text-xs text-gray-500 font-medium">{t('hookTextLabel')} *</label>
             <Input
               value={hookText}
               onChange={(e) => setHookText(e.target.value)}
               className="w-64"
-              placeholder="e.g. The one thing no one tells you about…"
+              placeholder={t('hookTextPlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-500 font-medium">Format</label>
+            <label className="text-xs text-gray-500 font-medium">{t('formatLabel')}</label>
             <Input
               value={hookFormat}
               onChange={(e) => setHookFormat(e.target.value)}
               className="w-32"
-              placeholder="e.g. reel"
+              placeholder={t('formatExamplePlaceholder')}
             />
           </div>
           <Button
@@ -1630,7 +1636,7 @@ function HooksLibrary({
             loading={saving}
             disabled={saving || !hookText.trim()}
           >
-            {saving ? 'Saving…' : 'Save Hook'}
+            {saving ? t('savingHook') : t('saveHook')}
           </Button>
         </form>
       </Card>
