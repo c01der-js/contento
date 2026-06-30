@@ -1,4 +1,8 @@
 import React from 'react'
+import { SystemNotice } from './system-notice'
+
+// Re-export the designed notification plaque so feature code can use it directly.
+export { SystemNotice } from './system-notice'
 
 // ── Button ─────────────────────────────────────────────────────────────────────
 
@@ -173,11 +177,11 @@ export function EmptyState({ title, description, action, icon = '📭' }: EmptyS
 }
 
 // ── ErrorBanner ────────────────────────────────────────────────────────────────
+// Thin wrapper kept for its 17 call-sites; delegates to the designed SystemNotice
+// plaque, which resolves raw API errors into a localized title + explanation + action.
+// Kind is intentionally NOT forced — SystemNotice picks the semantic colour from the
+// resolved message (onboarding → warning, network → error, …) and falls back to error.
 
 export function ErrorBanner({ message }: { message: string }) {
-  return (
-    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-      {message}
-    </div>
-  )
+  return <SystemNotice message={message} />
 }

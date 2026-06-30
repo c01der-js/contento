@@ -1760,6 +1760,12 @@ function GoalsTab({
   apiFetch: ApiFetch
 }) {
   const t = useTranslations('brand')
+  const GOAL_TYPE_LABELS: Record<Goal['type'], string> = {
+    SUBSCRIBERS: t('goalSubscribers'),
+    SALES: t('goalSales'),
+    ENGAGEMENT: t('goalEngagement'),
+    REACH: t('goalReach'),
+  }
   const base = `/workspaces/${workspaceId}/goals`
   const [items, setItems] = useState<Goal[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1834,7 +1840,7 @@ function GoalsTab({
           <li key={item.id}>
             <Card className="flex items-start justify-between">
               <div>
-                <Badge color="indigo">{item.type}</Badge>
+                <Badge color="indigo">{GOAL_TYPE_LABELS[item.type] ?? item.type}</Badge>
                 {item.targetValue != null && (
                   <span className="text-sm text-gray-600 ml-2">{t('goalTarget')}: {item.targetValue}</span>
                 )}
@@ -1873,7 +1879,7 @@ function GoalsTab({
             >
               {GOAL_TYPES.map((goalType) => (
                 <option key={goalType} value={goalType}>
-                  {goalType}
+                  {GOAL_TYPE_LABELS[goalType]}
                 </option>
               ))}
             </Select>
