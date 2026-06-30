@@ -22,6 +22,19 @@ export interface RunAgentMeta {
 }
 
 /**
+ * A short system-prompt fragment that grounds an agent in the present date.
+ * Without it the model defaults to its training era and writes about stale
+ * years (e.g. "2024") on a 2026 product — and pulls outdated trends. Append
+ * this to any content/analysis agent so its output is current.
+ */
+export function currentDateContext(): string {
+  const now = new Date()
+  const iso = now.toISOString().slice(0, 10)
+  const year = now.getUTCFullYear()
+  return `СЕГОДНЯШНЯЯ ДАТА: ${iso} (текущий год: ${year}). Опирайся на актуальный контекст ${year} года и недавнего прошлого. Никогда не упоминай устаревшие годы (например, 2024) и не подтягивай старые тренды — только то, что актуально СЕЙЧАС, если это не подлинный исторический факт.`
+}
+
+/**
  * Call Anthropic messages.create and record the LLM usage event to ClickHouse.
  * The trackUsage call is fire-and-forget — it never blocks the agent response.
  */

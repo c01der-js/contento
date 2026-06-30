@@ -1,4 +1,4 @@
-import { runAnthropicMessage } from '../client.js'
+import { runAnthropicMessage, currentDateContext } from '../client.js'
 
 // Generates a complete, ready-to-edit Brand Kit (voice/tone, pillars, vocabulary, personas,
 // visual identity) from a company portrait. Output rows are persisted as editable DB records
@@ -54,6 +54,8 @@ export interface BrandKitResult {
 }
 
 const SCHEMA_INSTRUCTION = `You are a senior brand strategist. From the company portrait below, produce a complete, authentic, ready-to-edit Brand Kit.
+
+${currentDateContext()}
 
 IMPORTANT: respond in the SAME LANGUAGE as the company "description"/"niche" (if they are in Russian, write everything in Russian).
 
