@@ -1,4 +1,26 @@
 {
+  "auth": {
+    "signInTitle": "Вход",
+    "signUpTitle": "Регистрация",
+    "email": "Email",
+    "password": "Пароль",
+    "passwordMin": "Пароль (мин. 8 символов)",
+    "name": "Имя (необязательно)",
+    "signInSubmit": "Войти",
+    "signInSubmitting": "Входим…",
+    "signUpSubmit": "Зарегистрироваться",
+    "signUpSubmitting": "Создаём…",
+    "noAccount": "Нет аккаунта?",
+    "haveAccount": "Уже есть аккаунт?",
+    "signUpLink": "Зарегистрироваться",
+    "signInLink": "Войти",
+    "errInvalidCredentials": "Неверный email или пароль",
+    "errSignIn": "Ошибка входа",
+    "errEmailTaken": "Этот email уже зарегистрирован",
+    "errSignUp": "Ошибка регистрации",
+    "errPasswordShort": "Пароль должен быть не короче 8 символов",
+    "errNetwork": "Сеть недоступна. Попробуйте ещё раз."
+  },
   "dashboard": {
     "title": "Дашборд",
     "statTrends": "Тренды",

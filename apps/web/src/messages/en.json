@@ -1,4 +1,26 @@
 {
+  "auth": {
+    "signInTitle": "Sign in",
+    "signUpTitle": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "passwordMin": "Password (min. 8 characters)",
+    "name": "Name (optional)",
+    "signInSubmit": "Sign in",
+    "signInSubmitting": "Signing in…",
+    "signUpSubmit": "Sign up",
+    "signUpSubmitting": "Creating…",
+    "noAccount": "No account?",
+    "haveAccount": "Already have an account?",
+    "signUpLink": "Sign up",
+    "signInLink": "Sign in",
+    "errInvalidCredentials": "Invalid email or password",
+    "errSignIn": "Sign-in failed",
+    "errEmailTaken": "This email is already registered",
+    "errSignUp": "Sign-up failed",
+    "errPasswordShort": "Password must be at least 8 characters",
+    "errNetwork": "Network unavailable. Please try again."
+  },
   "dashboard": {
     "title": "Dashboard",
     "statTrends": "Trends",
