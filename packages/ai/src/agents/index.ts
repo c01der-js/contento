@@ -29,3 +29,5 @@ export type { ContentPlanRequest, ContentPlanItemDraft } from './content-plan-ge
 export { runSalesAgent } from './sales-agent.js'
 export type { SalesAgentResult, SalesQualification } from './sales-agent.js'
 export { storyToScript } from './story-scriptwriter.js'
+export { generateBrandKit } from './brand-kit-generator.js'
+export type { BrandKitInput, BrandKitResult } from './brand-kit-generator.js'

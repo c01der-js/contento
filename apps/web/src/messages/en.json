@@ -817,7 +817,9 @@
     "campaignFormEnds": "Ends",
     "watchVideo": "▶ Watch video",
     "hideVideo": "▾ Hide video",
-    "deleteVideoConfirm": "Delete this video from the plan?"
+    "deleteVideoConfirm": "Delete this video from the plan?",
+    "generatingBrandKit": "Generating brand kit…",
+    "brandKitNotice": "Brand kit generation failed — you can fill it in manually."
   },
   "qa": {
     "pass": "QA: passed",

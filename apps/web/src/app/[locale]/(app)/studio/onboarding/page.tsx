@@ -95,16 +95,36 @@ export default function OnboardingPage() {
     finally { setLoading(false) }
   }
 
+  const [brandKitNotice, setBrandKitNotice] = useState<string | null>(null)
+
   async function handleGenerateAvatarImage() {
     if (!workspaceId) return
     setLoading(true)
     setError(null)
+    setBrandKitNotice(null)
     try {
       const res = await apiFetch(`/workspaces/${workspaceId}/avatar-persona/generate-image`, {
         method: 'POST',
       })
       if (!res.ok) throw new Error(await res.text())
-      router.push('/studio/campaigns/new')
+
+      // Auto-fill Brand Kit from company portrait
+      setBrandKitNotice(t('generatingBrandKit'))
+      try {
+        const bkRes = await apiFetch(`/workspaces/${workspaceId}/brand-kit/generate`, {
+          method: 'POST',
+        })
+        if (!bkRes.ok) {
+          // Soft failure — log and proceed
+          console.warn('[onboarding] brand-kit/generate failed:', bkRes.status)
+          setBrandKitNotice(t('brandKitNotice'))
+        }
+      } catch (bkErr) {
+        console.warn('[onboarding] brand-kit/generate error:', bkErr)
+        setBrandKitNotice(t('brandKitNotice'))
+      }
+
+      router.push('/brand')
     } catch (e) { setError(e instanceof Error ? e.message : 'Error') }
     finally { setLoading(false) }
   }
@@ -280,9 +300,12 @@ export default function OnboardingPage() {
           <p className="text-sm text-gray-500 max-w-sm mx-auto">
             {t('generateAvatarDesc')}
           </p>
+          {brandKitNotice && (
+            <p className="text-sm text-indigo-600">{brandKitNotice}</p>
+          )}
           <div className="flex gap-3">
             <button
-              onClick={() => router.push('/studio')}
+              onClick={() => router.push('/brand')}
               className="flex-1 py-2 px-4 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               {t('skipForNow')}
@@ -292,7 +315,7 @@ export default function OnboardingPage() {
               disabled={loading}
               className="flex-1 py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
             >
-              {loading ? t('generatingAvatar') : t('generateImage')}
+              {loading ? (brandKitNotice ? t('generatingBrandKit') : t('generatingAvatar')) : t('generateImage')}
             </button>
           </div>
         </div>

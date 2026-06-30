@@ -38,7 +38,7 @@ export default function SignUpPage() {
       }
       const { token } = (await res.json()) as { token: string }
       setAuthToken(token)
-      router.replace(`/${locale}/dashboard`)
+      router.replace(`/${locale}/studio/onboarding`)
     } catch {
       setError(t('errNetwork'))
     } finally {

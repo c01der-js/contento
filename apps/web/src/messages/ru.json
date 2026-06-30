@@ -817,7 +817,9 @@
     "campaignFormEnds": "Конец",
     "watchVideo": "▶ Смотреть видео",
     "hideVideo": "▾ Скрыть видео",
-    "deleteVideoConfirm": "Удалить это видео из плана?"
+    "deleteVideoConfirm": "Удалить это видео из плана?",
+    "generatingBrandKit": "Генерируем бренд-кит…",
+    "brandKitNotice": "Не удалось сгенерировать бренд-кит — вы сможете заполнить его вручную."
   },
   "qa": {
     "pass": "QA: пройдено",
