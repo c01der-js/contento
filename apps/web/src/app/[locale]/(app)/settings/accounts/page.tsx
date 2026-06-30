@@ -144,9 +144,11 @@ function AccountsContent({
                         // JWT via the `?token=` query fallback the API auth plugin supports.
                         // Read it fresh at click time (client-side cookie).
                         const token = getAuthToken() ?? ''
-                        window.location.href =
+                        const url =
                           `${apiBase}/oauth/${platform}/authorize` +
                           `?workspaceId=${encodeURIComponent(workspaceId)}&token=${encodeURIComponent(token)}`
+                        // Open the OAuth flow in a new tab so the Contento tab stays open.
+                        window.open(url, '_blank', 'noopener,noreferrer')
                       }}
                       className="inline-flex items-center justify-center text-xs px-2.5 py-1.5 h-7 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
                     >

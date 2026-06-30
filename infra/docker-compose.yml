@@ -192,6 +192,8 @@ services:
       IG_APP_ID: ${IG_APP_ID:-}
       IG_APP_SECRET: ${IG_APP_SECRET:-}
       META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
+      # Used by the OAuth callback to redirect back to the web app after connect (else localhost).
+      WEB_BASE_URL: ${WEB_BASE_URL:-}
     depends_on:
       <<: *depends-ready
       clickhouse:
