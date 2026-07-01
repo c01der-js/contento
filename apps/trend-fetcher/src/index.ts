@@ -1,9 +1,10 @@
 import { prisma } from '@contento/db'
-import { scheduleRepeatableJob, createWorker, queue } from './worker.js'
+import { scheduleRepeatableJob, createWorker, queue, seedDefaultTrendSources } from './worker.js'
 import { getKafkaProducer } from './publisher.js'
 
 async function main() {
   console.log('[trend-fetcher] Starting...')
+  await seedDefaultTrendSources()
   await scheduleRepeatableJob()
   const worker = createWorker()
 

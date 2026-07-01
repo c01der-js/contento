@@ -156,10 +156,17 @@ export const campaignRoutes: FastifyPluginAsyncZod = async (app) => {
 
   // POST /campaigns
   app.post('/campaigns', {
-    schema: { params: WorkspaceParams, body: CreateBody, response: { 201: CampaignResponse, 401: ErrorResponse, 403: ErrorResponse } },
+    schema: { params: WorkspaceParams, body: CreateBody, response: { 201: CampaignResponse, 400: ErrorResponse, 401: ErrorResponse, 403: ErrorResponse } },
     preHandler: [requireWriteRole],
   }, async (request, reply) => {
     const { workspaceId } = request.params
+    // Gate: the content plan is generated from the company portrait, so block
+    // creation up-front instead of failing late at content-plan/generate. Keep the
+    // message text so the web SystemNotice resolves it to the onboarding plaque.
+    const portrait = await prisma.companyPortrait.findUnique({ where: { workspaceId } })
+    if (!portrait) {
+      return reply.status(400).send({ error: 'Company portrait not found. Run onboarding first.' })
+    }
     const { name, goal, targetAction, startsAt, endsAt } = request.body
     const body = request.body
     const campaign = await prisma.campaign.create({

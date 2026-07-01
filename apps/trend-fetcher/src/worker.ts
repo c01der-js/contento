@@ -35,6 +35,33 @@ export async function scheduleRepeatableJob(): Promise<void> {
   )
 }
 
+// Default, key-free trend sources so a fresh install produces trends out of the box.
+// TrendFeedConfig is global (not per-workspace); the fetcher reads enabled rows and
+// broadcastTrends fans results out to every workspace. RU-market feeds (reg. market =
+// RU-speaking diaspora + CIS). Users add/remove sources later via Settings → Trend Sources.
+const DEFAULT_TREND_SOURCES: Array<{ source: string; config: Record<string, unknown> }> = [
+  { source: 'rss', config: { url: 'https://news.google.com/rss?hl=ru&gl=RU&ceid=RU:ru' } },
+  { source: 'rss', config: { url: 'https://lenta.ru/rss/news' } },
+]
+
+/**
+ * Seed the default sources only when the table is completely empty (never seeded).
+ * Idempotent across restarts; won't resurrect sources a user deliberately deleted
+ * (any remaining row — even disabled — suppresses re-seeding). Non-fatal on error.
+ */
+export async function seedDefaultTrendSources(): Promise<void> {
+  try {
+    const existing = await prisma.trendFeedConfig.count()
+    if (existing > 0) return
+    await prisma.trendFeedConfig.createMany({
+      data: DEFAULT_TREND_SOURCES.map((s) => ({ source: s.source, config: s.config as object, enabled: true })),
+    })
+    console.log('[trend-fetcher] Seeded %d default trend sources (table was empty).', DEFAULT_TREND_SOURCES.length)
+  } catch (err) {
+    console.error('[trend-fetcher] Failed to seed default trend sources: %o', err)
+  }
+}
+
 export function createWorker(): Worker {
   return new Worker(
     QUEUE_NAME,

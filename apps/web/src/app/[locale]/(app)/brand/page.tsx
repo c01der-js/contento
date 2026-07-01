@@ -224,16 +224,20 @@ export default function BrandPage() {
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">{t('title')}</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-start gap-3">
           {previewErrorMsg && <ErrorBanner message={previewErrorMsg} />}
-          <Button
-            variant="primary"
-            onClick={handlePreviewBrandVoice}
-            loading={previewLoading}
-            className="bg-purple-600 border-purple-600 hover:bg-purple-700 hover:border-purple-700"
-          >
-            {previewLoading ? t('generating') : t('previewVoice')}
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              variant="primary"
+              onClick={handlePreviewBrandVoice}
+              loading={previewLoading}
+            >
+              {previewLoading ? t('generating') : t('previewVoice')}
+            </Button>
+            <p className="max-w-[240px] text-right text-[11px] leading-tight text-gray-400">
+              {t('previewVoiceHint')}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -304,17 +308,20 @@ export default function BrandPage() {
               {t('previewModalDesc')}
             </p>
             <div className="flex flex-col gap-4">
-              {previews.map((item, i) => (
+              {previews.map((item, i) => {
+                const angleKey = (['previewAngle1', 'previewAngle2', 'previewAngle3'] as const)[i]
+                return (
                 <Card key={i}>
-                  <p className="text-xs text-gray-400 mb-2 font-semibold uppercase tracking-wide">
-                    {t('previewSample')} {i + 1}
+                  <p className="text-xs text-indigo-500 mb-2 font-semibold uppercase tracking-wide">
+                    {t('previewSample')} {i + 1}{angleKey ? ` · ${t(angleKey)}` : ''}
                   </p>
                   <p className="font-semibold text-sm text-gray-900 mb-1">{t('previewHook')}: {item.hook}</p>
                   <p className="text-sm text-gray-600 mb-1">{item.body}</p>
                   <p className="text-sm text-indigo-600 mb-1">{t('previewCta')}: {item.cta}</p>
                   <p className="text-xs text-gray-400">{t('previewCaption')}: {item.caption}</p>
                 </Card>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>

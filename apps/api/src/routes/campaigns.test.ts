@@ -113,6 +113,18 @@ describe('Campaigns API', () => {
     expect(res.statusCode).toBe(201)
   })
 
+  it('POST /workspaces/ws1/campaigns without a company portrait returns 400', async () => {
+    const { prisma } = await import('@contento/db')
+    vi.mocked(prisma.companyPortrait.findUnique).mockResolvedValueOnce(null)
+    const res = await app.inject({
+      method: 'POST', url: '/workspaces/ws1/campaigns',
+      headers: { authorization: 'Bearer test' },
+      payload: { name: 'No Portrait', goal: 'SALES', targetAction: 'Book a call', startsAt: '2026-07-01', endsAt: '2026-07-31' },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error).toMatch(/portrait/i)
+  })
+
   it('POST /workspaces/ws1/campaigns/camp1/content-plan/generate returns 200', async () => {
     const res = await app.inject({
       method: 'POST', url: '/workspaces/ws1/campaigns/camp1/content-plan/generate',

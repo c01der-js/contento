@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useWorkspace } from '@/lib/workspace'
 import { useApiFetch } from '@/lib/api'
 import { useTranslations } from 'next-intl'
+import { SystemNotice } from '@/components/ui'
 
 type Goal = 'SUBSCRIBERS' | 'SALES' | 'ENGAGEMENT' | 'REACH'
 
@@ -65,7 +66,7 @@ export default function NewCampaignPage() {
         <p className="text-sm text-gray-500 mt-1">{t('newCampaignSubtitle')}</p>
       </div>
 
-      {error && <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
+      {error && <SystemNotice message={error} />}
 
       <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
         <div>
